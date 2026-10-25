@@ -71,10 +71,10 @@ fn solve_prints_a_plan_that_check_accepts() {
 }
 
 #[test]
-fn solve_refuses_unlimited_stages() {
-    let instance = data_dir().join("instances/generated__bin_packing_unlimited_exact_kerf0.json");
-    let output = cli(&["solve", instance.to_str().unwrap()]);
-    assert!(!output.status.success());
+fn solve_handles_unlimited_stages() {
+    let instance = data_dir().join("instances/generated__knapsack_unlimited_non_exact_kerf0.json");
+    let output = cli(&["solve", instance.to_str().unwrap(), "--time-limit", "5"]);
+    assert!(output.status.success(), "{output:?}");
 }
 
 #[test]
@@ -101,14 +101,14 @@ fn diff_oracle_passes_on_matching_golden_files() {
 }
 
 #[test]
-fn diff_oracle_skips_unlimited_stages() {
+fn diff_oracle_compares_unlimited_stages() {
     let output = cli(&[
         "diff-oracle",
         "--filter",
-        "generated__bin_packing_unlimited_exact_kerf0.",
+        "generated__knapsack_unlimited_non_exact_kerf0.hypergraph",
     ]);
     assert!(output.status.success(), "{output:?}");
-    assert!(stdout(&output).contains("2 skipped"));
+    assert!(stdout(&output).contains("1 same"), "{output:?}");
 }
 
 #[test]

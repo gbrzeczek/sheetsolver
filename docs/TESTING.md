@@ -80,7 +80,8 @@ Upstream packingsolver at the pinned commit is the reference.
     the panel out of the cutting tree. The port reproduces that plan,
     then `guillotine::complete_open_dimension` adds the cut and the
     remainder as a leftover (with one more level when the first cuts run
-    along the open side). The differential tests apply the same
+    along the open side); a leftover the plan already had becomes an
+    offcut, since only the last piece may be one. The differential tests apply the same
     completion to the golden plan, so the comparison stays exact; the
     checker's golden test accepts upstream's plans with only that defect.
   - A last panel cut several times keeps its leftover on the very last

@@ -62,12 +62,13 @@ enum Command {
     /// Solve every instance that has a golden file and compare with the
     /// oracle's plan: the full differential suite.
     ///
-    /// Every plan must equal the golden one and pass the checker.
-    /// Unlimited-stage instances are skipped until Stage 5. Exits with
-    /// status 1 if any instance differs, fails the checker or errors.
-    /// Run with --release: queue size 2048 is slow in debug builds.
+    /// Every plan must equal the golden one and pass the checker. Each
+    /// golden file names the algorithm and parameters it was made with.
+    /// Exits with status 1 if any instance differs, fails the checker or
+    /// errors. Run with --release: the larger searches are slow in debug
+    /// builds.
     DiffOracle {
-        /// Directory of golden files, `<instance>.q<queue size>.json`.
+        /// Directory of golden files (naming in `docs/TESTING.md`).
         #[arg(long, default_value_os_t = files::data_dir().join(files::GOLDEN_DIR))]
         golden: PathBuf,
         /// Directory of instance files.
