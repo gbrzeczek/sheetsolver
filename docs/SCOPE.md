@@ -110,6 +110,15 @@ Record every scope decision here with a date, so agents can see why.
   tree search alone, although upstream would add them there too (with
   column generation, which is Out). Both choices are measured at the end
   of Stage 5 so they can be revisited with numbers.
+  Measured at the end of Stage 5 (`STAGES.md`): without reduction, the
+  same panel counts and at most 1.4 % less value on 4 of 35 instances,
+  and faster; kept. The heuristics on 2 and 3 stages would save one
+  panel on 1 of 59 instances and 1.7 % value on another; open for the
+  owner.
+- 2026-10-25 — Stage 5 ports upstream's area bounds and the stop once a
+  plan reaches one (a speed-up only: plans cannot change). Its bounds
+  from the 1D solver and dual feasible functions stay Out (they need
+  its 1D solver, partly column generation).
 - 2026-10-25 — Stage 5 ports upstream's `minimize_number_of_stages`
   (`post_process.cpp`) only because the hypergraph search calls it on
   every plan it finds; post-processing as a separate step stays Open.
