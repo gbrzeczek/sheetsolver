@@ -124,3 +124,8 @@ Record every scope decision here with a date, so agents can see why.
 - 2026-10-25 — Lengths have 0.1 mm precision (decimal millimetres in
   JSON, integer tenths inside), so kerfs like 3.2 mm can be entered
   exactly. A part's default value is its area in mm².
+- 2026-10-25 — Optional names (owner): a job may have an optional name;
+  part and panel names are optional, and the UI fills an empty one with
+  its default ("Part 3", "Panel 1"; `FIELDS.md`, *Conventions*). The job
+  name lives in the browser until the API carries it (`web/DESIGN.md`
+  §8, #21).

@@ -94,7 +94,7 @@ plan so far. *Edit job* returns to Job setup; the last plan stays
 available until the job is solved again.
 
 ```
-App bar:  Sheetsolver · 21 parts · Birch ply 18 mm
+App bar:  Sheetsolver · Kitchen units (job name, or "Untitled job")
 Tabs:     Job setup | Cutting plan •
 
 Job setup                          Cutting plan
@@ -120,6 +120,16 @@ to the workshop tablet resumes it:
 
 **Job setup** (`editor.html`). The page asks "What are you cutting?" and
 fills a centred column about 1080 px wide.
+- *Job name* (optional): one field above the parts, placeholder
+  "Untitled job". It names the job in the app bar and above the cutting
+  plan. Until the API carries it (§8, #21), it is kept with the draft
+  in the browser.
+- **Names are optional** for parts and panels. An empty Name cell shows
+  its generated name greyed ("Part 9", "Panel 1": the FIELDS.md default,
+  by row number, skipping names already used), and the UI sends that
+  name with the job. Someone who only wants to type sizes can tab
+  straight past the Name column. Row 9 in `editor.html` is left
+  unnamed and appears as "Part 9" in the plan mockups.
 - *Parts to make*: a compact table with Name, Length, Width, Quantity
   and Keep grain direction (headed "Keep grain ↔"). Value appears only
   when the goal is "Best use of the panels I have". Numbers are
@@ -158,7 +168,8 @@ fills a centred column about 1080 px wide.
   itself.
 
 **Cutting plan, done** (`plan-overview.html`, `plan-panel.html`)
-- Eyebrow "Cutting plan · plan 2". The **headline answers question 1**:
+- Eyebrow "Kitchen units · plan 2" (the job name, or "Cutting plan"
+  when there is none). The **headline answers question 1**:
   "All 21 parts fit". With "Best use of the panels I have" it reads
   "18 of 21 parts fit"; with the "Shortest" goals it reads "Uses
   1850 mm of 2440 mm". The subline gives the panels: "3 panels of Birch
@@ -594,6 +605,7 @@ current status.
 | 18 | The instance in `GET /jobs/{id}` | 🔨 accepted | A plan opened from a link on another device; *Edit job* | Parts summary, parts not cut, and *Edit job* work on any device; the local draft is only a convenience |
 | 19 | `POST /instances/validate` | ⏸ deferred | Server-side problems before submitting | Client checks while typing, plus the 422 on submit |
 | 20 | `problems[].field` positions = submitted arrays | 🔨 accepted (docs) | 422 mapping to rows | Relied on; rows are sent in display order and never dropped |
+| 21 | Optional `name` on `POST /jobs`, echoed in the job status (new, 2026-10-25: the owner decided jobs have an optional name) | ❔ requested | App bar and plan heading, also on another device opening a job link | The name is kept with the draft in this browser; a link opened elsewhere shows "Cutting plan" without a name |
 
 No request needed server-side persistence.
 
@@ -748,14 +760,10 @@ decided.
    with a per-panel manifest), suits printing: one panel per page with
    its cut list and parts. Export is Open; is a print stylesheet in
    scope for v1?
-3. **A job name** ("Workshop cabinet" in the handoff) would make the app
-   bar and print-outs clearer, but it is not in the instance or
-   FIELDS.md. Add an optional, UI-only name, or leave the app bar
-   showing "21 parts · Birch ply 18 mm" as now?
-4. **Dimension format**: plain `1040.5` (as typed), or with thousands
+3. **Dimension format**: plain `1040.5` (as typed), or with thousands
    separators (`1 040.5`)? The mockups use plain figures to match
    input.
-5. **Part labels** in the drawing show the size as drawn (horizontal ×
+4. **Part labels** in the drawing show the size as drawn (horizontal ×
    vertical). The alternative is the part's own length × width as
    entered. The first matches the rulers and the saw; the second
    matches the parts table.
@@ -763,4 +771,6 @@ decided.
 Decided (2026-10-25, owner): help text sits behind a (?) button next to
 each label, opened by tap or click, instead of being always visible
 (§5; `docs/STAGES.md` updated). The visual direction follows the design
-handoff (Guided setup + Workbench).
+handoff (Guided setup + Workbench). Jobs have an optional name; part and
+panel names are optional and generated when empty (`docs/SCOPE.md`,
+`docs/FIELDS.md`).

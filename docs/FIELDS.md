@@ -33,6 +33,10 @@ Rules:
 - A panel is drawn with its **length horizontal** and its **width
   vertical**. The panel's length is along its X axis, its width along its
   Y axis (upstream `width` = our length, upstream `height` = our width).
+- **Names are optional.** A part or panel left without a name gets the
+  default of its *Name* row ("Part 1", "Panel 1", …, by its row number,
+  skipping names already used): the UI shows it greyed in the empty
+  cell and sends it with the job, so the API always receives a name.
 - A part's **length** is laid along the panel's length unless the part is
   rotated. For a part with grain, enter the length along the grain, and
   enter the panel's length along its grain too.
@@ -101,6 +105,16 @@ field type's `oneOf`, with this name as its `title`.
 | `first_cuts` | `either` | Either |
 | `first_cuts` | `along_length` | Along the length |
 | `first_cuts` | `across_length` | Across the length |
+
+## UI-only fields
+
+Fields the UI keeps itself and does not send to the API (yet), so they
+are not in `openapi.json`; the UI takes their label and help text from
+here. The same rules apply: the help text is the exact copy shown.
+
+| Field | UI label | Help text | Unit / values | Default | Where it lives |
+|---|---|---|---|---|---|
+| `job_name` | Job name | Your name for this job, shown at the top of the job and its cutting plan (e.g. "Kitchen units"). Optional. | text | empty: shown as "Untitled job" | In the browser with the job draft; requested from the API (`web/DESIGN.md` §8, #21) |
 
 ## Later fields (help text to be written when they move to In)
 

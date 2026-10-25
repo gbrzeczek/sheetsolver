@@ -40,7 +40,7 @@ NAMES = {
     "Part 6": "Cleat",
     "Part 7": "Kicker",
     "Part 8": "Shelf",
-    "Part 9": "Divider",
+    "Part 9": "Part 9",  # left unnamed: the UI's generated name
     "Part 10": "Rail",
     "Part 11": "Stretcher",
 }
@@ -568,7 +568,8 @@ LOGO = ('<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill
         'stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="1.5" width="15" height="15" rx="1.5"/>'
         '<path d="M1.5 9.5h15M8 1.5v8M11.5 9.5v7"/></svg>')
 
-CONTEXT = f'{sum(p.get("quantity", 1) for p in INST["parts"])} parts · {esc(INST["panels"][0]["id"])}'
+JOB_NAME = "Kitchen units"
+CONTEXT = JOB_NAME
 
 
 def icon(name: str, size: int = 14) -> str:
@@ -666,6 +667,10 @@ def parts_table(errors: dict, focus: tuple[int, str] | None, pop_field: str | No
                 cells.append(f'<td class="c"><input type="checkbox"{chk} aria-label="{esc(lab)}"></td>')
             else:
                 val = errors.get(key, (None, None))[0] or (fmt(p[f]) if f in ("length", "width") else p.get(f, ""))
+                if f == "id" and val == f"Part {i + 1}":
+                    # Left empty: the generated name shows as a placeholder.
+                    cells.append(f'<td>{cell("", placeholder=val, label_text=lab, text=True)}</td>')
+                    continue
                 cells.append(f'<td>{cell(val, cls=state, label_text=lab, text=(f == "id"))}</td>')
         cells.append(f'<td><button class="icon-btn" aria-label="Remove row {i + 1}">{icon("close", 12)}</button></td>')
         rows.append(f'<tr class="{"has-err" if has_err else ""}">{"".join(cells)}</tr>')
@@ -701,6 +706,27 @@ def setting(section: str, field: str, control: str, *, open_: bool = False,
            else f'<div class="help-box" id="{hid}" hidden></div>')
     return (f'<div class="field"><div class="label-row"><span class="field-label">{esc(label(section, field))}{u}</span>'
             f'{help_btn(hid, section, field, open_)}</div>{control}{box}</div>')
+
+
+def ui_field(field: str) -> dict:
+    """A row of FIELDS.md's "UI-only fields" table."""
+    chapter = None
+    for line in (ROOT / "docs/FIELDS.md").read_text().splitlines():
+        if line.startswith("## "):
+            chapter = line[3:].strip()
+        elif chapter == "UI-only fields" and line.startswith(f"| `{field}`"):
+            c = [x.strip() for x in line.strip().strip("|").split("|")]
+            return {"label": c[1], "help": c[2]}
+    raise KeyError(field)
+
+
+def setting_ui(field: str, control: str) -> str:
+    row = ui_field(field)
+    hid = f"help-ui-{field}"
+    return (f'<div class="label-row"><span class="field-label">{esc(row["label"])} <span class="unit">optional</span></span>'
+            f'<button class="help-btn" type="button" aria-expanded="false" aria-controls="{hid}" '
+            f'aria-label="About {esc(row["label"])}">?</button></div>{control}'
+            f'<div class="help-box" id="{hid}" hidden></div>')
 
 
 def radio_row(opts: list[str], current: str, aria: str) -> str:
@@ -757,6 +783,7 @@ def editor_page(errors: dict | None = None) -> str:
   {alert}
   <div class="setup-grid">
     <div>
+      <div class="field job-name">{setting_ui("job_name", f'<input class="input" value="{JOB_NAME}" placeholder="Untitled job" aria-label="Job name" readonly>')}</div>
       <section class="form-block" aria-labelledby="parts-h">
         <div class="section-title"><h2 id="parts-h">Parts to make</h2><small>{PARTS_TOTAL} parts · {len(INST["parts"])} sizes</small></div>
         {parts_table(errors, focus, None if errors else "grain")}
@@ -802,7 +829,7 @@ def plan_stats(m: dict, live: bool = False) -> str:
 def plan_heading() -> str:
     return f"""
   <div class="heading">
-    <div><div class="eyebrow">Cutting plan · plan 2</div><h1>All {PARTS_TOTAL} parts fit</h1>
+    <div><div class="eyebrow">{esc(JOB_NAME)} · plan 2</div><h1>All {PARTS_TOTAL} parts fit</h1>
       <p class="muted">{M2["panels_used"]} panels of Birch ply 18 mm, 2440 × 1220 mm</p></div>
     <div class="actions"><a class="button" href="#">Edit job</a></div>
   </div>
@@ -867,7 +894,7 @@ def solving_page() -> str:
     body = f"""
 <main>
   <div class="heading">
-    <div><div class="eyebrow">Cutting plan · searching</div><h1>All {PARTS_TOTAL} parts fit so far</h1>
+    <div><div class="eyebrow">{esc(JOB_NAME)} · searching</div><h1>All {PARTS_TOTAL} parts fit so far</h1>
       <p class="muted">Looking for a plan with less waste. The best plan so far is shown and replaced as soon as a better one is found.</p></div>
     <div class="actions"><button class="button">Stop and keep this plan</button></div>
   </div>

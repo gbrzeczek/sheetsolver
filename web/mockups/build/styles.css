@@ -382,3 +382,4 @@ th { position: relative; }
 
 .live-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start; }
 @media (max-width: 1099px) { .live-grid { grid-template-columns: minmax(0, 1fr); } }
+.job-name { max-width: 420px; margin-bottom: 28px; }
