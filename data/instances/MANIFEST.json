@@ -1,0 +1,535 @@
+{
+  "upstream_commit": "9b656a0dcafd1e9019bf39a5910d4307af65579a",
+  "converted": [
+    {
+      "file": "tests__bin_packing_3nvo.json",
+      "source": "data/rectangleguillotine/tests/bin_packing_3nvo"
+    },
+    {
+      "file": "tests__bin_packing_3nvr.json",
+      "source": "data/rectangleguillotine/tests/bin_packing_3nvr"
+    },
+    {
+      "file": "tests__bin_packing_full_bin_items.json",
+      "source": "data/rectangleguillotine/tests/bin_packing_full_bin_items"
+    },
+    {
+      "file": "tests__bin_packing_lift_item_dimensions.json",
+      "source": "data/rectangleguillotine/tests/bin_packing_lift_item_dimensions"
+    },
+    {
+      "file": "tests__bin_packing_lift_item_dimensions_both_axes.json",
+      "source": "data/rectangleguillotine/tests/bin_packing_lift_item_dimensions_both_axes"
+    },
+    {
+      "file": "tests__bin_packing_lift_item_dimensions_cut_thickness.json",
+      "source": "data/rectangleguillotine/tests/bin_packing_lift_item_dimensions_cut_thickness"
+    },
+    {
+      "file": "tests__bin_packing_lift_item_dimensions_exact.json",
+      "source": "data/rectangleguillotine/tests/bin_packing_lift_item_dimensions_exact"
+    },
+    {
+      "file": "tests__bin_packing_merge_identical_items.json",
+      "source": "data/rectangleguillotine/tests/bin_packing_merge_identical_items"
+    },
+    {
+      "file": "tests__bin_packing_merge_identical_items_after_removing_redundant_rotations.json",
+      "source": "data/rectangleguillotine/tests/bin_packing_merge_identical_items_after_removing_redundant_rotations"
+    },
+    {
+      "file": "tests__bin_packing_merge_identical_items_alone_in_stack_with_multiple_copies.json",
+      "source": "data/rectangleguillotine/tests/bin_packing_merge_identical_items_alone_in_stack_with_multiple_copies"
+    },
+    {
+      "file": "tests__bin_packing_merge_identical_items_different_profit_still_merges.json",
+      "source": "data/rectangleguillotine/tests/bin_packing_merge_identical_items_different_profit_still_merges"
+    },
+    {
+      "file": "tests__bin_packing_merge_identical_items_unreduce_solution_round_trip.json",
+      "source": "data/rectangleguillotine/tests/bin_packing_merge_identical_items_unreduce_solution_round_trip"
+    },
+    {
+      "file": "tests__bin_packing_perfect_pairs.json",
+      "source": "data/rectangleguillotine/tests/bin_packing_perfect_pairs"
+    },
+    {
+      "file": "tests__bin_packing_perfect_pairs_cut_thickness.json",
+      "source": "data/rectangleguillotine/tests/bin_packing_perfect_pairs_cut_thickness"
+    },
+    {
+      "file": "tests__bin_packing_ur_cut_thickness_small_gap.json",
+      "source": "data/rectangleguillotine/tests/bin_packing_ur_cut_thickness_small_gap"
+    },
+    {
+      "file": "tests__knapsack_2evo.json",
+      "source": "data/rectangleguillotine/tests/knapsack_2evo"
+    },
+    {
+      "file": "tests__knapsack_2evr.json",
+      "source": "data/rectangleguillotine/tests/knapsack_2evr"
+    },
+    {
+      "file": "tests__knapsack_2hvo.json",
+      "source": "data/rectangleguillotine/tests/knapsack_2hvo"
+    },
+    {
+      "file": "tests__knapsack_2hvr.json",
+      "source": "data/rectangleguillotine/tests/knapsack_2hvr"
+    },
+    {
+      "file": "tests__knapsack_2hvr_cut_thickness.json",
+      "source": "data/rectangleguillotine/tests/knapsack_2hvr_cut_thickness"
+    },
+    {
+      "file": "tests__knapsack_2nvo.json",
+      "source": "data/rectangleguillotine/tests/knapsack_2nvo"
+    },
+    {
+      "file": "tests__knapsack_2nvr.json",
+      "source": "data/rectangleguillotine/tests/knapsack_2nvr"
+    },
+    {
+      "file": "tests__knapsack_3evo.json",
+      "source": "data/rectangleguillotine/tests/knapsack_3evo"
+    },
+    {
+      "file": "tests__knapsack_3evr.json",
+      "source": "data/rectangleguillotine/tests/knapsack_3evr"
+    },
+    {
+      "file": "tests__knapsack_3hvo.json",
+      "source": "data/rectangleguillotine/tests/knapsack_3hvo"
+    },
+    {
+      "file": "tests__knapsack_3hvo_cut_thickness.json",
+      "source": "data/rectangleguillotine/tests/knapsack_3hvo_cut_thickness"
+    },
+    {
+      "file": "tests__knapsack_3hvr.json",
+      "source": "data/rectangleguillotine/tests/knapsack_3hvr"
+    },
+    {
+      "file": "tests__knapsack_3nvo.json",
+      "source": "data/rectangleguillotine/tests/knapsack_3nvo"
+    },
+    {
+      "file": "tests__knapsack_3nvr.json",
+      "source": "data/rectangleguillotine/tests/knapsack_3nvr"
+    },
+    {
+      "file": "tests__knapsack_merge_identical_items_requires_matching_profit.json",
+      "source": "data/rectangleguillotine/tests/knapsack_merge_identical_items_requires_matching_profit"
+    },
+    {
+      "file": "tests__knapsack_remove_dominated_items_not_removed_with_several_bins.json",
+      "source": "data/rectangleguillotine/tests/knapsack_remove_dominated_items_not_removed_with_several_bins"
+    },
+    {
+      "file": "tests__knapsack_remove_dominated_items_removed.json",
+      "source": "data/rectangleguillotine/tests/knapsack_remove_dominated_items_removed"
+    },
+    {
+      "file": "tests__knapsack_remove_negative_profit_items_fully_optional.json",
+      "source": "data/rectangleguillotine/tests/knapsack_remove_negative_profit_items_fully_optional"
+    },
+    {
+      "file": "tests__knapsack_uo.json",
+      "source": "data/rectangleguillotine/tests/knapsack_uo"
+    },
+    {
+      "file": "tests__knapsack_uo_bounded_copies.json",
+      "source": "data/rectangleguillotine/tests/knapsack_uo_bounded_copies"
+    },
+    {
+      "file": "tests__knapsack_uo_cut_thickness.json",
+      "source": "data/rectangleguillotine/tests/knapsack_uo_cut_thickness"
+    },
+    {
+      "file": "tests__knapsack_uo_x.json",
+      "source": "data/rectangleguillotine/tests/knapsack_uo_x"
+    },
+    {
+      "file": "tests__knapsack_uo_y.json",
+      "source": "data/rectangleguillotine/tests/knapsack_uo_y"
+    },
+    {
+      "file": "tests__knapsack_ur.json",
+      "source": "data/rectangleguillotine/tests/knapsack_ur"
+    },
+    {
+      "file": "tests__open_dimension_x_column_generation_strips_width.json",
+      "source": "data/rectangleguillotine/tests/open_dimension_x_column_generation_strips_width/instance.json"
+    },
+    {
+      "file": "tests__remove_redundant_rotations_rotation_fits_no_bin.json",
+      "source": "data/rectangleguillotine/tests/remove_redundant_rotations_rotation_fits_no_bin"
+    },
+    {
+      "file": "tests__remove_redundant_rotations_square_item.json",
+      "source": "data/rectangleguillotine/tests/remove_redundant_rotations_square_item"
+    }
+  ],
+  "skipped": [
+    {
+      "source": "data/rectangleguillotine/tests/bin_packing_cutting_cost_2nho",
+      "reason": "objective BinPackingCuttingCost"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/bin_packing_lift_item_dimensions_maximum_distance_1_cuts",
+      "reason": "parameter maximum_distance_1_cuts=6"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/bin_packing_lift_item_dimensions_skipped_with_minimum_waste",
+      "reason": "parameter minimum_waste_length=1"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/bin_packing_merge_identical_items_not_applied_when_sharing_stack",
+      "reason": "stacks"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/bin_packing_merge_identical_items_respects_resources/instance.json",
+      "reason": "resources"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/bin_packing_merge_identical_items_respects_resources/reduced_instance.json",
+      "reason": "resources"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/bin_packing_with_leftovers_soft_left_trim/instance.json",
+      "reason": "objective bin-packing-with-leftovers"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/cutting_cost_defect_3_cuts/instance.json",
+      "reason": "cutting costs"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/cutting_cost_defect_waste/instance.json",
+      "reason": "cutting costs"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/defect_cut_above_item/instance.json",
+      "reason": "objective bin-packing-cutting-cost"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/defect_item_above_cut_thickness/instance.json",
+      "reason": "cutting costs"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_1rvr",
+      "reason": "number_of_stages 1"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_1rvr_cut_thickness",
+      "reason": "number_of_stages 1"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2evo_defects_1",
+      "reason": "defects"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2evo_max1cut",
+      "reason": "parameter maximum_distance_1_cuts=15"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2evo_min1cut",
+      "reason": "parameter minimum_distance_1_cuts=15"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2evr_max1cut",
+      "reason": "parameter maximum_distance_1_cuts=12"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2evr_min1cut",
+      "reason": "parameter minimum_distance_1_cuts=12"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2hvo_max1cut",
+      "reason": "parameter maximum_distance_1_cuts=15"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2hvo_min1cut",
+      "reason": "parameter minimum_distance_1_cuts=15"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2hvr_max1cut",
+      "reason": "parameter maximum_distance_1_cuts=12"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2hvr_min1cut",
+      "reason": "parameter minimum_distance_1_cuts=12"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2nho",
+      "reason": "first_stage_orientation horizontal"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2nho_2",
+      "reason": "first_stage_orientation horizontal"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2nvo_defects_2",
+      "reason": "parameter maximum_distance_between_1_cuts=25"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2nvo_defects_3",
+      "reason": "defects"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2nvo_defects_4",
+      "reason": "defects"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2nvo_defects_5",
+      "reason": "defects"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2nvo_max1cut",
+      "reason": "parameter maximum_distance_1_cuts=9"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2nvo_min1cut",
+      "reason": "parameter minimum_distance_1_cuts=6"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2nvo_soft_trims",
+      "reason": "parameter min_waste=5"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2nvo_trims",
+      "reason": "trims"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2nvr_max1cut",
+      "reason": "parameter maximum_distance_1_cuts=12"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2nvr_min1cut",
+      "reason": "parameter minimum_distance_1_cuts=6"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2rvo",
+      "reason": "cut_type roadef2018"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2rvo_cut_thickness",
+      "reason": "cut_type roadef2018"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2rvo_max1cut",
+      "reason": "cut_type roadef2018"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2rvo_min1cut",
+      "reason": "cut_type roadef2018"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2rvr",
+      "reason": "cut_type roadef2018"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2rvr_max1cut",
+      "reason": "cut_type roadef2018"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_2rvr_min1cut",
+      "reason": "cut_type roadef2018"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3evo_max1cut",
+      "reason": "parameter maximum_distance_1_cuts=5"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3evo_min1cut",
+      "reason": "parameter minimum_distance_1_cuts=9"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3evo_soft_trims",
+      "reason": "parameter min_waste=5"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3evo_soft_trims_cut_thickness",
+      "reason": "parameter min_waste=4"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3evr_max1cut",
+      "reason": "parameter maximum_distance_1_cuts=14"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3evr_min1cut",
+      "reason": "parameter minimum_distance_1_cuts=11"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3hvo_max1cut",
+      "reason": "parameter maximum_distance_1_cuts=5"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3hvo_max2cut",
+      "reason": "parameter maximum_distance_2_cuts=4"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3hvo_min1cut",
+      "reason": "parameter minimum_distance_1_cuts=9"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3hvr_max1cut",
+      "reason": "parameter maximum_distance_1_cuts=14"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3hvr_max2cut",
+      "reason": "parameter maximum_distance_2_cuts=4"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3hvr_min1cut",
+      "reason": "parameter minimum_distance_1_cuts=11"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3nvo_defects_6",
+      "reason": "defects"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3nvo_defects_7",
+      "reason": "defects"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3nvo_max1cut",
+      "reason": "parameter maximum_distance_1_cuts=5"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3nvo_min1cut",
+      "reason": "parameter minimum_distance_1_cuts=9"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3nvr_max1cut",
+      "reason": "parameter maximum_distance_1_cuts=14"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3nvr_min1cut",
+      "reason": "parameter minimum_distance_1_cuts=11"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3rvo",
+      "reason": "cut_type roadef2018"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3rvo_max1cut",
+      "reason": "cut_type roadef2018"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3rvo_min1cut",
+      "reason": "cut_type roadef2018"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3rvr",
+      "reason": "cut_type roadef2018"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3rvr_max1cut",
+      "reason": "cut_type roadef2018"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_3rvr_min1cut",
+      "reason": "cut_type roadef2018"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_remove_negative_profit_items_skipped_when_sharing_stack",
+      "reason": "part minimum quantity"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_remove_negative_profit_items_trims_to_minimum",
+      "reason": "part minimum quantity"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_uo_trims",
+      "reason": "trims"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/minimum_waste_cut_thickness/instance.json",
+      "reason": "objective bin-packing-cutting-cost"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/sequential_strips_hard_left_trim",
+      "reason": "trims"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/sequential_strips_soft_left_trim",
+      "reason": "trims"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/soft_trim_cut_thickness/instance.json",
+      "reason": "trims"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/soft_trim_item_above_defect/instance.json",
+      "reason": "objective bin-packing-cutting-cost"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/soft_trim_maximum_number_1_cuts/instance.json",
+      "reason": "parameter maximum_number_1_cuts=1"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/soft_trim_maximum_number_2_cuts/instance.json",
+      "reason": "parameter maximum_number_2_cuts=1"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/soft_trim_minimum_waste_bottom/instance.json",
+      "reason": "objective bin-packing-cutting-cost"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/soft_trim_minimum_waste_left/instance.json",
+      "reason": "objective bin-packing-cutting-cost"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/soft_trim_minimum_waste_waste_cost/instance.json",
+      "reason": "objective bin-packing-cutting-cost"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/soft_trims_cutting_cost/instance.json",
+      "reason": "cutting costs"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/soft_trims_cutting_cost_two_stages/instance.json",
+      "reason": "cutting costs"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/soft_trims_horizontal",
+      "reason": "first_stage_orientation horizontal"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/soft_trims_two_stages",
+      "reason": "trims"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/variable_sized_bin_packing_mandatory_bins",
+      "reason": "objective variable-sized-bin-packing"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/variable_sized_bin_packing_remove_dominated_bin_types",
+      "reason": "objective variable-sized-bin-packing"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/waste_cost_cut_thickness/instance.json",
+      "reason": "objective bin-packing-cutting-cost"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/waste_cost_top_trim/instance.json",
+      "reason": "objective bin-packing-cutting-cost"
+    },
+    {
+      "source": "data/rectangleguillotine/users/2024-11-24",
+      "reason": "objective bin-packing-with-leftovers"
+    },
+    {
+      "source": "data/rectangleguillotine/users/2024-11-26",
+      "reason": "objective BPPL"
+    },
+    {
+      "source": "data/rectangleguillotine/users/2025-01-29",
+      "reason": "objective BinPackingWithLeftovers"
+    },
+    {
+      "source": "data/rectangleguillotine/users/2025-03-04",
+      "reason": "objective bin-packing-with-leftovers"
+    }
+  ]
+}

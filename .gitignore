@@ -4,3 +4,5 @@
 .DS_Store
 /web/node_modules
 /web/dist
+/tools/oracle/*.log
+__pycache__/

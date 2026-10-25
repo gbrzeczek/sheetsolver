@@ -1,0 +1,46 @@
+{
+  "objective": "knapsack",
+  "saw": {
+    "kerf": 1,
+    "stages": 3,
+    "cut_type": "homogenous"
+  },
+  "panels": [
+    {
+      "id": "Panel 1",
+      "length": 15,
+      "width": 11,
+      "quantity": 1
+    }
+  ],
+  "parts": [
+    {
+      "id": "Part 1",
+      "length": 4,
+      "width": 1,
+      "quantity": 2,
+      "grain": true
+    },
+    {
+      "id": "Part 2",
+      "length": 1,
+      "width": 4,
+      "quantity": 9,
+      "grain": true
+    },
+    {
+      "id": "Part 3",
+      "length": 5,
+      "width": 5,
+      "quantity": 1,
+      "grain": true
+    },
+    {
+      "id": "Part 4",
+      "length": 2,
+      "width": 2,
+      "quantity": 3,
+      "grain": true
+    }
+  ]
+}

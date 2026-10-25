@@ -1,0 +1,56 @@
+{
+  "objective": "bin_packing",
+  "saw": {
+    "kerf": 3.2,
+    "stages": 2,
+    "cut_type": "homogenous"
+  },
+  "panels": [
+    {
+      "id": "Panel 1",
+      "length": 2500,
+      "width": 1250
+    }
+  ],
+  "parts": [
+    {
+      "id": "Part 1",
+      "length": 300.5,
+      "width": 280.5,
+      "quantity": 2
+    },
+    {
+      "id": "Part 2",
+      "length": 530,
+      "width": 480,
+      "quantity": 1
+    },
+    {
+      "id": "Part 3",
+      "length": 990,
+      "width": 270,
+      "quantity": 4,
+      "grain": true
+    },
+    {
+      "id": "Part 4",
+      "length": 280,
+      "width": 210,
+      "quantity": 1
+    },
+    {
+      "id": "Part 5",
+      "length": 180.5,
+      "width": 140,
+      "quantity": 4,
+      "grain": true
+    },
+    {
+      "id": "Part 6",
+      "length": 660,
+      "width": 160.5,
+      "quantity": 1,
+      "grain": true
+    }
+  ]
+}

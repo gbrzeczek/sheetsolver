@@ -1,0 +1,34 @@
+{
+  "objective": "knapsack",
+  "saw": {
+    "kerf": 0,
+    "stages": 3,
+    "cut_type": "non_exact"
+  },
+  "panels": [
+    {
+      "id": "Panel 1",
+      "length": 10,
+      "width": 10,
+      "quantity": 2
+    }
+  ],
+  "parts": [
+    {
+      "id": "Part 1",
+      "length": 6,
+      "width": 6,
+      "quantity": 1,
+      "grain": true,
+      "value": 10
+    },
+    {
+      "id": "Part 2",
+      "length": 7,
+      "width": 7,
+      "quantity": 1,
+      "grain": true,
+      "value": 9
+    }
+  ]
+}

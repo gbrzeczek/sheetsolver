@@ -1,0 +1,112 @@
+{
+  "oracle": {
+    "algorithm": "tree_search",
+    "internal_length_unit": "0.1 mm",
+    "optimization_mode": "not_anytime_sequential",
+    "queue_size": 64,
+    "upstream_commit": "9b656a0dcafd1e9019bf39a5910d4307af65579a"
+  },
+  "patterns": [
+    {
+      "first_cut_orientation": "vertical",
+      "panel_id": "Panel 1",
+      "repeat": 1,
+      "root": {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [],
+                "kind": "part",
+                "length": 24,
+                "part_id": "Part 1",
+                "rotated": true,
+                "stage": 2,
+                "width": 9,
+                "x": 0,
+                "y": 0
+              },
+              {
+                "children": [],
+                "kind": "part",
+                "length": 24,
+                "part_id": "Part 1",
+                "rotated": true,
+                "stage": 2,
+                "width": 9,
+                "x": 0,
+                "y": 10
+              },
+              {
+                "children": [],
+                "kind": "part",
+                "length": 24,
+                "part_id": "Part 1",
+                "rotated": true,
+                "stage": 2,
+                "width": 9,
+                "x": 0,
+                "y": 20
+              }
+            ],
+            "kind": "piece",
+            "length": 24,
+            "stage": 1,
+            "width": 29,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "children": [
+              {
+                "children": [],
+                "kind": "part",
+                "length": 9,
+                "part_id": "Part 1",
+                "rotated": false,
+                "stage": 2,
+                "width": 24,
+                "x": 25,
+                "y": 0
+              },
+              {
+                "children": [],
+                "kind": "offcut",
+                "length": 9,
+                "stage": 2,
+                "width": 4,
+                "x": 25,
+                "y": 25
+              }
+            ],
+            "kind": "piece",
+            "length": 9,
+            "stage": 1,
+            "width": 29,
+            "x": 25,
+            "y": 0
+          }
+        ],
+        "kind": "piece",
+        "length": 34,
+        "stage": 0,
+        "width": 29,
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "upstream_metrics": {
+    "area": 98600,
+    "feasible": true,
+    "full_area": 98600,
+    "height": 290,
+    "item_area": 86400,
+    "number_of_bins": 1,
+    "number_of_items": 4,
+    "profit": 864.0,
+    "waste": 12200,
+    "waste_percentage": 0.12373225152129817,
+    "width": 340
+  }
+}

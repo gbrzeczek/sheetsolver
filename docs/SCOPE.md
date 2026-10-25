@@ -92,3 +92,6 @@ Record every scope decision here with a date, so agents can see why.
   quantities, per-part rotation, kerf, number of stages, cut type. Trims,
   minimum waste, defects, machine cut limits, leftovers and variable-sized
   panels moved to Later. Every UI field gets precise help text.
+- 2026-10-25 — Lengths have 0.1 mm precision (decimal millimetres in
+  JSON, integer tenths inside), so kerfs like 3.2 mm can be entered
+  exactly. A part's default value is its area in mm².

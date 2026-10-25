@@ -20,7 +20,10 @@ Rules:
 
 ## Conventions shown to the user
 
-- All lengths are whole **millimetres**.
+- All lengths are in **millimetres with at most one decimal** (e.g. 720,
+  3.2, 18.5). More decimals are rejected with a clear message, never
+  silently rounded. Internally lengths are whole tenths of a millimetre.
+- Areas shown to the user are in mm² (or m² where more readable).
 - A panel is drawn with its **length horizontal** and its **width
   vertical**. The panel's length is along its X axis, its width along its
   Y axis (upstream `width` = our length, upstream `height` = our width).
@@ -42,8 +45,8 @@ Rules:
 | Field | UI label | Help text | Unit / values | Default | Upstream |
 |---|---|---|---|---|---|
 | `id` | Name | Your name for this panel, shown on the cutting plan (e.g. "Birch ply 18 mm"). | text | "Panel 1", … | — |
-| `length` | Length | The panel's long side, as delivered, in millimetres. For a panel with grain, the side along the grain. For "Shortest length from one panel", this is the maximum length available. | mm, ≥ 1 | — | `width` |
-| `width` | Width | The panel's short side, as delivered, in millimetres. For "Shortest width from one panel", this is the maximum width available. | mm, ≥ 1 | — | `height` |
+| `length` | Length | The panel's long side, as delivered, in millimetres. For a panel with grain, the side along the grain. For "Shortest length from one panel", this is the maximum length available. | mm (0.1 mm steps), ≥ 0.1 | — | `width` |
+| `width` | Width | The panel's short side, as delivered, in millimetres. For "Shortest width from one panel", this is the maximum width available. | mm (0.1 mm steps), ≥ 0.1 | — | `height` |
 | `quantity` | Quantity | How many panels of this size you have. Leave empty for "as many as needed". | count ≥ 1, or empty = unlimited | empty | `copies` (−1 = unlimited) |
 | `cost` | Cost | Used only to compare panel sizes when several are listed: a lower total cost is preferred. Leave empty to use the panel's area. | number ≥ 0 | area | `cost` |
 
@@ -55,17 +58,17 @@ Only one panel type is allowed with the "Shortest length/width" goals
 | Field | UI label | Help text | Unit / values | Default | Upstream |
 |---|---|---|---|---|---|
 | `id` | Name | Your name for this part, shown on the cutting plan and labels (e.g. "Side left"). | text | "Part 1", … | — |
-| `length` | Length | The part's finished length in millimetres, before edge banding. For a part with grain, the side along the grain. | mm, ≥ 1 | — | `width` |
-| `width` | Width | The part's finished width in millimetres, before edge banding. | mm, ≥ 1 | — | `height` |
+| `length` | Length | The part's finished length in millimetres, before edge banding. For a part with grain, the side along the grain. | mm (0.1 mm steps), ≥ 0.1 | — | `width` |
+| `width` | Width | The part's finished width in millimetres, before edge banding. | mm (0.1 mm steps), ≥ 0.1 | — | `height` |
 | `quantity` | Quantity | How many identical parts you need. With "Best use of the panels I have", this is the most that will be cut; fewer may be cut if they don't fit. | count ≥ 1 | 1 | `copies` |
 | `grain` | Keep grain direction | Tick this if the part must keep its grain running the same way as the panel's grain (veneered or solid-wood panels, brushed or wood-look melamine). The part is then never turned 90°. Untick it for plain MDF, chipboard or any part whose look doesn't depend on direction — turning parts usually saves material. | yes / no | no | `oriented` (`true` = no rotation) |
-| `value` | Value | Only used with "Best use of the panels I have": how much you want this part, compared with the others. The plan maximises the total value of the parts it cuts. Leave empty to value parts by their area (the plan then uses as much of the panel as possible). Set every part to 1 to cut as many parts as possible. | number ≥ 0 | area (mm²) | `profit` |
+| `value` | Value | Only used with "Best use of the panels I have": how much you want this part, compared with the others. The plan maximises the total value of the parts it cuts. Leave empty to value parts by their area in mm² (the plan then uses as much of the panel as possible). Set every part to 1 to cut as many parts as possible. | number ≥ 0 | area (mm²) | `profit` |
 
 ### Saw and cutting
 
 | Field | UI label | Help text | Unit / values | Default | Upstream |
 |---|---|---|---|---|---|
-| `kerf` | Saw blade thickness (kerf) | The width of material each cut removes, in millimetres — the thickness of your saw blade's teeth, not the blade body. Every cut between two parts uses this much material, so parts are spaced by it. Typical values: 3–4.4 mm for panel and table saws, 2.2–2.8 mm for track saws. Set 0 only if your dimensions already include it. | mm, ≥ 0 | 4 | `cut_thickness` |
+| `kerf` | Saw blade thickness (kerf) | The width of material each cut removes, in millimetres — the thickness of your saw blade's teeth, not the blade body. Every cut between two parts uses this much material, so parts are spaced by it. Typical values: 3.2–4.4 mm for panel and table saws, 2.2–2.8 mm for track saws. Set 0 only if your dimensions already include it. | mm (0.1 mm steps), ≥ 0 | 3.2 | `cut_thickness` |
 | `stages` | Cutting stages | How many times a piece is turned and cut again. **Stage 1**: full-length cuts across the whole panel, splitting it into strips. **Stage 2**: each strip is cut across into pieces. **Stage 3**: each piece is cut once more, across stage-2 cuts. More stages let parts nest more tightly, so less waste, but mean more handling at the saw. 2 suits simple strip cutting; 3 suits most panel-saw work; "Unlimited" gives the least waste with the most handling. | `2`, `3`, `unlimited` | `3` | `number_of_stages` |
 | `cut_type` | Last-stage trimming | Whether a part may be cut free from a small offcut after the last stage. **Allowed** (recommended): a strip may hold parts of different sizes; a final trimming cut separates each part from its offcut. **Not allowed**: at the last stage every part must fill its strip exactly, with no offcut — fewer cuts, more waste. **One size per strip**: every part in a strip has the same size **[verify]** — the simplest plans to cut, the most waste. | `non_exact`, `exact`, `homogenous` | `non_exact` | `cut_type` **[verify]** |
 

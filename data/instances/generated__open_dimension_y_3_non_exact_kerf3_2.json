@@ -1,0 +1,67 @@
+{
+  "objective": "open_dimension_y",
+  "saw": {
+    "kerf": 3.2,
+    "stages": 3,
+    "cut_type": "non_exact"
+  },
+  "panels": [
+    {
+      "id": "Panel 1",
+      "length": 3050,
+      "width": 20000,
+      "quantity": 1
+    }
+  ],
+  "parts": [
+    {
+      "id": "Part 1",
+      "length": 260.5,
+      "width": 220,
+      "quantity": 2
+    },
+    {
+      "id": "Part 2",
+      "length": 470,
+      "width": 200,
+      "quantity": 4
+    },
+    {
+      "id": "Part 3",
+      "length": 820.5,
+      "width": 190,
+      "quantity": 6
+    },
+    {
+      "id": "Part 4",
+      "length": 510.5,
+      "width": 430,
+      "quantity": 6
+    },
+    {
+      "id": "Part 5",
+      "length": 990.5,
+      "width": 170,
+      "quantity": 1
+    },
+    {
+      "id": "Part 6",
+      "length": 1190,
+      "width": 360,
+      "quantity": 6,
+      "grain": true
+    },
+    {
+      "id": "Part 7",
+      "length": 470,
+      "width": 110,
+      "quantity": 2
+    },
+    {
+      "id": "Part 8",
+      "length": 410,
+      "width": 180,
+      "quantity": 6
+    }
+  ]
+}

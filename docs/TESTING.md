@@ -30,8 +30,20 @@ Upstream packingsolver at the pinned commit is the reference.
   tree, same metrics), not just an equally good one. This catches subtle
   porting errors in branching order, tie-breaking and dominance.
 - Oracle outputs are generated once per pinned commit and committed as
-  golden files under `data/golden/<commit>/`, so `cargo test` does not
-  need a C++ toolchain. Regenerating them is a separate, documented step.
+  golden files under `data/golden/<first 8 characters of commit>/`, named
+  `<instance>.q<queue size>.json`, at queue sizes 64 and 2048, so
+  `cargo test` does not need a C++ toolchain. Regenerating them is a
+  separate step, documented in `tools/README.md`.
+- Golden files keep upstream's own metrics under `upstream_metrics`; the
+  checker's metrics are compared against them in Stage 1.
+- A golden file with no patterns means upstream found no solution; the
+  Rust port must also find none.
+- **Assumption to verify in Stage 3:** upstream computes bounds before the
+  tree search and stops the search early once a solution reaches the
+  bound. The Rust port does not compute these bounds. This should not
+  change the best solution, because a later solution only replaces the
+  best one if it is strictly better. If a differential test fails only on
+  such an instance, check this first.
 - When the Rust port intentionally deviates (a bug fix, a scope
   difference), the test for that instance is marked with the reason and
   checked against the checker plus a quality bound instead.

@@ -14,9 +14,9 @@ What this means for the product:
   bin), *part* (not item), *kerf*, *grain direction*, *offcut*, *cutting
   plan*. Upstream terms stay inside the code and the port comments.
   `FIELDS.md` is the mapping.
-- **Millimetres** as the default unit; lengths are whole millimetres.
+- **Millimetres** as the unit, with 0.1 mm precision (enough for blade thicknesses like 3.2 mm).
 - **Defaults that suit a workshop**: rotation allowed unless the part has
-  grain, 3 stages, a non-zero kerf (e.g. 3–4 mm) pre-filled rather than 0.
+  grain, 3 stages, a non-zero kerf (3.2 mm) pre-filled rather than 0.
 - **Plans a person can follow at the saw**: guillotine cuts only, cut
   order and dimensions shown clearly.
 - **Every field explained precisely** in the UI (see `FIELDS.md`): what it

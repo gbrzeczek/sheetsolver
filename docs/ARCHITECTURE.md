@@ -13,10 +13,14 @@ sheetsolver/
 │   ├── guillotine/        # guillotine branching scheme + solve()
 │   ├── cli/               # developer CLI (solve, check, diff-oracle)
 │   └── api/               # axum web API
-├── tools/
-│   └── oracle/            # C++ harness around upstream packingsolver
+├── tools/                 # see tools/README.md
+│   ├── oracle/            # C++ harness around upstream packingsolver
+│   ├── convert_instances.py
+│   ├── generate_instances.py
+│   └── run_oracle.py
 ├── data/
-│   └── instances/         # test instances in our JSON format
+│   ├── instances/         # test instances in our JSON format (+ MANIFEST.json)
+│   └── golden/<commit>/   # oracle solutions, one per instance and queue size
 └── web/                   # UI (Stage 6)
 ```
 
@@ -47,7 +51,13 @@ that split hard.
 
 ## Data contracts (draft)
 
-Lengths are integers in millimetres. Field names are `snake_case` and use
+Lengths are millimetres with at most one decimal (`3.2`, `720`) in JSON,
+and `i64` tenths of a millimetre inside the code (`3.2` → `32`). The
+conversion happens only in `model`'s (de)serialization, which rejects
+values with more than one decimal. Scaling every length by 10 does not
+change any decision the search makes; the one place units leak is a part's
+default value, which is defined as its area in mm² (not in internal units)
+so that parts with and without an explicit value compare sensibly. Field names are `snake_case` and use
 the woodworking terms from `FIELDS.md` (panel, part, length, width,
 quantity, grain, value, kerf), not upstream's (bin, item, width, height,
 copies, oriented, profit, cut thickness). The mapping to upstream lives
@@ -60,7 +70,7 @@ These shapes are the API contract; Stage 1 finalises them.
 {
   "objective": "bin_packing",
   "saw": {
-    "kerf": 4,
+    "kerf": 3.2,
     "stages": 3,
     "cut_type": "non_exact"
   },

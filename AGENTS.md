@@ -65,7 +65,7 @@ Read these before starting any task:
 ## Conventions
 
 - Rust stable, edition 2024, Cargo workspace under `crates/`.
-- Integer geometry: lengths are `i64` (upstream `Length`), never floats.
+- Integer geometry: lengths are `i64` counting **tenths of a millimetre** (upstream `Length`), never floats. Convert to and from decimal millimetres only at the JSON boundary (`model`), rejecting more than one decimal. Areas are `i64` in hundredths of mm².
 - Errors: `thiserror` in libraries, `anyhow` only in binaries.
 - Serialization: `serde`; the JSON shapes in `docs/ARCHITECTURE.md` are the
   public contract — change them deliberately and update the doc.

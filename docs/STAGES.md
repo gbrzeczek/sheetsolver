@@ -6,10 +6,28 @@ date, as they land.
 
 ---
 
-## Stage 0 — Skeleton and oracle
+## Stage 0 — Skeleton and oracle ✅ done 2026-10-25
 
 **Goal:** a workspace that builds, and a way to get reference answers from
 upstream.
+
+Result:
+- Workspace with the six crates (empty), lints, CI workflow.
+- `tools/oracle` runs upstream's tree search only (no reduction,
+  `not-anytime-sequential`, fixed queue size). Upstream still computes
+  its bounds first (needs HiGHS); see the assumption in `TESTING.md`.
+- `data/instances/`: 42 instances converted from upstream (90 skipped as
+  out of scope, reasons in `MANIFEST.json`) and 72 generated ones
+  covering every objective × stages × cut type × kerf (0 / 3.2 mm)
+  combination, with some half-millimetre part sizes.
+- Lengths are decimal millimetres in JSON (at most one decimal) and tenths
+  of a millimetre inside the oracle; the oracle rejects more decimals.
+- `data/golden/9b656a0d/`: oracle solutions at queue sizes 64 and 2048,
+  reproduced byte for byte by `tools/run_oracle.py --check`. 4 of them
+  (open dimension Y, 2 stages, exact cuts) contain no solution, and the
+  instances are indeed infeasible with vertical first cuts: every strip
+  must match a part's dimension, and the narrowest set of strips that
+  fits every part is wider than the panel.
 
 Deliverables:
 - Cargo workspace with empty crates from `ARCHITECTURE.md`, CI-ready

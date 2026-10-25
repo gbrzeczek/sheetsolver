@@ -1,0 +1,30 @@
+{
+  "objective": "bin_packing",
+  "saw": {
+    "kerf": 0,
+    "stages": 3,
+    "cut_type": "non_exact"
+  },
+  "panels": [
+    {
+      "id": "Panel 1",
+      "length": 100,
+      "width": 100,
+      "quantity": 5
+    }
+  ],
+  "parts": [
+    {
+      "id": "Part 1",
+      "length": 10,
+      "width": 10,
+      "quantity": 3
+    },
+    {
+      "id": "Part 2",
+      "length": 10,
+      "width": 20,
+      "quantity": 2
+    }
+  ]
+}
