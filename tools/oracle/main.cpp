@@ -148,7 +148,9 @@ Instance read_instance(
 
 std::string node_kind(const SolutionNode& node)
 {
-    if (!node.children.empty())
+    // Upstream stores the bin type in the root's item type, so the root
+    // must be recognised by its depth before looking at the item type.
+    if (node.d == 0 || !node.children.empty())
         return "piece";
     if (node.d == -1)
         return "trim";
@@ -241,9 +243,11 @@ json write_solution(
         j["patterns"].push_back({
             {"panel_id", panel_ids[bin.bin_type_id]},
             {"repeat", bin.copies},
-            {"first_cut_orientation",
+            // Upstream "vertical" first cuts are at a fixed x: they run
+            // across the panel's length (x).
+            {"first_cuts",
                 bin.first_cut_orientation == CutOrientation::Vertical?
-                "vertical": "horizontal"},
+                "across_length": "along_length"},
             {"root", write_node(instance, bin, root_id, part_ids)},
         });
     }

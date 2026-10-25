@@ -8,7 +8,7 @@
   },
   "patterns": [
     {
-      "first_cut_orientation": "horizontal",
+      "first_cuts": "along_length",
       "panel_id": "Panel 1",
       "repeat": 1,
       "root": {
@@ -637,7 +637,7 @@
       }
     },
     {
-      "first_cut_orientation": "horizontal",
+      "first_cuts": "along_length",
       "panel_id": "Panel 1",
       "repeat": 1,
       "root": {

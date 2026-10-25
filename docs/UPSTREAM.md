@@ -23,8 +23,17 @@ copyright notice in this repository's `LICENSE`/`NOTICE` alongside ours.
 | `treesearchsolver` (separate repo): `iterative_beam_search_2` | Generic beam search | `treesearch` |
 | `include/packingsolver/algorithms/common.hpp` | `Objective`, `OptimizationMode`, shared types | `model` |
 
+## Files to port in Stage 5 (unlimited stages)
+
+| Upstream | Purpose | Target crate |
+|---|---|---|
+| `src/rectangleguillotine/tree_search_maximal_spaces.hpp`, `.cpp` | Single-panel search for unlimited stages | `guillotine` |
+| `src/rectangleguillotine/tree_search_hypergraph_infinite_copies.hpp`, `.cpp` | Single-panel dynamic programming for many copies | `guillotine` |
+| `src/algorithms/sequential_value_correction.hpp`, `optimize.cpp` `optimize_sequential_single_knapsack` | Several panels, one at a time | `guillotine` |
+| `src/rectangleguillotine/optimize.cpp` `optimize()` | Automatic algorithm selection | `guillotine` |
+
 Read but do not port unless scope changes: `reduction.cpp`,
-`post_process.cpp`, `algorithms/sequential_value_correction.hpp`.
+`post_process.cpp`, `tree_search_hypergraph.cpp`.
 
 ## Useful upstream assets
 

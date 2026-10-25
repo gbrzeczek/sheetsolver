@@ -44,7 +44,26 @@ Exit criteria:
 - Oracle produces a solution JSON for every instance in `data/instances/`
   in deterministic mode, and the output is reproducible across runs.
 
-## Stage 1 — Model and feasibility checker
+## Stage 1 — Model and feasibility checker ✅ done 2026-10-25
+
+Result:
+- `model`: `Length` (tenths of a mm, decimal mm in JSON), `Area`,
+  `Instance` with `validate()`, `Solution` tree, `Metrics`. Doc comments
+  are the `FIELDS.md` help text.
+- `checker`: tree rules (stages, guillotine layout, kerf spacing, part
+  sizes, grain), stage counting and cut types as upstream defines them
+  (`solution.cpp`), quantities, leftovers, metrics.
+- All 224 oracle solutions pass, and every metric equals upstream's
+  (counts, areas, waste, value, used length/width). The 4 empty oracle
+  results are rejected for missing parts, as they should be. 25
+  negative tests, one per rule. The `ARCHITECTURE.md` JSON examples are
+  tested too.
+- `[verify]` resolved: "homogenous" means one part type per last-stage
+  strip (stage-1 strips with 2 stages, stage-2 strips with 3), not one
+  size. Help text fixed.
+- Found: upstream turns "unlimited" stages into exact cuts in any
+  direction, and its tree search only produces 3 levels; see `SCOPE.md`.
+
 
 **Goal:** the types everything else speaks, and an independent judge.
 
@@ -94,9 +113,14 @@ Deliverables:
 - `solve(&Instance, &Params, on_solution) -> Output`.
 - Criterion benchmarks on a few representative instances.
 
+Instances with unlimited stages are out of this stage: upstream does not
+solve them with this tree search (see Stage 5). The oracle's current
+golden files for them are only a placeholder.
+
 Exit criteria:
 - Differential test: in deterministic mode with fixed queue sizes, the
-  solution equals the oracle's on every instance in `data/instances/`.
+  solution equals the oracle's on every instance in `data/instances/`
+  with 2 or 3 stages.
 - All solutions pass the checker.
 - Benchmarks within ~1.2× of the oracle for the same queue sizes.
 
@@ -108,7 +132,44 @@ Deliverables:
 Exit criteria:
 - One command runs the full differential suite and prints a report.
 
-## Stage 5 — Web API
+## Stage 5 — Unlimited stages
+
+**Goal:** real unlimited-stage plans, solved the way upstream solves them.
+
+Upstream gives "unlimited" its own meaning: exact cuts, in either
+direction at every stage, with no limit on depth. It solves single-panel
+instances with the maximal-spaces search, or with the hypergraph search
+when there are many copies, and multi-panel instances by filling one panel
+at a time with those single-panel searches.
+
+Deliverables:
+- `guillotine` crate, new modules:
+  - port of `tree_search_maximal_spaces` (its own branching scheme on the
+    `treesearch` crate);
+  - port of `tree_search_hypergraph_infinite_copies` (dynamic programming
+    over a hypergraph of cuts);
+  - ports of sequential single knapsack and sequential value correction
+    (`algorithms/sequential_value_correction.hpp`) for several panels;
+  - upstream's automatic algorithm selection (`optimize.cpp`), limited to
+    the in-scope algorithms, so `solve()` picks the same algorithm as
+    upstream for every in-scope instance.
+- Oracle: an `--algorithm` option to run each upstream algorithm alone
+  (deterministic, fixed parameters), and golden files per algorithm,
+  replacing the placeholder unlimited-stage golden files from Stage 0.
+- More generated instances with unlimited stages: single panel, several
+  panels, and many copies of few parts (the hypergraph case).
+- Checker: tests that unlimited-stage plans with more than 3 levels and
+  mixed cut directions are accepted.
+
+Exit criteria:
+- Differential tests: each ported algorithm gives the oracle's solution
+  for the same algorithm and parameters on every instance where upstream
+  would select it.
+- `solve()` selects the same algorithm as upstream on every in-scope
+  instance.
+- All solutions pass the checker; benchmarks within ~1.2× of the oracle.
+
+## Stage 6 — Web API
 
 **Goal:** solver as a service.
 
@@ -125,7 +186,7 @@ Exit criteria:
 - Integration tests: submit, stream, cancel, invalid instance → 422.
 - Solutions served by the API pass the checker.
 
-## Stage 6 — Web UI
+## Stage 7 — Web UI
 
 Deliverables (in `web/`, see `ARCHITECTURE.md`):
 - Instance editor (parts, panels, saw settings), job submission, live
@@ -143,6 +204,7 @@ Exit criteria:
 ## Later (only after scope decisions)
 
 - Remaining guillotine features marked Open in `SCOPE.md`.
-- Multi-bin heuristics (sequential value correction) if needed for quality.
-- Non-guillotine `rectangle` solver (repeat Stages 3–5 for it).
+- General hypergraph tree search, if benchmarks show it helps (Open in
+  `SCOPE.md`).
+- Non-guillotine `rectangle` solver (repeat Stages 3–6 for it).
 - Persistence, auth, exports.

@@ -130,10 +130,6 @@
       "source": "data/rectangleguillotine/tests/knapsack_remove_dominated_items_removed"
     },
     {
-      "file": "tests__knapsack_remove_negative_profit_items_fully_optional.json",
-      "source": "data/rectangleguillotine/tests/knapsack_remove_negative_profit_items_fully_optional"
-    },
-    {
       "file": "tests__knapsack_uo.json",
       "source": "data/rectangleguillotine/tests/knapsack_uo"
     },
@@ -430,6 +426,10 @@
     {
       "source": "data/rectangleguillotine/tests/knapsack_3rvr_min1cut",
       "reason": "cut_type roadef2018"
+    },
+    {
+      "source": "data/rectangleguillotine/tests/knapsack_remove_negative_profit_items_fully_optional",
+      "reason": "negative part value"
     },
     {
       "source": "data/rectangleguillotine/tests/knapsack_remove_negative_profit_items_skipped_when_sharing_stack",

@@ -128,6 +128,8 @@ def convert_part(index, width, height, copies, oriented, profit):
     if oriented:
         part["grain"] = True
     if profit is not None:
+        if profit < 0:
+            raise Skip("negative part value")
         part["value"] = profit
     return part
 

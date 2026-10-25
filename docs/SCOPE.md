@@ -26,10 +26,12 @@ Upstream names are given so the port can be traced back.
 | Iterative beam search over the guillotine branching scheme | `tree_search.cpp` + `treesearchsolver::iterative_beam_search_2` | **In** |
 | Instance reduction / preprocessing | `reduction.cpp` | Open |
 | Post-processing: minimize stages, group identical bins, sort subplates | `post_process.cpp` | Open |
-| Sequential single knapsack / sequential value correction (multi-bin heuristics) | `algorithms/sequential_value_correction.hpp` | Open — needed if bin-packing quality depends on it |
-| Tree search, maximal spaces | `tree_search_maximal_spaces.cpp` | Out (for now) |
+| Sequential single knapsack and sequential value correction (multi-panel heuristics: fill one panel at a time with a single-panel search) | `optimize.cpp` `optimize_sequential_single_knapsack`, `algorithms/sequential_value_correction.hpp` | **In** (Stage 5) — upstream's route to unlimited stages on several panels |
+| Tree search, maximal spaces (single panel, unlimited stages) | `tree_search_maximal_spaces.cpp` | **In** (Stage 5) |
 | Column generation (strips and general) | `column_generation*.cpp` | Out |
-| Hypergraph tree searches | `tree_search_hypergraph*.cpp` | Out |
+| Hypergraph tree search, infinite copies (single panel, many copies, unlimited stages) | `tree_search_hypergraph_infinite_copies.cpp` | **In** (Stage 5) |
+| Hypergraph tree search, general | `tree_search_hypergraph.cpp` | Open — upstream never selects it automatically; port only if benchmarks show it helps |
+| Automatic algorithm selection for the in-scope algorithms | `optimize.cpp` `optimize()` | **In** (Stage 5) |
 | Dichotomic search, sequential strips 1D | | Out |
 | Dual feasible functions bounds | `dual_feasible_functions.cpp` | Out |
 | LP solvers (CLP, HiGHS, Xpress, …) | `columngenerationsolver` | Out |
@@ -53,7 +55,8 @@ Upstream names are given so the port can be traced back.
 | Rotation allowed/forbidden per part (grain direction) | `oriented` | **In** |
 | Panel types: width, height, quantity, cost | `BinType` | **In** |
 | Saw blade (kerf) thickness | `cut_thickness` | **In** |
-| Number of stages (2, 3, unlimited) | `number_of_stages` | **In** |
+| Number of stages 2 and 3 | `number_of_stages` | **In** |
+| Unlimited stages | `number_of_stages` = unlimited | **In** (Stage 5). Upstream makes unlimited mean exact cuts in any direction at every stage, and solves it with the maximal-spaces and hypergraph searches, not the 3-level tree search. |
 | Cut type (exact, non-exact, homogenous) | `CutType` | **In** |
 | Cut type roadef2018 | `CutType::Roadef2018` | Out |
 | First stage orientation | `first_stage_orientation` | Open — needed to express "first cuts along the grain"; decide before Stage 3 |
@@ -92,6 +95,13 @@ Record every scope decision here with a date, so agents can see why.
   quantities, per-part rotation, kerf, number of stages, cut type. Trims,
   minimum waste, defects, machine cut limits, leftovers and variable-sized
   panels moved to Later. Every UI field gets precise help text.
+- 2026-10-25 — Stage 1 found that "unlimited" stages is not really
+  supported by the in-scope tree search (see the table); moved to Open.
+- 2026-10-25 — Unlimited stages back to In, delivered by a new Stage 5
+  with the algorithms upstream uses for it: maximal-spaces search,
+  hypergraph search with infinite copies, the sequential multi-panel
+  heuristics and upstream's automatic algorithm selection. The general
+  hypergraph search stays Open.
 - 2026-10-25 — Lengths have 0.1 mm precision (decimal millimetres in
   JSON, integer tenths inside), so kerfs like 3.2 mm can be entered
   exactly. A part's default value is its area in mm².

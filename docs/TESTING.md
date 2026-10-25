@@ -9,11 +9,16 @@ An independent judge of any `(Instance, Solution)` pair.
 
 - Written from the problem definition and `SCOPE.md`, **not** from solver
   code. It must not depend on `treesearch` or `guillotine`.
-- Checks: node geometry inside parent; children tile the parent along one
-  cut orientation (guillotine structure); depth/stage limits; cut
-  thickness between siblings; item dimensions match an item type (with
-  rotation only if allowed); copies used ≤ copies available; bin copies;
+- Checks: the root is the whole panel; children sit side by side in the
+  stage's cut direction, span their parent, start exactly one kerf after
+  the previous child, and leave at most one kerf at the end; stages
+  increase by one per level; parts have their part's size (rotation only
+  without grain); stage count and cut type as upstream defines them; the
+  leftover only at the end of the last panel; panel and part quantities;
   plus every other **In** constraint as it is added.
+- The definitions of stages and cut types follow upstream's own solution
+  check (`src/rectangleguillotine/solution.cpp`), because that is the
+  problem we port; the code is written independently of our solver.
 - Returns all violations, not just the first, each with the node path.
 - Computes metrics independently (bins used, waste, profit); tests compare
   them with the solver's own metrics.

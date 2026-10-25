@@ -21,7 +21,7 @@ sheetsolver/
 ├── data/
 │   ├── instances/         # test instances in our JSON format (+ MANIFEST.json)
 │   └── golden/<commit>/   # oracle solutions, one per instance and queue size
-└── web/                   # UI (Stage 6)
+└── web/                   # UI (Stage 7)
 ```
 
 Dependency direction (no cycles, no shortcuts):
@@ -101,23 +101,30 @@ code uses dense integer indices.
 ### Solution
 
 A tree per cutting pattern; `repeat` says how many panels are cut the
-same way. Every node has an explicit kind. `x` runs along the panel's
-length, `y` along its width.
+same way, `first_cuts` the direction of the first, full-panel cuts
+(`across_length`: at a fixed `x`; `along_length`: at a fixed `y`). Each
+stage turns the piece, so the next stage cuts the other way. `x` runs
+along the panel's length, `y` along its width. Leaves have no `children`
+key.
 
 ```json
 {
-  "metrics": { "panels_used": 3, "waste_area": 123456, "waste_percentage": 4.2, "total_value": 42 },
   "patterns": [
     {
       "panel_id": "Birch ply 18 mm",
       "repeat": 2,
+      "first_cuts": "across_length",
       "root": {
-        "kind": "piece",
-        "x": 0, "y": 0, "length": 2500, "width": 1250, "stage": 0,
+        "kind": "piece", "x": 0, "y": 0, "length": 2500, "width": 1250, "stage": 0,
         "children": [
-          { "kind": "part", "part_id": "Side left", "rotated": false,
-            "x": 0, "y": 0, "length": 720, "width": 560, "stage": 1, "children": [] },
-          { "kind": "offcut", "x": 724, "y": 0, "length": 1776, "width": 1250, "stage": 1, "children": [] }
+          { "kind": "piece", "x": 0, "y": 0, "length": 720, "width": 1250, "stage": 1, "children": [
+            { "kind": "part", "part_id": "Side left", "rotated": false,
+              "x": 0, "y": 0, "length": 720, "width": 560, "stage": 2 },
+            { "kind": "part", "part_id": "Side left", "rotated": false,
+              "x": 0, "y": 563.2, "length": 720, "width": 560, "stage": 2 },
+            { "kind": "offcut", "x": 0, "y": 1126.4, "length": 720, "width": 123.6, "stage": 2 }
+          ]},
+          { "kind": "offcut", "x": 723.2, "y": 0, "length": 1776.8, "width": 1250, "stage": 1 }
         ]
       }
     }
@@ -125,9 +132,23 @@ length, `y` along its width.
 }
 ```
 
-Kinds: `piece` (intermediate piece that is cut further), `part`,
-`offcut` (waste), `leftover` (reusable remainder of the last panel),
-`defect`.
+Kinds: `piece` (the panel, or an intermediate piece that is cut
+further), `part`, `offcut` (waste), `leftover` (reusable remainder of the
+last panel: only as its last first-stage piece). Defects and trims get
+kinds when they move to In.
+
+The tree rules (children side by side in the stage's cut direction, each
+spanning its parent, exactly one kerf apart, at most one kerf left at the
+end) are the checker's (`crates/checker`).
+
+### Metrics
+
+Computed by the checker from an instance and a solution, not stored in
+the solution: `panels_used`, `parts_cut`, `panel_area`, `part_area`,
+`leftover_area`, `waste_area` (areas in mm²), `waste_fraction` (0–1, of
+the panel area without the leftover), `total_value`, and `used_length` /
+`used_width` (how far the cuts reach on the last panel). Their
+definitions match upstream's, and the golden tests compare them.
 
 ## Solver interface
 

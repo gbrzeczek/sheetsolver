@@ -14,9 +14,9 @@ Rules:
   to the plan, and a typical value. No solver jargon.
 - Only fields marked **In** in `SCOPE.md` are listed under "Fields". Later
   fields are listed at the end without help text yet.
-- Text marked **[verify]** describes upstream behaviour that must be
-  confirmed against upstream code and the checker in Stage 1 before the
-  text is final.
+- Help text describes upstream behaviour as confirmed against upstream's
+  code and the oracle's solutions (Stage 1). The precise rules are in
+  `crates/checker`.
 
 ## Conventions shown to the user
 
@@ -50,8 +50,9 @@ Rules:
 | `quantity` | Quantity | How many panels of this size you have. Leave empty for "as many as needed". | count ≥ 1, or empty = unlimited | empty | `copies` (−1 = unlimited) |
 | `cost` | Cost | Used only to compare panel sizes when several are listed: a lower total cost is preferred. Leave empty to use the panel's area. | number ≥ 0 | area | `cost` |
 
-Only one panel type is allowed with the "Shortest length/width" goals
-(upstream: open-dimension objectives use a single bin).
+Only one panel type is allowed with the "Shortest length/width" goals,
+and its quantity must be 1 or empty (upstream: open-dimension objectives
+use a single bin).
 
 ### Parts
 
@@ -69,8 +70,8 @@ Only one panel type is allowed with the "Shortest length/width" goals
 | Field | UI label | Help text | Unit / values | Default | Upstream |
 |---|---|---|---|---|---|
 | `kerf` | Saw blade thickness (kerf) | The width of material each cut removes, in millimetres — the thickness of your saw blade's teeth, not the blade body. Every cut between two parts uses this much material, so parts are spaced by it. Typical values: 3.2–4.4 mm for panel and table saws, 2.2–2.8 mm for track saws. Set 0 only if your dimensions already include it. | mm (0.1 mm steps), ≥ 0 | 3.2 | `cut_thickness` |
-| `stages` | Cutting stages | How many times a piece is turned and cut again. **Stage 1**: full-length cuts across the whole panel, splitting it into strips. **Stage 2**: each strip is cut across into pieces. **Stage 3**: each piece is cut once more, across stage-2 cuts. More stages let parts nest more tightly, so less waste, but mean more handling at the saw. 2 suits simple strip cutting; 3 suits most panel-saw work; "Unlimited" gives the least waste with the most handling. | `2`, `3`, `unlimited` | `3` | `number_of_stages` |
-| `cut_type` | Last-stage trimming | Whether a part may be cut free from a small offcut after the last stage. **Allowed** (recommended): a strip may hold parts of different sizes; a final trimming cut separates each part from its offcut. **Not allowed**: at the last stage every part must fill its strip exactly, with no offcut — fewer cuts, more waste. **One size per strip**: every part in a strip has the same size **[verify]** — the simplest plans to cut, the most waste. | `non_exact`, `exact`, `homogenous` | `non_exact` | `cut_type` **[verify]** |
+| `stages` | Cutting stages | How many times a piece is turned and cut again. **Stage 1**: full-length cuts across the whole panel, splitting it into strips. **Stage 2**: each strip is cut across into pieces. **Stage 3**: each piece is cut once more, across stage-2 cuts. More stages let parts nest more tightly, so less waste, but mean more handling at the saw. 2 suits simple strip cutting; 3 suits most panel-saw work; "Unlimited" gives the least waste with the most handling: cuts may then go either way at every stage, and the last-stage trimming setting does not apply. | `2`, `3`, `unlimited` | `3` | `number_of_stages` |
+| `cut_type` | Last-stage trimming | Whether a part may be cut free from a small offcut after the last stage. **Allowed** (recommended): a strip may hold parts of different sizes; a final trimming cut separates each part from its offcut. **Not allowed**: at the last stage every part must fill its strip exactly, with no offcut — fewer cuts, more waste. **One part per strip**: every part in a last-stage strip is the same part — the simplest plans to cut, the most waste. | `non_exact`, `exact`, `homogenous` | `non_exact` | `cut_type` |
 
 ## Later fields (help text to be written when they move to In)
 

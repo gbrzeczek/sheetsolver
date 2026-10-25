@@ -8,7 +8,7 @@
   },
   "patterns": [
     {
-      "first_cut_orientation": "vertical",
+      "first_cuts": "across_length",
       "panel_id": "Panel 1",
       "repeat": 1,
       "root": {
@@ -206,7 +206,7 @@
       }
     },
     {
-      "first_cut_orientation": "vertical",
+      "first_cuts": "across_length",
       "panel_id": "Panel 1",
       "repeat": 1,
       "root": {
@@ -413,7 +413,7 @@
       }
     },
     {
-      "first_cut_orientation": "vertical",
+      "first_cuts": "across_length",
       "panel_id": "Panel 1",
       "repeat": 1,
       "root": {
@@ -672,7 +672,7 @@
       }
     },
     {
-      "first_cut_orientation": "vertical",
+      "first_cuts": "across_length",
       "panel_id": "Panel 1",
       "repeat": 1,
       "root": {
@@ -840,7 +840,7 @@
       }
     },
     {
-      "first_cut_orientation": "vertical",
+      "first_cuts": "across_length",
       "panel_id": "Panel 1",
       "repeat": 1,
       "root": {
