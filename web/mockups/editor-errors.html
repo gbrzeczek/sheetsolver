@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cutting job · Sheetsolver</title>
+<style>/* Sheetsolver design tokens and components (mockup).
+   The real app (web/src) starts from this file: tokens become CSS custom
+   properties in one place, components become Svelte components. */
+
+/* ---------- Tokens: light ---------- */
+:root {
+  color-scheme: light dark;
+
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Segoe UI Variable Text", "Segoe UI", Inter, Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+
+  /* Type scale (size / line height) */
+  --t-large: 600 32px/1.15 var(--font);
+  --t-title: 600 22px/1.25 var(--font);
+  --t-headline: 600 17px/1.3 var(--font);
+  --t-body: 400 15px/1.45 var(--font);
+  --t-callout: 500 15px/1.4 var(--font);
+  --t-help: 400 13px/1.5 var(--font);
+  --t-label: 600 13px/1.3 var(--font);
+  --t-caption: 500 12px/1.3 var(--font);
+  --t-figure: 600 28px/1.1 var(--font);
+
+  /* Spacing (4 px grid) */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px;
+  --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px;
+
+  /* Radii */
+  --r-xs: 6px; --r-sm: 8px; --r-md: 12px; --r-lg: 18px; --r-pill: 999px;
+
+  /* Control sizes */
+  --control-h: 36px;
+
+  /* Neutrals */
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface-2: #fafafc;
+  --fill: rgba(118, 118, 128, 0.12);
+  --fill-2: rgba(118, 118, 128, 0.07);
+  --text: #1d1d1f;
+  --text-2: #6e6e73;
+  --text-3: #8e8e93;
+  --separator: rgba(60, 60, 67, 0.13);
+  --border: rgba(60, 60, 67, 0.2);
+
+  /* The one accent, plus semantic status colours */
+  --accent: #0071e3;
+  --accent-strong: #0062c4;
+  --accent-tint: rgba(0, 113, 227, 0.1);
+  --on-accent: #ffffff;
+  --focus: rgba(0, 113, 227, 0.35);
+  --danger: #d70015;
+  --danger-tint: rgba(215, 0, 21, 0.07);
+  --success: #1f7a35;
+  --success-tint: rgba(36, 138, 61, 0.1);
+
+  /* Depth */
+  --shadow-1: 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-2: 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.04),
+    0 10px 30px rgba(0, 0, 0, 0.06);
+  --bar-bg: rgba(245, 245, 247, 0.82);
+
+  /* Cutting-plan drawing */
+  --plan-kerf: #8e8e93;
+  --plan-part: #e6f0fc;
+  --plan-part-stroke: #7aa9e0;
+  --plan-part-text: #0b3260;
+  --plan-grain: rgba(0, 82, 170, 0.09);
+  --plan-offcut: #ededf0;
+  --plan-hatch: #d4d4d9;
+  --plan-offcut-text: #6e6e73;
+  --plan-leftover: #fbfbfc;
+  --plan-leftover-stroke: #aeaeb2;
+  --plan-badge: #1d1d1f;
+  --plan-badge-text: #ffffff;
+  --plan-ruler: #8e8e93;
+}
+
+/* ---------- Tokens: dark ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface-2: #232325;
+    --fill: rgba(118, 118, 128, 0.24);
+    --fill-2: rgba(118, 118, 128, 0.14);
+    --text: #f5f5f7;
+    --text-2: #a1a1a6;
+    --text-3: #7c7c80;
+    --separator: rgba(84, 84, 88, 0.55);
+    --border: rgba(120, 120, 128, 0.45);
+    --accent: #2997ff;
+    --accent-strong: #4aa8ff;
+    --accent-tint: rgba(41, 151, 255, 0.16);
+    --on-accent: #ffffff;
+    --focus: rgba(41, 151, 255, 0.45);
+    --danger: #ff453a;
+    --danger-tint: rgba(255, 69, 58, 0.12);
+    --success: #30d158;
+    --success-tint: rgba(48, 209, 88, 0.14);
+    --shadow-1: 0 0 0 0.5px rgba(255, 255, 255, 0.07);
+    --shadow-2: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 10px 30px rgba(0, 0, 0, 0.5);
+    --bar-bg: rgba(22, 22, 23, 0.8);
+    --plan-kerf: #0b0b0c;
+    --plan-part: #18324f;
+    --plan-part-stroke: #3a6ea8;
+    --plan-part-text: #e3efff;
+    --plan-grain: rgba(160, 205, 255, 0.08);
+    --plan-offcut: #2a2a2d;
+    --plan-hatch: #3c3c40;
+    --plan-offcut-text: #a1a1a6;
+    --plan-leftover: #222224;
+    --plan-leftover-stroke: #636366;
+    --plan-badge: #f5f5f7;
+    --plan-badge-text: #1c1c1e;
+    --plan-ruler: #7c7c80;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #000000; --surface: #1c1c1e; --surface-2: #232325;
+  --fill: rgba(118, 118, 128, 0.24); --fill-2: rgba(118, 118, 128, 0.14);
+  --text: #f5f5f7; --text-2: #a1a1a6; --text-3: #7c7c80;
+  --separator: rgba(84, 84, 88, 0.55); --border: rgba(120, 120, 128, 0.45);
+  --accent: #2997ff; --accent-strong: #4aa8ff; --accent-tint: rgba(41, 151, 255, 0.16);
+  --focus: rgba(41, 151, 255, 0.45);
+  --danger: #ff453a; --danger-tint: rgba(255, 69, 58, 0.12);
+  --success: #30d158; --success-tint: rgba(48, 209, 88, 0.14);
+  --shadow-1: 0 0 0 0.5px rgba(255, 255, 255, 0.07);
+  --shadow-2: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 10px 30px rgba(0, 0, 0, 0.5);
+  --bar-bg: rgba(22, 22, 23, 0.8);
+  --plan-kerf: #0b0b0c; --plan-part: #18324f; --plan-part-stroke: #3a6ea8;
+  --plan-part-text: #e3efff; --plan-grain: rgba(160, 205, 255, 0.08);
+  --plan-offcut: #2a2a2d; --plan-hatch: #3c3c40; --plan-offcut-text: #a1a1a6;
+  --plan-leftover: #222224; --plan-leftover-stroke: #636366;
+  --plan-badge: #f5f5f7; --plan-badge-text: #1c1c1e; --plan-ruler: #7c7c80;
+}
+
+/* Touch-sized controls on tablets and below */
+@media (max-width: 1099px), (pointer: coarse) {
+  :root {
+    --control-h: 44px;
+    --t-body: 400 16px/1.45 var(--font);
+    --t-help: 400 14px/1.5 var(--font);
+  }
+}
+
+/* ---------- Base ---------- */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: var(--t-body);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+h1, h2, h3, p { margin: 0; }
+.num { font-variant-numeric: tabular-nums; }
+strong { font-weight: 600; }
+
+/* ---------- Top bar ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  height: 56px; padding: 0 var(--s-6);
+  background: var(--bar-bg);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid var(--separator);
+}
+.brand { display: flex; align-items: center; gap: 10px; font: var(--t-headline); letter-spacing: -0.01em; }
+.brand svg { display: block; }
+.topbar-actions { display: flex; justify-content: flex-end; gap: var(--s-2); }
+
+.steps { display: flex; gap: 2px; padding: 3px; background: var(--fill); border-radius: var(--r-pill); }
+.steps a {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 14px; border-radius: var(--r-pill);
+  font: var(--t-caption); font-size: 13px; color: var(--text-2); text-decoration: none;
+}
+.steps a .dot {
+  display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--fill); font-size: 11px; font-weight: 600; color: var(--text-2);
+}
+.steps a[aria-current="step"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-1); }
+.steps a[aria-current="step"] .dot { background: var(--accent); color: var(--on-accent); }
+.steps a.done .dot { background: var(--text-2); color: var(--surface); }
+
+/* ---------- Page layout ---------- */
+.page { max-width: 1280px; margin: 0 auto; padding: var(--s-8) var(--s-10) var(--s-16); }
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-6); margin-bottom: var(--s-6); }
+.page-head h1 { font: var(--t-large); letter-spacing: -0.02em; }
+.page-head .sub { margin-top: 6px; color: var(--text-2); }
+.layout-editor { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: var(--s-6); align-items: start; }
+.stack { display: grid; gap: var(--s-6); }
+.sticky-col { position: sticky; top: 80px; }
+
+@media (max-width: 1099px) {
+  .page { padding: var(--s-6) var(--s-5) var(--s-10); }
+  .layout-editor { grid-template-columns: minmax(0, 1fr); }
+  .sticky-col { position: static; }
+  .topbar { grid-template-columns: auto 1fr auto; padding: 0 var(--s-4); }
+  .topbar .steps { justify-self: center; }
+  .hide-tablet { display: none !important; }
+}
+@media (min-width: 1100px) { .show-tablet { display: none !important; } }
+
+/* ---------- Cards ---------- */
+.card { background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--shadow-1); }
+.card-body { padding: var(--s-6); }
+.card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-4);
+  padding: var(--s-5) var(--s-6) 0;
+}
+.card-head h2 { font: var(--t-title); letter-spacing: -0.01em; }
+.card-head .meta { color: var(--text-2); font: var(--t-help); }
+.card-head + .card-body { padding-top: var(--s-4); }
+.section-sep { height: 0.5px; background: var(--separator); margin: var(--s-6) 0; border: 0; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: var(--control-h); padding: 0 16px;
+  border: 0; border-radius: var(--r-pill);
+  font: var(--t-callout); font-weight: 500; cursor: pointer; white-space: nowrap;
+  background: var(--fill); color: var(--text); text-decoration: none;
+}
+.btn-primary { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn-tinted { background: var(--accent-tint); color: var(--accent); }
+.btn-plain { background: transparent; color: var(--accent); padding: 0 8px; }
+.btn-lg { height: 52px; padding: 0 26px; font-size: 17px; }
+.btn-block { width: 100%; }
+.btn-danger-plain { background: transparent; color: var(--danger); }
+.btn svg { flex: none; }
+.icon-btn {
+  display: inline-grid; place-items: center;
+  width: var(--control-h); height: var(--control-h); border-radius: 50%;
+  border: 0; background: transparent; color: var(--text-3); cursor: pointer;
+}
+
+/* ---------- Form fields ---------- */
+.field + .field { margin-top: var(--s-6); }
+.field-label { display: block; font: var(--t-label); margin-bottom: var(--s-2); }
+.field-label .unit { color: var(--text-2); font-weight: 400; }
+.help { font: var(--t-help); color: var(--text-2); margin-top: var(--s-2); max-width: 64ch; }
+.help strong { color: var(--text); font-weight: 600; }
+.help .current { color: var(--text); }
+.help .current strong { color: var(--accent); }
+
+.input {
+  width: 100%; height: var(--control-h);
+  padding: 0 12px;
+  border: 1px solid transparent; border-radius: var(--r-sm);
+  background: var(--fill-2);
+  color: var(--text); font: var(--t-body);
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+.input::placeholder { color: var(--text-3); }
+.input.focus { background: var(--surface); border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus); }
+.input.invalid { background: var(--danger-tint); border-color: var(--danger); }
+.input-wrap { position: relative; }
+.input-wrap .suffix {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--text-2); font: var(--t-help); pointer-events: none;
+}
+.input-wrap .input { padding-right: 44px; }
+.input-short { max-width: 180px; }
+
+.segmented {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  padding: 2px; gap: 2px; border-radius: var(--r-sm); background: var(--fill);
+}
+.segmented label {
+  display: grid; place-items: center; text-align: center;
+  min-height: calc(var(--control-h) - 4px); padding: 4px 10px;
+  border-radius: 7px; font: var(--t-callout); font-size: 14px; color: var(--text);
+  cursor: pointer; line-height: 1.2;
+}
+.segmented label.on { background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.04); font-weight: 600; }
+:root[data-theme="dark"] .segmented label.on { background: #636366; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .segmented label.on { background: #636366; } }
+
+.choices { display: grid; gap: 6px; }
+.choice {
+  display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: center;
+  padding: 11px 14px; border-radius: var(--r-md);
+  background: var(--fill-2); border: 1px solid transparent;
+  font: var(--t-callout); cursor: pointer;
+}
+.choice .radio { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--surface); }
+.choice.on { background: var(--accent-tint); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.choice.on .radio { border: 6px solid var(--accent); }
+
+.check {
+  display: inline-grid; place-items: center;
+  width: 22px; height: 22px; border-radius: 6px;
+  border: 1.5px solid var(--border); background: var(--surface);
+}
+.check.on { background: var(--accent); border-color: var(--accent); }
+.check.on::after {
+  content: ""; width: 10px; height: 5px; margin-top: -3px;
+  border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg);
+}
+.check-cell { display: grid; place-items: center; min-height: var(--control-h); }
+
+/* ---------- Editable tables (parts, panels) ---------- */
+.table-wrap { overflow-x: auto; margin: 0 calc(-1 * var(--s-6)); padding: 0 var(--s-6); }
+table.edit { width: 100%; border-collapse: separate; border-spacing: 0; }
+table.edit th {
+  font: var(--t-caption); color: var(--text-2); text-align: left;
+  padding: 0 6px 8px; white-space: nowrap;
+}
+table.edit th .unit { font-weight: 400; color: var(--text-3); }
+table.edit th.c, table.edit td.c { text-align: center; }
+table.edit td { padding: 3px 6px; vertical-align: top; }
+table.edit tr.row td { border-top: 0.5px solid var(--separator); padding-top: 6px; padding-bottom: 6px; }
+table.edit td.idx { color: var(--text-3); font: var(--t-caption); vertical-align: middle; width: 28px; text-align: right; }
+table.edit .w-name { min-width: 170px; }
+table.edit .w-len { width: 132px; }
+table.edit .w-qty { width: 112px; }
+table.edit .w-chk { width: 64px; }
+table.edit .w-del { width: 40px; }
+table.edit tr.err-row td { padding: 0 6px 8px; }
+.cell-error { color: var(--danger); font: var(--t-help); display: flex; gap: 6px; align-items: flex-start; }
+th.focus-col { color: var(--accent) !important; }
+.table-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); padding-top: var(--s-3); }
+.table-foot .meta { color: var(--text-2); font: var(--t-help); }
+
+/* Field guide: the always-visible help for every table column */
+.guide { margin-top: var(--s-5); padding: var(--s-5); border-radius: var(--r-md); background: var(--surface-2); border: 0.5px solid var(--separator); }
+.guide h3 { font: var(--t-label); color: var(--text-2); text-transform: none; margin-bottom: var(--s-3); }
+.guide dl { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4) var(--s-6); }
+.guide dt { font: var(--t-label); }
+.guide dd { margin: 4px 0 0; font: var(--t-help); color: var(--text-2); }
+.guide dd strong { color: var(--text); }
+.guide .item { padding-left: 12px; border-left: 2px solid transparent; }
+.guide .item.active { border-left-color: var(--accent); }
+.guide .item.active dt { color: var(--accent); }
+.guide .item.muted { opacity: 0.55; }
+.guide .wide { grid-column: 1 / -1; }
+@media (max-width: 720px) { .guide dl { grid-template-columns: 1fr; } }
+
+/* ---------- Banners ---------- */
+.banner {
+  display: grid; grid-template-columns: 24px 1fr auto; gap: 12px; align-items: start;
+  padding: var(--s-4) var(--s-5); border-radius: var(--r-md); margin-bottom: var(--s-6);
+}
+.banner-error { background: var(--danger-tint); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 30%, transparent); }
+.banner-error .icon { color: var(--danger); }
+.banner h3 { font: var(--t-headline); }
+.banner p { color: var(--text-2); margin-top: 2px; }
+.banner ul { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.banner li a { color: var(--danger); text-decoration: none; font-weight: 500; }
+.banner li { color: var(--text-2); }
+
+/* ---------- Summary / call to action column ---------- */
+.cta { padding: var(--s-6); }
+.cta .summary { display: flex; justify-content: space-between; color: var(--text-2); font: var(--t-help); margin-top: var(--s-3); }
+.cta-bar {
+  position: sticky; bottom: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-4);
+  padding: var(--s-3) var(--s-5) calc(var(--s-3) + env(safe-area-inset-bottom));
+  background: var(--bar-bg); backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-top: 0.5px solid var(--separator);
+}
+.cta-bar .meta { color: var(--text-2); font: var(--t-help); }
+
+/* ---------- Metrics ---------- */
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-4); }
+.metric { padding: var(--s-5); }
+.metric .label { font: var(--t-caption); color: var(--text-2); }
+.metric .value { font: var(--t-figure); letter-spacing: -0.02em; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.metric .value small { font-size: 15px; font-weight: 500; color: var(--text-2); letter-spacing: 0; }
+.metric .note { font: var(--t-help); color: var(--text-2); margin-top: 4px; }
+.metric .note.good { color: var(--success); }
+@media (max-width: 1099px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------- Progress ---------- */
+.progress { height: 6px; border-radius: var(--r-pill); background: var(--fill); overflow: hidden; }
+.progress > span { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 12px 4px 10px; border-radius: var(--r-pill);
+  font: var(--t-caption); font-size: 13px;
+}
+.status-pill .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-tint); }
+.status-running { background: var(--accent-tint); color: var(--accent); }
+.status-done { background: var(--success-tint); color: var(--success); }
+.status-done .pulse { background: var(--success); box-shadow: none; }
+
+/* ---------- Timeline of plans found ---------- */
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline li {
+  display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: center;
+  padding: 12px 0; border-top: 0.5px solid var(--separator);
+}
+.timeline li:first-child { border-top: 0; }
+.timeline .n {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--fill); font: var(--t-caption); color: var(--text-2);
+}
+.timeline li.best .n { background: var(--accent); color: var(--on-accent); }
+.timeline .t1 { font: var(--t-callout); }
+.timeline .t2 { font: var(--t-help); color: var(--text-2); }
+.timeline .delta { font: var(--t-caption); color: var(--success); }
+
+/* ---------- Plan viewer ---------- */
+.page-wide { max-width: 1440px; }
+.plan-layout {
+  display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--s-5); align-items: start;
+  grid-template-areas: "main cuts" "tables cuts";
+}
+.pl-main { grid-area: main; } .pl-cuts { grid-area: cuts; } .pl-tables { grid-area: tables; }
+@media (max-width: 1099px) {
+  .plan-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "cuts" "tables"; }
+}
+.rail { display: grid; grid-auto-flow: column; grid-auto-columns: 180px; gap: var(--s-3); overflow-x: auto; padding: 2px; }
+.thumb {
+  display: block; padding: 10px; border-radius: var(--r-md); background: var(--surface);
+  box-shadow: var(--shadow-1); text-decoration: none; color: var(--text);
+  border: 2px solid transparent;
+}
+.thumb.on { border-color: var(--accent); }
+.thumb .tt { display: flex; justify-content: space-between; font: var(--t-caption); margin-top: 8px; }
+.thumb .tt span:last-child { color: var(--text-2); }
+.thumb svg { display: block; width: 100%; height: auto; }
+
+
+.figure { padding: var(--s-5); }
+.figure > svg { display: block; width: 100%; height: auto; }
+.toggle, .figure-head .btn { white-space: nowrap; }
+table.data td.num, table.data td:nth-child(2) { white-space: nowrap; }
+.figure-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-4); margin-bottom: var(--s-4); }
+.figure-head h2 { font: var(--t-title); letter-spacing: -0.01em; }
+.figure-head .sub { color: var(--text-2); font: var(--t-help); margin-top: 2px; }
+.toggles { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+.toggle {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px;
+  border-radius: var(--r-pill); background: var(--fill-2); font: var(--t-caption); font-size: 13px; color: var(--text-2);
+}
+.toggle.on { background: var(--accent-tint); color: var(--accent); }
+@media (max-width: 1099px) { .toggle { height: 40px; padding: 0 16px; } }
+
+.legend { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); margin-top: var(--s-4); font: var(--t-caption); color: var(--text-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend svg { flex: none; }
+
+.cutlist { list-style: none; margin: 0; padding: 0; }
+.cutlist .group {
+  font: var(--t-label); color: var(--text-2); padding: 14px 20px 6px;
+  display: flex; justify-content: space-between;
+}
+.cutlist .group span:last-child { font-weight: 400; }
+.cutlist .cut {
+  display: grid; grid-template-columns: 26px 1fr; gap: 12px;
+  padding: 9px 20px; align-items: start;
+}
+.cutlist .cut .n {
+  width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--plan-badge); color: var(--plan-badge-text); font: 600 11px/1 var(--font);
+  margin-top: 1px;
+}
+.cutlist .cut .m { font: var(--t-callout); font-weight: 600; font-variant-numeric: tabular-nums; }
+.cutlist .cut .m em { font-style: normal; font-weight: 400; color: var(--text-2); font-size: 13px; margin-left: 4px; }
+.cutlist .cut .r { font: var(--t-help); color: var(--text-2); }
+.cutlist .cut .r b { color: var(--text); font-weight: 500; }
+.cutlist .cut.on { background: var(--accent-tint); }
+.cutlist .cut.on .n { background: var(--accent); color: var(--on-accent); }
+.cutlist .cut.done { opacity: 0.5; }
+.cutlist .cut.done .n { background: var(--text-3); }
+.scroll-card { max-height: 860px; overflow: auto; position: sticky; top: 80px; }
+@media (max-width: 1099px) { .scroll-card { max-height: none; position: static; } }
+
+table.data { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+table.data th { font: var(--t-caption); color: var(--text-2); text-align: left; padding: 0 12px 8px; }
+table.data td { padding: 10px 12px; border-top: 0.5px solid var(--separator); }
+table.data .r { text-align: right; }
+table.data .muted { color: var(--text-2); }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: 0; }
+
+.overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-5); align-items: start; }
+@media (max-width: 1099px) { .overview-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--r-pill); background: var(--fill); font: var(--t-caption); color: var(--text-2); }
+.chip-accent { background: var(--accent-tint); color: var(--accent); }
+
+/* ---------- Empty / problem states ---------- */
+.state {
+  display: grid; justify-items: center; text-align: center; gap: var(--s-3);
+  padding: var(--s-12) var(--s-8);
+}
+.state .art { color: var(--text-3); margin-bottom: var(--s-2); }
+.state h2 { font: var(--t-title); }
+.state p { color: var(--text-2); max-width: 46ch; }
+.state .actions { display: flex; gap: var(--s-3); margin-top: var(--s-3); flex-wrap: wrap; justify-content: center; }
+.state-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-5); }
+@media (max-width: 1099px) { .state-grid { grid-template-columns: minmax(0, 1fr); } }
+.state-tag { font: var(--t-caption); color: var(--text-3); padding: var(--s-4) var(--s-5) 0; text-transform: uppercase; letter-spacing: 0.06em; }
+.hint-list { text-align: left; margin: var(--s-2) 0 0; padding: 0; list-style: none; display: grid; gap: 8px; max-width: 46ch; }
+.hint-list li { display: grid; grid-template-columns: 20px 1fr; gap: 8px; color: var(--text-2); font: var(--t-help); }
+.hint-list li b { color: var(--text); font-weight: 600; }
+
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.thumb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--s-5); align-items: start; }
+
+.plan-svg { font-family: var(--font); font-variant-numeric: tabular-nums; }
+.p-kerf { fill: var(--plan-kerf); }
+.p-edge { fill: none; stroke: var(--text); stroke-opacity: .55; stroke-width: 1; }
+.p-part { fill: var(--plan-part); stroke: var(--plan-part-stroke); stroke-width: .75; }
+.p-nostroke { stroke: none; }
+.p-grain { fill: none; stroke: var(--plan-grain); stroke-width: 1; }
+.p-offcut-bg { fill: var(--plan-offcut); }
+.p-hatch { stroke: var(--plan-hatch); stroke-width: 1.4; }
+.p-offcut { stroke: none; }
+.p-leftover { fill: var(--plan-leftover); stroke: var(--plan-leftover-stroke); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.p-part-text { fill: var(--plan-part-text); }
+.p-name { font-weight: 600; }
+.p-dim { font-weight: 450; }
+.p-part-text .p-dim { fill-opacity: .78; }
+.p-offcut-text { fill: var(--plan-offcut-text); }
+.p-leftover-text { fill: var(--text-2); }
+.p-rot { stroke: var(--plan-part-stroke); }
+.p-ruler line { stroke: var(--plan-ruler); stroke-width: 1; }
+.p-ruler text { fill: var(--text-2); font-size: 11px; font-weight: 500; }
+.p-ruler .p-ruler-weak { fill: var(--text-3); }
+.p-ruler-bg { fill: var(--surface); }
+.p-badge circle { fill: var(--plan-badge); stroke: var(--surface); stroke-width: 1.5; }
+.p-badge text { fill: var(--plan-badge-text); font-size: 10px; font-weight: 700; }
+.p-badge.on circle { fill: var(--accent); }
+.p-badge.on text { fill: var(--on-accent); }
+.p-badge.done { opacity: .35; }
+.p-cutline { fill: var(--accent); }
+.p-result { fill: var(--accent-tint); stroke: var(--accent); stroke-width: 2; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="1" y="1" width="24" height="24" rx="6.5" fill="var(--accent)"/><path d="M5.5 14.5h15M12 14.5v6M15.5 5.5v9" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg><span>Sheetsolver</span></div>
+  <nav class="steps" aria-label="Progress"><a href="#" aria-current="step"><span class="dot">1</span>Job</a><a href="#"><span class="dot">2</span>Search</a><a href="#"><span class="dot">3</span>Plan</a></nav>
+  <div class="topbar-actions"></div>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <div><h1>Cutting job</h1><p class="sub">List the parts you need and the panels you have. Every field explains itself below it.</p></div>
+  </div>
+  <div class="banner banner-error" role="alert"><span class="icon"><svg width="22" height="22" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 15 14H1z" fill="currentColor"/><path d="M8 6v4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="12" r=".9" fill="#fff"/></svg></span><div><h3>The job cannot be solved as entered.</h3><p>3 problems. Fix the highlighted fields, then find the plan again.</p><ul><li><a href="#err-1-width">Part 2 · Width</a> — length 320.55 mm has more than one decimal; lengths are in steps of 0.1 mm</li><li><a href="#err-6-quantity">Part 7 · Quantity</a> — quantity must be at least 1</li><li><a href="#err-10-id">Part 11 · Name</a> — the name “Rail” is already used by part 10; give each part its own name</li></ul></div></div>
+  <div class="layout-editor">
+    <div class="stack">
+      <section class="card" aria-labelledby="parts-h">
+        <div class="card-head"><h2 id="parts-h">Parts</h2><span class="meta">21 parts in 11 sizes</span></div>
+        <div class="card-body">
+          <div class="table-wrap"><table class="edit"><thead><tr><th></th><th class="w-name">Name</th><th class="w-len">Length <span class="unit">mm</span></th><th class="w-len">Width <span class="unit">mm</span></th><th class="w-qty">Quantity</th><th class="w-chk c">Keep grain direction</th><th class="w-del"></th></tr></thead><tbody><tr class="row"><td class="idx">1</td><td><input class="input " value="Drawer front" aria-label="Name, row 1" readonly></td><td><input class="input " value="350" aria-label="Length, row 1" readonly></td><td><input class="input " value="290" aria-label="Width, row 1" readonly></td><td><input class="input " value="1" aria-label="Quantity, row 1" readonly></td><td class="c"><div class="check-cell"><span class="check on" role="checkbox" aria-checked="true" aria-label="Keep grain direction, row 1"></span></div></td><td><button class="icon-btn" aria-label="Remove row 1"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M4.8 4.5l.6 8.5h5.2l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></td></tr><tr class="row"><td class="idx">2</td><td><input class="input " value="Fixed shelf" aria-label="Name, row 2" readonly></td><td><input class="input " value="320" aria-label="Length, row 2" readonly></td><td><input class="input invalid" value="320.55" aria-label="Width, row 2" readonly></td><td><input class="input " value="2" aria-label="Quantity, row 2" readonly></td><td class="c"><div class="check-cell"><span class="check" role="checkbox" aria-checked="false" aria-label="Keep grain direction, row 2"></span></div></td><td><button class="icon-btn" aria-label="Remove row 2"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M4.8 4.5l.6 8.5h5.2l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></td></tr><tr class="err-row"><td></td><td colspan="6"><div class="cell-error" id="err-1-width"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 15 14H1z" fill="currentColor"/><path d="M8 6v4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="12" r=".9" fill="#fff"/></svg><span><strong>Width:</strong> length 320.55 mm has more than one decimal; lengths are in steps of 0.1 mm</span></div></td></tr><tr class="row"><td class="idx">3</td><td><input class="input " value="Top" aria-label="Name, row 3" readonly></td><td><input class="input " value="770" aria-label="Length, row 3" readonly></td><td><input class="input " value="370" aria-label="Width, row 3" readonly></td><td><input class="input " value="1" aria-label="Quantity, row 3" readonly></td><td class="c"><div class="check-cell"><span class="check" role="checkbox" aria-checked="false" aria-label="Keep grain direction, row 3"></span></div></td><td><button class="icon-btn" aria-label="Remove row 3"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M4.8 4.5l.6 8.5h5.2l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></td></tr><tr class="row"><td class="idx">4</td><td><input class="input " value="Side" aria-label="Name, row 4" readonly></td><td><input class="input " value="1040.5" aria-label="Length, row 4" readonly></td><td><input class="input " value="630" aria-label="Width, row 4" readonly></td><td><input class="input " value="6" aria-label="Quantity, row 4" readonly></td><td class="c"><div class="check-cell"><span class="check" role="checkbox" aria-checked="false" aria-label="Keep grain direction, row 4"></span></div></td><td><button class="icon-btn" aria-label="Remove row 4"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M4.8 4.5l.6 8.5h5.2l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></td></tr><tr class="row"><td class="idx">5</td><td><input class="input " value="Door" aria-label="Name, row 5" readonly></td><td><input class="input " value="800" aria-label="Length, row 5" readonly></td><td><input class="input " value="500" aria-label="Width, row 5" readonly></td><td><input class="input " value="2" aria-label="Quantity, row 5" readonly></td><td class="c"><div class="check-cell"><span class="check on" role="checkbox" aria-checked="true" aria-label="Keep grain direction, row 5"></span></div></td><td><button class="icon-btn" aria-label="Remove row 5"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M4.8 4.5l.6 8.5h5.2l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></td></tr><tr class="row"><td class="idx">6</td><td><input class="input " value="Cleat" aria-label="Name, row 6" readonly></td><td><input class="input " value="210.5" aria-label="Length, row 6" readonly></td><td><input class="input " value="140" aria-label="Width, row 6" readonly></td><td><input class="input " value="1" aria-label="Quantity, row 6" readonly></td><td class="c"><div class="check-cell"><span class="check" role="checkbox" aria-checked="false" aria-label="Keep grain direction, row 6"></span></div></td><td><button class="icon-btn" aria-label="Remove row 6"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M4.8 4.5l.6 8.5h5.2l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></td></tr><tr class="row"><td class="idx">7</td><td><input class="input " value="Kicker" aria-label="Name, row 7" readonly></td><td><input class="input " value="260" aria-label="Length, row 7" readonly></td><td><input class="input " value="90" aria-label="Width, row 7" readonly></td><td><input class="input invalid" value="0" aria-label="Quantity, row 7" readonly></td><td class="c"><div class="check-cell"><span class="check on" role="checkbox" aria-checked="true" aria-label="Keep grain direction, row 7"></span></div></td><td><button class="icon-btn" aria-label="Remove row 7"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M4.8 4.5l.6 8.5h5.2l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></td></tr><tr class="err-row"><td></td><td colspan="6"><div class="cell-error" id="err-6-quantity"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 15 14H1z" fill="currentColor"/><path d="M8 6v4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="12" r=".9" fill="#fff"/></svg><span><strong>Quantity:</strong> quantity must be at least 1</span></div></td></tr><tr class="row"><td class="idx">8</td><td><input class="input " value="Shelf" aria-label="Name, row 8" readonly></td><td><input class="input " value="1110" aria-label="Length, row 8" readonly></td><td><input class="input " value="420" aria-label="Width, row 8" readonly></td><td><input class="input " value="2" aria-label="Quantity, row 8" readonly></td><td class="c"><div class="check-cell"><span class="check on" role="checkbox" aria-checked="true" aria-label="Keep grain direction, row 8"></span></div></td><td><button class="icon-btn" aria-label="Remove row 8"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M4.8 4.5l.6 8.5h5.2l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></td></tr><tr class="row"><td class="idx">9</td><td><input class="input " value="Divider" aria-label="Name, row 9" readonly></td><td><input class="input " value="720" aria-label="Length, row 9" readonly></td><td><input class="input " value="280" aria-label="Width, row 9" readonly></td><td><input class="input " value="2" aria-label="Quantity, row 9" readonly></td><td class="c"><div class="check-cell"><span class="check" role="checkbox" aria-checked="false" aria-label="Keep grain direction, row 9"></span></div></td><td><button class="icon-btn" aria-label="Remove row 9"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M4.8 4.5l.6 8.5h5.2l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></td></tr><tr class="row"><td class="idx">10</td><td><input class="input " value="Rail" aria-label="Name, row 10" readonly></td><td><input class="input " value="450" aria-label="Length, row 10" readonly></td><td><input class="input " value="90" aria-label="Width, row 10" readonly></td><td><input class="input " value="1" aria-label="Quantity, row 10" readonly></td><td class="c"><div class="check-cell"><span class="check on" role="checkbox" aria-checked="true" aria-label="Keep grain direction, row 10"></span></div></td><td><button class="icon-btn" aria-label="Remove row 10"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M4.8 4.5l.6 8.5h5.2l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></td></tr><tr class="row"><td class="idx">11</td><td><input class="input invalid" value="Rail" aria-label="Name, row 11" readonly></td><td><input class="input " value="380" aria-label="Length, row 11" readonly></td><td><input class="input " value="120" aria-label="Width, row 11" readonly></td><td><input class="input " value="2" aria-label="Quantity, row 11" readonly></td><td class="c"><div class="check-cell"><span class="check on" role="checkbox" aria-checked="true" aria-label="Keep grain direction, row 11"></span></div></td><td><button class="icon-btn" aria-label="Remove row 11"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M4.8 4.5l.6 8.5h5.2l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></td></tr><tr class="err-row"><td></td><td colspan="6"><div class="cell-error" id="err-10-id"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 15 14H1z" fill="currentColor"/><path d="M8 6v4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="12" r=".9" fill="#fff"/></svg><span><strong>Name:</strong> the name “Rail” is already used by part 10; give each part its own name</span></div></td></tr></tbody></table></div>
+          <div class="table-foot"><button class="btn btn-tinted"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Add part</button>
+            <span class="meta">Lengths in millimetres, at most one decimal (e.g. 720, 3.2, 18.5).</span></div>
+          <div class="guide"><h3>About these fields</h3><dl><div class="item"><dt>Name</dt><dd>Your name for this part, shown on the cutting plan and labels (e.g. &quot;Side left&quot;).</dd></div><div class="item"><dt>Length</dt><dd>The part&#x27;s finished length in millimetres, before edge banding. For a part with grain, the side along the grain.</dd></div><div class="item"><dt>Width</dt><dd>The part&#x27;s finished width in millimetres, before edge banding.</dd></div><div class="item"><dt>Quantity</dt><dd>How many identical parts you need. With &quot;Best use of the panels I have&quot;, this is the most that will be cut; fewer may be cut if they don&#x27;t fit.</dd></div><div class="item"><dt>Keep grain direction</dt><dd>Tick this if the part must keep its grain running the same way as the panel&#x27;s grain (veneered or solid-wood panels, brushed or wood-look melamine). The part is then never turned 90°. Untick it for plain MDF, chipboard or any part whose look doesn&#x27;t depend on direction — turning parts usually saves material.</dd></div><div class="item muted"><dt>Value <span class="chip">Shown with the goal Best use of the panels I have</span></dt><dd>Only used with &quot;Best use of the panels I have&quot;: how much you want this part, compared with the others. The plan maximises the total value of the parts it cuts. Leave empty to value parts by their area in mm² (the plan then uses as much of the panel as possible). Set every part to 1 to cut as many parts as possible.</dd></div></dl></div>
+        </div>
+      </section>
+      <section class="card" aria-labelledby="panels-h">
+        <div class="card-head"><h2 id="panels-h">Panels</h2><span class="meta">The sheets you cut from</span></div>
+        <div class="card-body">
+          <div class="table-wrap"><table class="edit"><thead><tr><th></th><th class="w-name">Name</th><th class="w-len">Length <span class="unit">mm</span></th><th class="w-len">Width <span class="unit">mm</span></th><th class="w-qty">Quantity</th><th class="w-qty">Cost</th><th class="w-del"></th></tr></thead><tbody><tr class="row"><td class="idx">1</td><td><input class="input " value="Birch ply 18 mm" aria-label="Name" readonly></td><td><input class="input " value="2440" aria-label="Length" readonly></td><td><input class="input " value="1220" aria-label="Width" readonly></td><td><input class="input " placeholder="Unlimited" aria-label="Quantity" readonly></td><td><input class="input " placeholder="Panel area" aria-label="Cost" readonly></td><td><button class="icon-btn" aria-label="Remove panel"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M4.8 4.5l.6 8.5h5.2l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></td></tr></tbody></table></div>
+          <div class="table-foot"><button class="btn btn-tinted"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Add panel size</button></div>
+          <div class="guide"><h3>About these fields</h3><dl><div class="item"><dt>Name</dt><dd>Your name for this panel, shown on the cutting plan (e.g. &quot;Birch ply 18 mm&quot;).</dd></div><div class="item"><dt>Length</dt><dd>The panel&#x27;s long side, as delivered, in millimetres. For a panel with grain, the side along the grain. For &quot;Shortest length from one panel&quot;, this is the maximum length available.</dd></div><div class="item"><dt>Width</dt><dd>The panel&#x27;s short side, as delivered, in millimetres. For &quot;Shortest width from one panel&quot;, this is the maximum width available.</dd></div><div class="item"><dt>Quantity</dt><dd>How many panels of this size you have. Leave empty for &quot;as many as needed&quot;.</dd></div><div class="item"><dt>Cost</dt><dd>Used only to compare panel sizes when several are listed: a lower total cost is preferred. Leave empty to use the panel&#x27;s area.</dd></div></dl></div>
+        </div>
+      </section>
+    </div>
+    <aside class="sticky-col">
+<div class="stack">
+  <section class="card"><div class="card-head"><h2>Goal</h2></div><div class="card-body"><div class="field"><div class="choices" role="radiogroup" aria-label="Goal"><label class="choice on"><span class="radio"></span><span>Use as few panels as possible</span></label><label class="choice"><span class="radio"></span><span>Best use of the panels I have</span></label><label class="choice"><span class="radio"></span><span>Shortest length from one panel</span></label><label class="choice"><span class="radio"></span><span>Shortest width from one panel</span></label></div><p class="help">What the plan should optimise. <span class="current"><strong>Use as few panels as possible</strong>: cut every part, using the fewest panels; panels are used in the order listed. </span><strong>Best use of the panels I have</strong>: the panels can&#x27;t fit every part, so choose which parts to cut to get the most out of them (by part value — see <em>Value</em>). <strong>Shortest length from one panel</strong>: you have one panel of fixed width and any length you need (e.g. a long board or a roll); cut every part using the shortest possible length. <strong>Shortest width from one panel</strong>: the same, but the length is fixed and the width is minimised.</p></div></div></section>
+  <section class="card"><div class="card-head"><h2>Saw and cutting</h2></div><div class="card-body"><div class="field"><span class="field-label">Saw blade thickness (kerf)</span><div class="input-short"><div class="input-wrap"><input class="input " value="3.2" aria-label="Kerf" readonly><span class="suffix">mm</span></div></div><p class="help">The width of material each cut removes, in millimetres — the thickness of your saw blade&#x27;s teeth, not the blade body. Every cut between two parts uses this much material, so parts are spaced by it. Typical values: 3.2–4.4 mm for panel and table saws, 2.2–2.8 mm for track saws. Set 0 only if your dimensions already include it.</p></div><div class="field"><span class="field-label">Cutting stages</span><div class="segmented" role="radiogroup" aria-label="Cutting stages"><label class="">2</label><label class="on">3</label><label class="">Unlimited</label></div><p class="help">How many times a piece is turned and cut again. <strong>Stage 1</strong>: full-length cuts across the whole panel, splitting it into strips. <strong>Stage 2</strong>: each strip is cut across into pieces. <strong>Stage 3</strong>: each piece is cut once more, across stage-2 cuts. More stages let parts nest more tightly, so less waste, but mean more handling at the saw. 2 suits simple strip cutting; 3 suits most panel-saw work; &quot;Unlimited&quot; gives the least waste with the most handling: cuts may then go either way at every stage, and the last-stage trimming setting does not apply.</p></div><div class="field"><span class="field-label">Last-stage trimming</span><div class="segmented" role="radiogroup" aria-label="Last-stage trimming"><label class="on">Allowed</label><label class="">Not allowed</label><label class="">One part per strip</label></div><p class="help">Whether a part may be cut free from a small offcut after the last stage. <span class="current"><strong>Allowed</strong> (recommended): a strip may hold parts of different sizes; a final trimming cut separates each part from its offcut. </span><strong>Not allowed</strong>: at the last stage every part must fill its strip exactly, with no offcut — fewer cuts, more waste. <strong>One part per strip</strong>: every part in a last-stage strip is the same part — the simplest plans to cut, the most waste.</p></div><div class="field"><span class="field-label">First cuts</span><div class="segmented" role="radiogroup" aria-label="First cuts"><label class="">Either</label><label class="on">Along the length</label><label class="">Across the length</label></div><p class="help">Which way the first, full-panel cuts run. <strong>Either</strong> (recommended): the solver tries both and keeps the better plan. With one panel size, every panel in the plan is cut the same way; with several sizes, each panel may be cut differently. The search time is shared between the two directions. <span class="current"><strong>Along the length</strong>: rip the panel into long strips first, then cut the strips across — for saws or workflows that always rip first. </span><strong>Across the length</strong>: cut the panel across into shorter strips first. Parts with grain keep their direction whichever you choose. With unlimited stages, cuts may always go either way.</p></div></div></section>
+  <section class="card"><div class="card-head"><h2>Search</h2></div><div class="card-body"><div class="field"><span class="field-label">Time limit</span><div class="input-short"><div class="input-wrap"><input class="input " value="10" aria-label="Time limit" readonly><span class="suffix">s</span></div></div><p class="help">How long the solver may search for a better plan. The first plan usually appears within a second; longer searches find plans with less waste. You can stop the search at any time and keep the best plan so far.</p></div></div></section>
+  <section class="card cta hide-tablet">
+    <a class="btn btn-primary btn-lg btn-block" href="#"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6L13 8z" fill="currentColor"/></svg>Find cutting plan</a>
+    <div class="summary"><span>21 parts · 11 sizes</span><span>1 panel size</span></div>
+  </section>
+</div></aside>
+  </div>
+</main>
+<div class="cta-bar show-tablet"><span class="meta">21 parts · 1 panel size</span>
+  <a class="btn btn-primary btn-lg" href="#"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6L13 8z" fill="currentColor"/></svg>Find cutting plan</a></div>
+
+</body>
+</html>

@@ -295,6 +295,10 @@ Exit criteria:
 
 ## Stage 7 — Web UI
 
+Design (screens, flows, visual language, front-end stack, and what the UI
+needs from the API): `web/DESIGN.md`, with static mockups in
+`web/mockups/`.
+
 Deliverables (in `web/`, see `ARCHITECTURE.md`):
 - Instance editor (parts, panels, saw settings), job submission, live
   progress, cutting-plan viewer (SVG, one panel at a time + overview,

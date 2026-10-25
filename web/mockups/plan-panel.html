@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cutting plan · Sheetsolver</title>
+<style>/* Sheetsolver design tokens and components (mockup).
+   The real app (web/src) starts from this file: tokens become CSS custom
+   properties in one place, components become Svelte components. */
+
+/* ---------- Tokens: light ---------- */
+:root {
+  color-scheme: light dark;
+
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Segoe UI Variable Text", "Segoe UI", Inter, Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+
+  /* Type scale (size / line height) */
+  --t-large: 600 32px/1.15 var(--font);
+  --t-title: 600 22px/1.25 var(--font);
+  --t-headline: 600 17px/1.3 var(--font);
+  --t-body: 400 15px/1.45 var(--font);
+  --t-callout: 500 15px/1.4 var(--font);
+  --t-help: 400 13px/1.5 var(--font);
+  --t-label: 600 13px/1.3 var(--font);
+  --t-caption: 500 12px/1.3 var(--font);
+  --t-figure: 600 28px/1.1 var(--font);
+
+  /* Spacing (4 px grid) */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px;
+  --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px;
+
+  /* Radii */
+  --r-xs: 6px; --r-sm: 8px; --r-md: 12px; --r-lg: 18px; --r-pill: 999px;
+
+  /* Control sizes */
+  --control-h: 36px;
+
+  /* Neutrals */
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface-2: #fafafc;
+  --fill: rgba(118, 118, 128, 0.12);
+  --fill-2: rgba(118, 118, 128, 0.07);
+  --text: #1d1d1f;
+  --text-2: #6e6e73;
+  --text-3: #8e8e93;
+  --separator: rgba(60, 60, 67, 0.13);
+  --border: rgba(60, 60, 67, 0.2);
+
+  /* The one accent, plus semantic status colours */
+  --accent: #0071e3;
+  --accent-strong: #0062c4;
+  --accent-tint: rgba(0, 113, 227, 0.1);
+  --on-accent: #ffffff;
+  --focus: rgba(0, 113, 227, 0.35);
+  --danger: #d70015;
+  --danger-tint: rgba(215, 0, 21, 0.07);
+  --success: #1f7a35;
+  --success-tint: rgba(36, 138, 61, 0.1);
+
+  /* Depth */
+  --shadow-1: 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-2: 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.04),
+    0 10px 30px rgba(0, 0, 0, 0.06);
+  --bar-bg: rgba(245, 245, 247, 0.82);
+
+  /* Cutting-plan drawing */
+  --plan-kerf: #8e8e93;
+  --plan-part: #e6f0fc;
+  --plan-part-stroke: #7aa9e0;
+  --plan-part-text: #0b3260;
+  --plan-grain: rgba(0, 82, 170, 0.09);
+  --plan-offcut: #ededf0;
+  --plan-hatch: #d4d4d9;
+  --plan-offcut-text: #6e6e73;
+  --plan-leftover: #fbfbfc;
+  --plan-leftover-stroke: #aeaeb2;
+  --plan-badge: #1d1d1f;
+  --plan-badge-text: #ffffff;
+  --plan-ruler: #8e8e93;
+}
+
+/* ---------- Tokens: dark ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface-2: #232325;
+    --fill: rgba(118, 118, 128, 0.24);
+    --fill-2: rgba(118, 118, 128, 0.14);
+    --text: #f5f5f7;
+    --text-2: #a1a1a6;
+    --text-3: #7c7c80;
+    --separator: rgba(84, 84, 88, 0.55);
+    --border: rgba(120, 120, 128, 0.45);
+    --accent: #2997ff;
+    --accent-strong: #4aa8ff;
+    --accent-tint: rgba(41, 151, 255, 0.16);
+    --on-accent: #ffffff;
+    --focus: rgba(41, 151, 255, 0.45);
+    --danger: #ff453a;
+    --danger-tint: rgba(255, 69, 58, 0.12);
+    --success: #30d158;
+    --success-tint: rgba(48, 209, 88, 0.14);
+    --shadow-1: 0 0 0 0.5px rgba(255, 255, 255, 0.07);
+    --shadow-2: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 10px 30px rgba(0, 0, 0, 0.5);
+    --bar-bg: rgba(22, 22, 23, 0.8);
+    --plan-kerf: #0b0b0c;
+    --plan-part: #18324f;
+    --plan-part-stroke: #3a6ea8;
+    --plan-part-text: #e3efff;
+    --plan-grain: rgba(160, 205, 255, 0.08);
+    --plan-offcut: #2a2a2d;
+    --plan-hatch: #3c3c40;
+    --plan-offcut-text: #a1a1a6;
+    --plan-leftover: #222224;
+    --plan-leftover-stroke: #636366;
+    --plan-badge: #f5f5f7;
+    --plan-badge-text: #1c1c1e;
+    --plan-ruler: #7c7c80;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #000000; --surface: #1c1c1e; --surface-2: #232325;
+  --fill: rgba(118, 118, 128, 0.24); --fill-2: rgba(118, 118, 128, 0.14);
+  --text: #f5f5f7; --text-2: #a1a1a6; --text-3: #7c7c80;
+  --separator: rgba(84, 84, 88, 0.55); --border: rgba(120, 120, 128, 0.45);
+  --accent: #2997ff; --accent-strong: #4aa8ff; --accent-tint: rgba(41, 151, 255, 0.16);
+  --focus: rgba(41, 151, 255, 0.45);
+  --danger: #ff453a; --danger-tint: rgba(255, 69, 58, 0.12);
+  --success: #30d158; --success-tint: rgba(48, 209, 88, 0.14);
+  --shadow-1: 0 0 0 0.5px rgba(255, 255, 255, 0.07);
+  --shadow-2: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 10px 30px rgba(0, 0, 0, 0.5);
+  --bar-bg: rgba(22, 22, 23, 0.8);
+  --plan-kerf: #0b0b0c; --plan-part: #18324f; --plan-part-stroke: #3a6ea8;
+  --plan-part-text: #e3efff; --plan-grain: rgba(160, 205, 255, 0.08);
+  --plan-offcut: #2a2a2d; --plan-hatch: #3c3c40; --plan-offcut-text: #a1a1a6;
+  --plan-leftover: #222224; --plan-leftover-stroke: #636366;
+  --plan-badge: #f5f5f7; --plan-badge-text: #1c1c1e; --plan-ruler: #7c7c80;
+}
+
+/* Touch-sized controls on tablets and below */
+@media (max-width: 1099px), (pointer: coarse) {
+  :root {
+    --control-h: 44px;
+    --t-body: 400 16px/1.45 var(--font);
+    --t-help: 400 14px/1.5 var(--font);
+  }
+}
+
+/* ---------- Base ---------- */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: var(--t-body);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+h1, h2, h3, p { margin: 0; }
+.num { font-variant-numeric: tabular-nums; }
+strong { font-weight: 600; }
+
+/* ---------- Top bar ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  height: 56px; padding: 0 var(--s-6);
+  background: var(--bar-bg);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid var(--separator);
+}
+.brand { display: flex; align-items: center; gap: 10px; font: var(--t-headline); letter-spacing: -0.01em; }
+.brand svg { display: block; }
+.topbar-actions { display: flex; justify-content: flex-end; gap: var(--s-2); }
+
+.steps { display: flex; gap: 2px; padding: 3px; background: var(--fill); border-radius: var(--r-pill); }
+.steps a {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 14px; border-radius: var(--r-pill);
+  font: var(--t-caption); font-size: 13px; color: var(--text-2); text-decoration: none;
+}
+.steps a .dot {
+  display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--fill); font-size: 11px; font-weight: 600; color: var(--text-2);
+}
+.steps a[aria-current="step"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-1); }
+.steps a[aria-current="step"] .dot { background: var(--accent); color: var(--on-accent); }
+.steps a.done .dot { background: var(--text-2); color: var(--surface); }
+
+/* ---------- Page layout ---------- */
+.page { max-width: 1280px; margin: 0 auto; padding: var(--s-8) var(--s-10) var(--s-16); }
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-6); margin-bottom: var(--s-6); }
+.page-head h1 { font: var(--t-large); letter-spacing: -0.02em; }
+.page-head .sub { margin-top: 6px; color: var(--text-2); }
+.layout-editor { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: var(--s-6); align-items: start; }
+.stack { display: grid; gap: var(--s-6); }
+.sticky-col { position: sticky; top: 80px; }
+
+@media (max-width: 1099px) {
+  .page { padding: var(--s-6) var(--s-5) var(--s-10); }
+  .layout-editor { grid-template-columns: minmax(0, 1fr); }
+  .sticky-col { position: static; }
+  .topbar { grid-template-columns: auto 1fr auto; padding: 0 var(--s-4); }
+  .topbar .steps { justify-self: center; }
+  .hide-tablet { display: none !important; }
+}
+@media (min-width: 1100px) { .show-tablet { display: none !important; } }
+
+/* ---------- Cards ---------- */
+.card { background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--shadow-1); }
+.card-body { padding: var(--s-6); }
+.card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-4);
+  padding: var(--s-5) var(--s-6) 0;
+}
+.card-head h2 { font: var(--t-title); letter-spacing: -0.01em; }
+.card-head .meta { color: var(--text-2); font: var(--t-help); }
+.card-head + .card-body { padding-top: var(--s-4); }
+.section-sep { height: 0.5px; background: var(--separator); margin: var(--s-6) 0; border: 0; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: var(--control-h); padding: 0 16px;
+  border: 0; border-radius: var(--r-pill);
+  font: var(--t-callout); font-weight: 500; cursor: pointer; white-space: nowrap;
+  background: var(--fill); color: var(--text); text-decoration: none;
+}
+.btn-primary { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn-tinted { background: var(--accent-tint); color: var(--accent); }
+.btn-plain { background: transparent; color: var(--accent); padding: 0 8px; }
+.btn-lg { height: 52px; padding: 0 26px; font-size: 17px; }
+.btn-block { width: 100%; }
+.btn-danger-plain { background: transparent; color: var(--danger); }
+.btn svg { flex: none; }
+.icon-btn {
+  display: inline-grid; place-items: center;
+  width: var(--control-h); height: var(--control-h); border-radius: 50%;
+  border: 0; background: transparent; color: var(--text-3); cursor: pointer;
+}
+
+/* ---------- Form fields ---------- */
+.field + .field { margin-top: var(--s-6); }
+.field-label { display: block; font: var(--t-label); margin-bottom: var(--s-2); }
+.field-label .unit { color: var(--text-2); font-weight: 400; }
+.help { font: var(--t-help); color: var(--text-2); margin-top: var(--s-2); max-width: 64ch; }
+.help strong { color: var(--text); font-weight: 600; }
+.help .current { color: var(--text); }
+.help .current strong { color: var(--accent); }
+
+.input {
+  width: 100%; height: var(--control-h);
+  padding: 0 12px;
+  border: 1px solid transparent; border-radius: var(--r-sm);
+  background: var(--fill-2);
+  color: var(--text); font: var(--t-body);
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+.input::placeholder { color: var(--text-3); }
+.input.focus { background: var(--surface); border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus); }
+.input.invalid { background: var(--danger-tint); border-color: var(--danger); }
+.input-wrap { position: relative; }
+.input-wrap .suffix {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--text-2); font: var(--t-help); pointer-events: none;
+}
+.input-wrap .input { padding-right: 44px; }
+.input-short { max-width: 180px; }
+
+.segmented {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  padding: 2px; gap: 2px; border-radius: var(--r-sm); background: var(--fill);
+}
+.segmented label {
+  display: grid; place-items: center; text-align: center;
+  min-height: calc(var(--control-h) - 4px); padding: 4px 10px;
+  border-radius: 7px; font: var(--t-callout); font-size: 14px; color: var(--text);
+  cursor: pointer; line-height: 1.2;
+}
+.segmented label.on { background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.04); font-weight: 600; }
+:root[data-theme="dark"] .segmented label.on { background: #636366; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .segmented label.on { background: #636366; } }
+
+.choices { display: grid; gap: 6px; }
+.choice {
+  display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: center;
+  padding: 11px 14px; border-radius: var(--r-md);
+  background: var(--fill-2); border: 1px solid transparent;
+  font: var(--t-callout); cursor: pointer;
+}
+.choice .radio { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--surface); }
+.choice.on { background: var(--accent-tint); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.choice.on .radio { border: 6px solid var(--accent); }
+
+.check {
+  display: inline-grid; place-items: center;
+  width: 22px; height: 22px; border-radius: 6px;
+  border: 1.5px solid var(--border); background: var(--surface);
+}
+.check.on { background: var(--accent); border-color: var(--accent); }
+.check.on::after {
+  content: ""; width: 10px; height: 5px; margin-top: -3px;
+  border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg);
+}
+.check-cell { display: grid; place-items: center; min-height: var(--control-h); }
+
+/* ---------- Editable tables (parts, panels) ---------- */
+.table-wrap { overflow-x: auto; margin: 0 calc(-1 * var(--s-6)); padding: 0 var(--s-6); }
+table.edit { width: 100%; border-collapse: separate; border-spacing: 0; }
+table.edit th {
+  font: var(--t-caption); color: var(--text-2); text-align: left;
+  padding: 0 6px 8px; white-space: nowrap;
+}
+table.edit th .unit { font-weight: 400; color: var(--text-3); }
+table.edit th.c, table.edit td.c { text-align: center; }
+table.edit td { padding: 3px 6px; vertical-align: top; }
+table.edit tr.row td { border-top: 0.5px solid var(--separator); padding-top: 6px; padding-bottom: 6px; }
+table.edit td.idx { color: var(--text-3); font: var(--t-caption); vertical-align: middle; width: 28px; text-align: right; }
+table.edit .w-name { min-width: 170px; }
+table.edit .w-len { width: 132px; }
+table.edit .w-qty { width: 112px; }
+table.edit .w-chk { width: 64px; }
+table.edit .w-del { width: 40px; }
+table.edit tr.err-row td { padding: 0 6px 8px; }
+.cell-error { color: var(--danger); font: var(--t-help); display: flex; gap: 6px; align-items: flex-start; }
+th.focus-col { color: var(--accent) !important; }
+.table-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); padding-top: var(--s-3); }
+.table-foot .meta { color: var(--text-2); font: var(--t-help); }
+
+/* Field guide: the always-visible help for every table column */
+.guide { margin-top: var(--s-5); padding: var(--s-5); border-radius: var(--r-md); background: var(--surface-2); border: 0.5px solid var(--separator); }
+.guide h3 { font: var(--t-label); color: var(--text-2); text-transform: none; margin-bottom: var(--s-3); }
+.guide dl { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4) var(--s-6); }
+.guide dt { font: var(--t-label); }
+.guide dd { margin: 4px 0 0; font: var(--t-help); color: var(--text-2); }
+.guide dd strong { color: var(--text); }
+.guide .item { padding-left: 12px; border-left: 2px solid transparent; }
+.guide .item.active { border-left-color: var(--accent); }
+.guide .item.active dt { color: var(--accent); }
+.guide .item.muted { opacity: 0.55; }
+.guide .wide { grid-column: 1 / -1; }
+@media (max-width: 720px) { .guide dl { grid-template-columns: 1fr; } }
+
+/* ---------- Banners ---------- */
+.banner {
+  display: grid; grid-template-columns: 24px 1fr auto; gap: 12px; align-items: start;
+  padding: var(--s-4) var(--s-5); border-radius: var(--r-md); margin-bottom: var(--s-6);
+}
+.banner-error { background: var(--danger-tint); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 30%, transparent); }
+.banner-error .icon { color: var(--danger); }
+.banner h3 { font: var(--t-headline); }
+.banner p { color: var(--text-2); margin-top: 2px; }
+.banner ul { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.banner li a { color: var(--danger); text-decoration: none; font-weight: 500; }
+.banner li { color: var(--text-2); }
+
+/* ---------- Summary / call to action column ---------- */
+.cta { padding: var(--s-6); }
+.cta .summary { display: flex; justify-content: space-between; color: var(--text-2); font: var(--t-help); margin-top: var(--s-3); }
+.cta-bar {
+  position: sticky; bottom: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-4);
+  padding: var(--s-3) var(--s-5) calc(var(--s-3) + env(safe-area-inset-bottom));
+  background: var(--bar-bg); backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-top: 0.5px solid var(--separator);
+}
+.cta-bar .meta { color: var(--text-2); font: var(--t-help); }
+
+/* ---------- Metrics ---------- */
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-4); }
+.metric { padding: var(--s-5); }
+.metric .label { font: var(--t-caption); color: var(--text-2); }
+.metric .value { font: var(--t-figure); letter-spacing: -0.02em; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.metric .value small { font-size: 15px; font-weight: 500; color: var(--text-2); letter-spacing: 0; }
+.metric .note { font: var(--t-help); color: var(--text-2); margin-top: 4px; }
+.metric .note.good { color: var(--success); }
+@media (max-width: 1099px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------- Progress ---------- */
+.progress { height: 6px; border-radius: var(--r-pill); background: var(--fill); overflow: hidden; }
+.progress > span { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 12px 4px 10px; border-radius: var(--r-pill);
+  font: var(--t-caption); font-size: 13px;
+}
+.status-pill .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-tint); }
+.status-running { background: var(--accent-tint); color: var(--accent); }
+.status-done { background: var(--success-tint); color: var(--success); }
+.status-done .pulse { background: var(--success); box-shadow: none; }
+
+/* ---------- Timeline of plans found ---------- */
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline li {
+  display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: center;
+  padding: 12px 0; border-top: 0.5px solid var(--separator);
+}
+.timeline li:first-child { border-top: 0; }
+.timeline .n {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--fill); font: var(--t-caption); color: var(--text-2);
+}
+.timeline li.best .n { background: var(--accent); color: var(--on-accent); }
+.timeline .t1 { font: var(--t-callout); }
+.timeline .t2 { font: var(--t-help); color: var(--text-2); }
+.timeline .delta { font: var(--t-caption); color: var(--success); }
+
+/* ---------- Plan viewer ---------- */
+.page-wide { max-width: 1440px; }
+.plan-layout {
+  display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--s-5); align-items: start;
+  grid-template-areas: "main cuts" "tables cuts";
+}
+.pl-main { grid-area: main; } .pl-cuts { grid-area: cuts; } .pl-tables { grid-area: tables; }
+@media (max-width: 1099px) {
+  .plan-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "cuts" "tables"; }
+}
+.rail { display: grid; grid-auto-flow: column; grid-auto-columns: 180px; gap: var(--s-3); overflow-x: auto; padding: 2px; }
+.thumb {
+  display: block; padding: 10px; border-radius: var(--r-md); background: var(--surface);
+  box-shadow: var(--shadow-1); text-decoration: none; color: var(--text);
+  border: 2px solid transparent;
+}
+.thumb.on { border-color: var(--accent); }
+.thumb .tt { display: flex; justify-content: space-between; font: var(--t-caption); margin-top: 8px; }
+.thumb .tt span:last-child { color: var(--text-2); }
+.thumb svg { display: block; width: 100%; height: auto; }
+
+
+.figure { padding: var(--s-5); }
+.figure > svg { display: block; width: 100%; height: auto; }
+.toggle, .figure-head .btn { white-space: nowrap; }
+table.data td.num, table.data td:nth-child(2) { white-space: nowrap; }
+.figure-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-4); margin-bottom: var(--s-4); }
+.figure-head h2 { font: var(--t-title); letter-spacing: -0.01em; }
+.figure-head .sub { color: var(--text-2); font: var(--t-help); margin-top: 2px; }
+.toggles { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+.toggle {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px;
+  border-radius: var(--r-pill); background: var(--fill-2); font: var(--t-caption); font-size: 13px; color: var(--text-2);
+}
+.toggle.on { background: var(--accent-tint); color: var(--accent); }
+@media (max-width: 1099px) { .toggle { height: 40px; padding: 0 16px; } }
+
+.legend { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); margin-top: var(--s-4); font: var(--t-caption); color: var(--text-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend svg { flex: none; }
+
+.cutlist { list-style: none; margin: 0; padding: 0; }
+.cutlist .group {
+  font: var(--t-label); color: var(--text-2); padding: 14px 20px 6px;
+  display: flex; justify-content: space-between;
+}
+.cutlist .group span:last-child { font-weight: 400; }
+.cutlist .cut {
+  display: grid; grid-template-columns: 26px 1fr; gap: 12px;
+  padding: 9px 20px; align-items: start;
+}
+.cutlist .cut .n {
+  width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--plan-badge); color: var(--plan-badge-text); font: 600 11px/1 var(--font);
+  margin-top: 1px;
+}
+.cutlist .cut .m { font: var(--t-callout); font-weight: 600; font-variant-numeric: tabular-nums; }
+.cutlist .cut .m em { font-style: normal; font-weight: 400; color: var(--text-2); font-size: 13px; margin-left: 4px; }
+.cutlist .cut .r { font: var(--t-help); color: var(--text-2); }
+.cutlist .cut .r b { color: var(--text); font-weight: 500; }
+.cutlist .cut.on { background: var(--accent-tint); }
+.cutlist .cut.on .n { background: var(--accent); color: var(--on-accent); }
+.cutlist .cut.done { opacity: 0.5; }
+.cutlist .cut.done .n { background: var(--text-3); }
+.scroll-card { max-height: 860px; overflow: auto; position: sticky; top: 80px; }
+@media (max-width: 1099px) { .scroll-card { max-height: none; position: static; } }
+
+table.data { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+table.data th { font: var(--t-caption); color: var(--text-2); text-align: left; padding: 0 12px 8px; }
+table.data td { padding: 10px 12px; border-top: 0.5px solid var(--separator); }
+table.data .r { text-align: right; }
+table.data .muted { color: var(--text-2); }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: 0; }
+
+.overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-5); align-items: start; }
+@media (max-width: 1099px) { .overview-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--r-pill); background: var(--fill); font: var(--t-caption); color: var(--text-2); }
+.chip-accent { background: var(--accent-tint); color: var(--accent); }
+
+/* ---------- Empty / problem states ---------- */
+.state {
+  display: grid; justify-items: center; text-align: center; gap: var(--s-3);
+  padding: var(--s-12) var(--s-8);
+}
+.state .art { color: var(--text-3); margin-bottom: var(--s-2); }
+.state h2 { font: var(--t-title); }
+.state p { color: var(--text-2); max-width: 46ch; }
+.state .actions { display: flex; gap: var(--s-3); margin-top: var(--s-3); flex-wrap: wrap; justify-content: center; }
+.state-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-5); }
+@media (max-width: 1099px) { .state-grid { grid-template-columns: minmax(0, 1fr); } }
+.state-tag { font: var(--t-caption); color: var(--text-3); padding: var(--s-4) var(--s-5) 0; text-transform: uppercase; letter-spacing: 0.06em; }
+.hint-list { text-align: left; margin: var(--s-2) 0 0; padding: 0; list-style: none; display: grid; gap: 8px; max-width: 46ch; }
+.hint-list li { display: grid; grid-template-columns: 20px 1fr; gap: 8px; color: var(--text-2); font: var(--t-help); }
+.hint-list li b { color: var(--text); font-weight: 600; }
+
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.thumb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--s-5); align-items: start; }
+
+.plan-svg { font-family: var(--font); font-variant-numeric: tabular-nums; }
+.p-kerf { fill: var(--plan-kerf); }
+.p-edge { fill: none; stroke: var(--text); stroke-opacity: .55; stroke-width: 1; }
+.p-part { fill: var(--plan-part); stroke: var(--plan-part-stroke); stroke-width: .75; }
+.p-nostroke { stroke: none; }
+.p-grain { fill: none; stroke: var(--plan-grain); stroke-width: 1; }
+.p-offcut-bg { fill: var(--plan-offcut); }
+.p-hatch { stroke: var(--plan-hatch); stroke-width: 1.4; }
+.p-offcut { stroke: none; }
+.p-leftover { fill: var(--plan-leftover); stroke: var(--plan-leftover-stroke); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.p-part-text { fill: var(--plan-part-text); }
+.p-name { font-weight: 600; }
+.p-dim { font-weight: 450; }
+.p-part-text .p-dim { fill-opacity: .78; }
+.p-offcut-text { fill: var(--plan-offcut-text); }
+.p-leftover-text { fill: var(--text-2); }
+.p-rot { stroke: var(--plan-part-stroke); }
+.p-ruler line { stroke: var(--plan-ruler); stroke-width: 1; }
+.p-ruler text { fill: var(--text-2); font-size: 11px; font-weight: 500; }
+.p-ruler .p-ruler-weak { fill: var(--text-3); }
+.p-ruler-bg { fill: var(--surface); }
+.p-badge circle { fill: var(--plan-badge); stroke: var(--surface); stroke-width: 1.5; }
+.p-badge text { fill: var(--plan-badge-text); font-size: 10px; font-weight: 700; }
+.p-badge.on circle { fill: var(--accent); }
+.p-badge.on text { fill: var(--on-accent); }
+.p-badge.done { opacity: .35; }
+.p-cutline { fill: var(--accent); }
+.p-result { fill: var(--accent-tint); stroke: var(--accent); stroke-width: 2; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="1" y="1" width="24" height="24" rx="6.5" fill="var(--accent)"/><path d="M5.5 14.5h15M12 14.5v6M15.5 5.5v9" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg><span>Sheetsolver</span></div>
+  <nav class="steps" aria-label="Progress"><a href="#" class="done"><span class="dot"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Job</a><a href="#" class="done"><span class="dot"><svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Search</a><a href="#" aria-current="step"><span class="dot">3</span>Plan</a></nav>
+  <div class="topbar-actions"></div>
+</header>
+
+<main class="page page-wide">
+  
+  <div class="page-head">
+    <div>
+      <span class="status-pill status-done"><span class="pulse"></span>Search finished</span>
+      <h1 style="margin-top:12px">Cutting plan</h1>
+      <p class="sub num">Plan 2, found after 0.9 s of a 10 s search · 3 stages · kerf 3.2 mm</p>
+    </div>
+    <div style="display:flex;gap:8px"><a class="btn" href="#"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 2.5 13.5 5.5 6 13H3v-3z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>Edit job</a></div>
+  </div>
+  <div class="metrics" style="margin-bottom:var(--s-6)">
+    <div class="card metric"><div class="label">Panels</div><div class="value">3</div><div class="note">Birch ply 18 mm, 2440 × 1220</div></div>
+    <div class="card metric"><div class="label">Parts cut</div><div class="value">21 <small>of 21</small></div><div class="note">Every part is in the plan</div></div>
+    <div class="card metric"><div class="label">Waste</div><div class="value">18.6%</div><div class="note num">1.56 m² of offcuts and saw dust</div></div>
+    <div class="card metric"><div class="label">Leftover</div><div class="value num" style="font-size:24px">2440 × 213.6</div><div class="note">Reusable strip on panel 3</div></div>
+  </div>
+  <div style="margin-bottom:var(--s-5)"><div class="segmented" style="max-width:320px" role="tablist"><label class="">Overview</label><label class="on">Panel by panel</label></div></div>
+  <div class="plan-layout">
+    <div class="stack pl-main" style="gap:var(--s-5)">
+      <nav class="rail" aria-label="Panels"><a class="thumb on" href="#" aria-current="page"><svg viewBox="0 0 152.0 77.0" role="img" class="plan-svg" aria-labelledby="r0-t"><title id="r0-t">Panel 1</title><defs><pattern id="r0-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="p-offcut-bg"/><line x1="0" y1="0" x2="0" y2="6" class="p-hatch"/></pattern><pattern id="r0-grain" width="40" height="5" patternUnits="userSpaceOnUse"><path d="M0 2.5 Q10 1.6 20 2.5 T40 2.5" class="p-grain"/></pattern></defs><rect x="1" y="1" width="150.00" height="75.00" class="p-kerf"/><rect x="1.00" y="56.33" width="19.70" height="19.67" class="p-part"/><rect x="1.00" y="36.46" width="19.70" height="19.67" class="p-part"/><rect x="20.90" y="37.27" width="63.97" height="38.73" class="p-part"/><rect x="20.90" y="36.46" width="63.97" height="0.61" fill="url(#r0-hatch)" class="p-offcut"/><rect x="85.06" y="37.27" width="63.97" height="38.73" class="p-part"/><rect x="85.06" y="36.46" width="63.97" height="0.61" fill="url(#r0-hatch)" class="p-offcut"/><rect x="149.22" y="36.46" width="1.78" height="39.54" fill="url(#r0-hatch)" class="p-offcut"/><rect x="1.00" y="10.44" width="68.24" height="25.82" class="p-part"/><rect x="1.00" y="10.44" width="68.24" height="25.82" fill="url(#r0-grain)" class="p-nostroke"/><rect x="69.43" y="10.44" width="68.24" height="25.82" class="p-part"/><rect x="69.43" y="10.44" width="68.24" height="25.82" fill="url(#r0-grain)" class="p-nostroke"/><rect x="137.87" y="23.32" width="8.61" height="12.94" class="p-part"/><rect x="137.87" y="10.44" width="8.61" height="12.68" fill="url(#r0-hatch)" class="p-offcut"/><rect x="146.67" y="10.44" width="4.33" height="25.82" fill="url(#r0-hatch)" class="p-offcut"/><rect x="1.00" y="2.87" width="23.36" height="7.38" class="p-part"/><rect x="1.00" y="2.87" width="23.36" height="7.38" fill="url(#r0-grain)" class="p-nostroke"/><rect x="24.56" y="2.87" width="23.36" height="7.38" class="p-part"/><rect x="24.56" y="2.87" width="23.36" height="7.38" fill="url(#r0-grain)" class="p-nostroke"/><rect x="48.11" y="4.71" width="15.98" height="5.53" class="p-part"/><rect x="48.11" y="4.71" width="15.98" height="5.53" fill="url(#r0-grain)" class="p-nostroke"/><rect x="48.11" y="2.87" width="15.98" height="1.65" fill="url(#r0-hatch)" class="p-offcut"/><rect x="64.30" y="4.71" width="27.66" height="5.53" class="p-part"/><rect x="64.30" y="4.71" width="27.66" height="5.53" fill="url(#r0-grain)" class="p-nostroke"/><rect x="64.30" y="2.87" width="27.66" height="1.65" fill="url(#r0-hatch)" class="p-offcut"/><rect x="92.16" y="2.87" width="58.84" height="7.38" fill="url(#r0-hatch)" class="p-offcut"/><rect x="1.00" y="1.00" width="150.00" height="1.67" fill="url(#r0-hatch)" class="p-offcut"/><rect x="1" y="1" width="150.00" height="75.00" class="p-edge"/></svg><div class="tt"><span>Panel 1</span><span>11 parts</span></div></a><a class="thumb" href="#"><svg viewBox="0 0 152.0 77.0" role="img" class="plan-svg" aria-labelledby="r1-t"><title id="r1-t">Panel 2</title><defs><pattern id="r1-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="p-offcut-bg"/><line x1="0" y1="0" x2="0" y2="6" class="p-hatch"/></pattern><pattern id="r1-grain" width="40" height="5" patternUnits="userSpaceOnUse"><path d="M0 2.5 Q10 1.6 20 2.5 T40 2.5" class="p-grain"/></pattern></defs><rect x="1" y="1" width="150.00" height="75.00" class="p-kerf"/><rect x="1.00" y="58.79" width="44.26" height="17.21" class="p-part"/><rect x="1.00" y="41.38" width="44.26" height="17.21" class="p-part"/><rect x="45.46" y="45.26" width="49.18" height="30.74" class="p-part"/><rect x="45.46" y="45.26" width="49.18" height="30.74" fill="url(#r1-grain)" class="p-nostroke"/><rect x="45.46" y="41.38" width="49.18" height="3.69" fill="url(#r1-hatch)" class="p-offcut"/><rect x="94.84" y="45.26" width="49.18" height="30.74" class="p-part"/><rect x="94.84" y="45.26" width="49.18" height="30.74" fill="url(#r1-grain)" class="p-nostroke"/><rect x="94.84" y="41.38" width="49.18" height="3.69" fill="url(#r1-hatch)" class="p-offcut"/><rect x="144.21" y="41.38" width="6.79" height="34.62" fill="url(#r1-hatch)" class="p-offcut"/><rect x="1.00" y="2.45" width="63.97" height="38.73" class="p-part"/><rect x="65.16" y="2.45" width="63.97" height="38.73" class="p-part"/><rect x="129.32" y="23.35" width="21.52" height="17.83" class="p-part"/><rect x="129.32" y="23.35" width="21.52" height="17.83" fill="url(#r1-grain)" class="p-nostroke"/><rect x="129.32" y="2.45" width="21.52" height="20.70" fill="url(#r1-hatch)" class="p-offcut"/><rect x="1.00" y="1.00" width="150.00" height="1.25" fill="url(#r1-hatch)" class="p-offcut"/><rect x="1" y="1" width="150.00" height="75.00" class="p-edge"/></svg><div class="tt"><span>Panel 2</span><span>7 parts</span></div></a><a class="thumb" href="#"><svg viewBox="0 0 152.0 77.0" role="img" class="plan-svg" aria-labelledby="r2-t"><title id="r2-t">Panel 3</title><defs><pattern id="r2-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="p-offcut-bg"/><line x1="0" y1="0" x2="0" y2="6" class="p-hatch"/></pattern><pattern id="r2-grain" width="40" height="5" patternUnits="userSpaceOnUse"><path d="M0 2.5 Q10 1.6 20 2.5 T40 2.5" class="p-grain"/></pattern></defs><rect x="1" y="1" width="150.00" height="75.00" class="p-kerf"/><rect x="1.00" y="37.27" width="63.97" height="38.73" class="p-part"/><rect x="1.00" y="14.33" width="63.97" height="22.75" fill="url(#r2-hatch)" class="p-offcut"/><rect x="65.16" y="37.27" width="63.97" height="38.73" class="p-part"/><rect x="65.16" y="14.33" width="47.34" height="22.75" class="p-part"/><rect x="112.69" y="14.33" width="16.43" height="22.75" fill="url(#r2-hatch)" class="p-offcut"/><rect x="129.32" y="14.33" width="21.68" height="61.67" fill="url(#r2-hatch)" class="p-offcut"/><rect x="1.75" y="1.75" width="148.50" height="11.63" class="p-leftover"/><rect x="1" y="1" width="150.00" height="75.00" class="p-edge"/></svg><div class="tt"><span>Panel 3</span><span>3 parts</span></div></a></nav>
+      <section class="card figure">
+        <div class="figure-head">
+          <div><h2>Panel 1 <span style="color:var(--text-2);font-weight:400">of 3</span></h2>
+            <p class="sub num">Birch ply 18 mm · 2440 × 1220 · 11 parts · waste 11.5% · first cuts along the length</p></div>
+          <div class="toggles"><span class="toggle on"><svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Sizes</span><span class="toggle on"><svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Cut order</span></div>
+        </div>
+        <svg viewBox="0 0 936.0 457.0" role="img" class="plan-svg" aria-labelledby="main-t"><title id="main-t">Panel 1 of 3: Birch ply 18 mm, 2440 by 1220 mm</title><defs><pattern id="main-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="p-offcut-bg"/><line x1="0" y1="0" x2="0" y2="6" class="p-hatch"/></pattern><pattern id="main-grain" width="40" height="5" patternUnits="userSpaceOnUse"><path d="M0 2.5 Q10 1.6 20 2.5 T40 2.5" class="p-grain"/></pattern></defs><rect x="70" y="34" width="830.00" height="415.00" class="p-kerf"/><rect x="70.00" y="340.15" width="109.02" height="108.85" class="p-part"/><g transform="translate(163.02 433.00)" class="p-rot"><path d="M9.6 4.3A4 4 0 1 0 10 6" fill="none" stroke-width="1.3" stroke-linecap="round"/><path d="M10.4 1.8v2.8H7.6" fill="none" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></g><g class="p-part-text"><text x="124.51" y="393.07" text-anchor="middle" class="p-name" font-size="12">Fixed shelf</text><text x="124.51" y="406.57" text-anchor="middle" class="p-dim" font-size="11">320.5 × 320</text></g><rect x="70.00" y="230.21" width="109.02" height="108.85" class="p-part"/><g transform="translate(163.02 323.06)" class="p-rot"><path d="M9.6 4.3A4 4 0 1 0 10 6" fill="none" stroke-width="1.3" stroke-linecap="round"/><path d="M10.4 1.8v2.8H7.6" fill="none" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></g><g class="p-part-text"><text x="124.51" y="283.13" text-anchor="middle" class="p-name" font-size="12">Fixed shelf</text><text x="124.51" y="296.63" text-anchor="middle" class="p-dim" font-size="11">320.5 × 320</text></g><rect x="180.11" y="234.70" width="353.94" height="214.30" class="p-part"/><g class="p-part-text"><text x="357.08" y="340.35" text-anchor="middle" class="p-name" font-size="12">Side</text><text x="357.08" y="353.85" text-anchor="middle" class="p-dim" font-size="11">1040.5 × 630</text></g><rect x="180.11" y="230.21" width="353.94" height="3.40" fill="url(#main-hatch)" class="p-offcut"/><rect x="535.14" y="234.70" width="353.94" height="214.30" class="p-part"/><g class="p-part-text"><text x="712.11" y="340.35" text-anchor="middle" class="p-name" font-size="12">Side</text><text x="712.11" y="353.85" text-anchor="middle" class="p-dim" font-size="11">1040.5 × 630</text></g><rect x="535.14" y="230.21" width="353.94" height="3.40" fill="url(#main-hatch)" class="p-offcut"/><rect x="890.17" y="230.21" width="9.83" height="218.79" fill="url(#main-hatch)" class="p-offcut"/><rect x="70.00" y="86.25" width="377.58" height="142.87" class="p-part"/><rect x="70.00" y="86.25" width="377.58" height="142.87" fill="url(#main-grain)" class="p-nostroke"/><g class="p-part-text"><text x="258.79" y="156.18" text-anchor="middle" class="p-name" font-size="12">Shelf</text><text x="258.79" y="169.68" text-anchor="middle" class="p-dim" font-size="11">1110 × 420</text></g><rect x="448.67" y="86.25" width="377.58" height="142.87" class="p-part"/><rect x="448.67" y="86.25" width="377.58" height="142.87" fill="url(#main-grain)" class="p-nostroke"/><g class="p-part-text"><text x="637.46" y="156.18" text-anchor="middle" class="p-name" font-size="12">Shelf</text><text x="637.46" y="169.68" text-anchor="middle" class="p-dim" font-size="11">1110 × 420</text></g><rect x="827.34" y="157.51" width="47.62" height="71.60" class="p-part"/><g transform="translate(858.96 213.12)" class="p-rot"><path d="M9.6 4.3A4 4 0 1 0 10 6" fill="none" stroke-width="1.3" stroke-linecap="round"/><path d="M10.4 1.8v2.8H7.6" fill="none" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></g><rect x="827.34" y="86.25" width="47.62" height="70.18" fill="url(#main-hatch)" class="p-offcut"/><rect x="876.05" y="86.25" width="23.95" height="142.87" fill="url(#main-hatch)" class="p-offcut"/><text x="888.03" y="161.36" text-anchor="middle" transform="rotate(-90 888.03 157.68)" class="p-offcut-text p-dim" font-size="10.5">70.4 × 420</text><rect x="70.00" y="44.34" width="129.26" height="40.82" class="p-part"/><rect x="70.00" y="44.34" width="129.26" height="40.82" fill="url(#main-grain)" class="p-nostroke"/><g class="p-part-text"><text x="134.63" y="63.25" text-anchor="middle" class="p-name" font-size="12">Stretcher</text><text x="134.63" y="76.75" text-anchor="middle" class="p-dim" font-size="11">380 × 120</text></g><rect x="200.35" y="44.34" width="129.26" height="40.82" class="p-part"/><rect x="200.35" y="44.34" width="129.26" height="40.82" fill="url(#main-grain)" class="p-nostroke"/><g class="p-part-text"><text x="264.98" y="63.25" text-anchor="middle" class="p-name" font-size="12">Stretcher</text><text x="264.98" y="76.75" text-anchor="middle" class="p-dim" font-size="11">380 × 120</text></g><rect x="330.70" y="54.55" width="88.44" height="30.61" class="p-part"/><rect x="330.70" y="54.55" width="88.44" height="30.61" fill="url(#main-grain)" class="p-nostroke"/><g class="p-part-text"><text x="374.92" y="68.35" text-anchor="middle" class="p-name" font-size="12">Kicker</text><text x="374.92" y="81.85" text-anchor="middle" class="p-dim" font-size="11">260 × 90</text></g><rect x="330.70" y="44.34" width="88.44" height="9.12" fill="url(#main-hatch)" class="p-offcut"/><rect x="420.23" y="54.55" width="153.07" height="30.61" class="p-part"/><rect x="420.23" y="54.55" width="153.07" height="30.61" fill="url(#main-grain)" class="p-nostroke"/><g class="p-part-text"><text x="496.77" y="68.35" text-anchor="middle" class="p-name" font-size="12">Rail</text><text x="496.77" y="81.85" text-anchor="middle" class="p-dim" font-size="11">450 × 90</text></g><rect x="420.23" y="44.34" width="153.07" height="9.12" fill="url(#main-hatch)" class="p-offcut"/><rect x="574.40" y="44.34" width="325.60" height="40.82" fill="url(#main-hatch)" class="p-offcut"/><text x="737.20" y="68.43" text-anchor="middle" class="p-offcut-text p-dim" font-size="10.5">957.2 × 120</text><rect x="70.00" y="34.00" width="830.00" height="9.25" fill="url(#main-hatch)" class="p-offcut"/><rect x="70" y="34" width="830.00" height="415.00" class="p-edge"/><g class="p-ruler"><line x1="70" y1="18" x2="900.00" y2="18"/><line x1="70" y1="13" x2="70" y2="23"/><line x1="900.00" y1="13" x2="900.00" y2="23"/><rect x="466.68" y="10" width="36.64" height="16" class="p-ruler-bg"/><text x="485.00" y="22" text-anchor="middle">2440</text><line x1="916.00" y1="34" x2="916.00" y2="449.00"/><line x1="911.00" y1="34" x2="921.00" y2="34"/><line x1="911.00" y1="449.00" x2="921.00" y2="449.00"/><g transform="rotate(-90 916.00 241.50)"><rect x="897.68" y="233.50" width="36.64" height="16" class="p-ruler-bg"/><text x="916.00" y="245.50" text-anchor="middle">1220</text></g><line x1="54" y1="230.21" x2="62" y2="230.21"/><line x1="54" y1="449.00" x2="62" y2="449.00"/><line x1="58" y1="230.21" x2="58" y2="449.00"/><text x="50" y="343.60" text-anchor="end">643.2</text><line x1="54" y1="86.25" x2="62" y2="86.25"/><line x1="54" y1="229.12" x2="62" y2="229.12"/><line x1="58" y1="86.25" x2="58" y2="229.12"/><text x="50" y="161.68" text-anchor="end">420</text><line x1="54" y1="44.34" x2="62" y2="44.34"/><line x1="54" y1="85.16" x2="62" y2="85.16"/><line x1="58" y1="44.34" x2="58" y2="85.16"/><text x="50" y="68.75" text-anchor="end">120</text><line x1="54" y1="34.00" x2="62" y2="34.00"/><line x1="54" y1="43.25" x2="62" y2="43.25"/><line x1="58" y1="34.00" x2="58" y2="43.25"/></g><rect x="70.00" y="337.90" width="109.02" height="3.00" class="p-cutline"/><rect x="70.00" y="340.15" width="109.02" height="108.85" class="p-result"/><g class="p-badge done"><circle cx="82.00" cy="229.46" r="9"/><text x="82.00" y="233.06" text-anchor="middle">1</text></g><g class="p-badge done"><circle cx="82.00" cy="85.50" r="9"/><text x="82.00" y="89.10" text-anchor="middle">2</text></g><g class="p-badge done"><circle cx="82.00" cy="43.59" r="9"/><text x="82.00" y="47.19" text-anchor="middle">3</text></g><g class="p-badge done"><circle cx="179.77" cy="242.21" r="9"/><text x="179.77" y="245.81" text-anchor="middle">4</text></g><g class="p-badge done"><circle cx="534.80" cy="242.21" r="9"/><text x="534.80" y="245.81" text-anchor="middle">5</text></g><g class="p-badge done"><circle cx="889.83" cy="242.21" r="9"/><text x="889.83" y="245.81" text-anchor="middle">6</text></g><g class="p-badge on"><circle cx="82.00" cy="339.40" r="9"/><text x="82.00" y="343.00" text-anchor="middle">7</text></g><g class="p-badge"><circle cx="213.11" cy="233.95" r="9"/><text x="213.11" y="237.55" text-anchor="middle">8</text></g><g class="p-badge"><circle cx="568.14" cy="233.95" r="9"/><text x="568.14" y="237.55" text-anchor="middle">9</text></g><g class="p-badge"><circle cx="448.33" cy="98.25" r="9"/><text x="448.33" y="101.85" text-anchor="middle">10</text></g><g class="p-badge"><circle cx="827.00" cy="98.25" r="9"/><text x="827.00" y="101.85" text-anchor="middle">11</text></g><g class="p-badge"><circle cx="875.71" cy="98.25" r="9"/><text x="875.71" y="101.85" text-anchor="middle">12</text></g><g class="p-badge"><circle cx="839.34" cy="156.76" r="9"/><text x="839.34" y="160.36" text-anchor="middle">13</text></g><g class="p-badge"><circle cx="200.01" cy="56.34" r="9"/><text x="200.01" y="59.94" text-anchor="middle">14</text></g><g class="p-badge"><circle cx="330.36" cy="56.34" r="9"/><text x="330.36" y="59.94" text-anchor="middle">15</text></g><g class="p-badge"><circle cx="419.89" cy="56.34" r="9"/><text x="419.89" y="59.94" text-anchor="middle">16</text></g><g class="p-badge"><circle cx="574.06" cy="56.34" r="9"/><text x="574.06" y="59.94" text-anchor="middle">17</text></g><g class="p-badge"><circle cx="363.70" cy="53.80" r="9"/><text x="363.70" y="57.40" text-anchor="middle">18</text></g><g class="p-badge"><circle cx="453.23" cy="53.80" r="9"/><text x="453.23" y="57.40" text-anchor="middle">19</text></g></svg>
+        <div class="legend"><span><svg width="18" height="12" aria-hidden="true" class="plan-svg"><rect x=".5" y=".5" width="17" height="11" rx="2" class="p-part" /></svg>Part</span><span><svg width="18" height="12" class="plan-svg" aria-hidden="true"><rect x=".5" y=".5" width="17" height="11" rx="2" class="p-part"/><path d="M1 6 Q5 4.8 9 6 T17 6" class="p-grain" style="stroke:var(--plan-part-stroke)"/></svg>Keeps grain direction</span><span><svg width="14" height="14" viewBox="0 0 12 12" class="plan-svg p-rot" aria-hidden="true"><path d="M9.6 4.3A4 4 0 1 0 10 6" fill="none" stroke-width="1.3" stroke-linecap="round"/><path d="M10.4 1.8v2.8H7.6" fill="none" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>Turned 90°</span><span><svg width="18" height="12" class="plan-svg" aria-hidden="true"><defs><pattern id="lg-h" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" class="p-offcut-bg"/><line x1="0" y1="0" x2="0" y2="4" class="p-hatch"/></pattern></defs><rect x=".5" y=".5" width="17" height="11" rx="2" fill="url(#lg-h)"/></svg>Offcut</span><span><svg width="18" height="12" aria-hidden="true" class="plan-svg"><rect x=".5" y=".5" width="17" height="11" rx="2" class="p-leftover" /></svg>Leftover (reusable)</span><span><svg width="18" height="12" class="plan-svg" aria-hidden="true"><rect x="8" y="0" width="2" height="12" class="p-kerf"/></svg>Saw cut (3.2 mm kerf)</span></div>
+      </section>
+    </div>
+    <aside class="card scroll-card pl-cuts" aria-label="Cut order">
+      <div class="card-head"><h2>Cut order</h2><span class="meta num">19 cuts</span></div>
+      <p class="help" style="padding:0 20px">Each size is the piece to cut off, measured from the edge you cut from: set your fence or stop to it. Tap a cut to find it on the drawing.</p>
+      <ol class="cutlist"><li class="group"><span>Panel into strips</span><span class="num">first cuts, along the length</span></li><li class="cut done"><span class="n">1</span><div><div class="m">643.2 mm<em>along the length</em></div><div class="r">→ <b>Strip A</b> 2440 × 643.2</div></div></li><li class="cut done"><span class="n">2</span><div><div class="m">420 mm<em>along the length</em></div><div class="r">→ <b>Strip B</b> 2440 × 420</div></div></li><li class="cut done"><span class="n">3</span><div><div class="m">120 mm<em>along the length</em></div><div class="r">→ <b>Strip C</b> 2440 × 120</div><div class="r">leaves offcut 2440 × 27.2</div></div></li><li class="group"><span>Strip A</span><span class="num">2440 × 643.2</span></li><li class="cut done"><span class="n">4</span><div><div class="m">320.5 mm<em>across the length</em></div><div class="r">→ <b>Piece A1</b> 320.5 × 643.2</div></div></li><li class="cut done"><span class="n">5</span><div><div class="m">1040.5 mm<em>across the length</em></div><div class="r">→ <b>Piece A2</b> 1040.5 × 643.2</div></div></li><li class="cut done"><span class="n">6</span><div><div class="m">1040.5 mm<em>across the length</em></div><div class="r">→ <b>Piece A3</b> 1040.5 × 643.2</div><div class="r">leaves offcut 28.9 × 643.2</div></div></li><li class="cut on" aria-current="step"><span class="n">7</span><div><div class="m">320 mm<em>along the length</em></div><div class="r">→ <b>Fixed shelf</b> 320.5 × 320</div><div class="r">leaves <b>Fixed shelf</b> 320.5 × 320</div></div></li><li class="cut"><span class="n">8</span><div><div class="m">630 mm<em>along the length</em></div><div class="r">→ <b>Side</b> 1040.5 × 630</div><div class="r">leaves offcut 1040.5 × 10</div></div></li><li class="cut"><span class="n">9</span><div><div class="m">630 mm<em>along the length</em></div><div class="r">→ <b>Side</b> 1040.5 × 630</div><div class="r">leaves offcut 1040.5 × 10</div></div></li><li class="group"><span>Strip B</span><span class="num">2440 × 420</span></li><li class="cut"><span class="n">10</span><div><div class="m">1110 mm<em>across the length</em></div><div class="r">→ <b>Piece B1</b> 1110 × 420</div></div></li><li class="cut"><span class="n">11</span><div><div class="m">1110 mm<em>across the length</em></div><div class="r">→ <b>Piece B2</b> 1110 × 420</div></div></li><li class="cut"><span class="n">12</span><div><div class="m">140 mm<em>across the length</em></div><div class="r">→ <b>Piece B3</b> 140 × 420</div><div class="r">leaves offcut 70.4 × 420</div></div></li><li class="cut"><span class="n">13</span><div><div class="m">210.5 mm<em>along the length</em></div><div class="r">→ <b>Cleat</b> 140 × 210.5</div><div class="r">leaves offcut 140 × 206.3</div></div></li><li class="group"><span>Strip C</span><span class="num">2440 × 120</span></li><li class="cut"><span class="n">14</span><div><div class="m">380 mm<em>across the length</em></div><div class="r">→ <b>Piece C1</b> 380 × 120</div></div></li><li class="cut"><span class="n">15</span><div><div class="m">380 mm<em>across the length</em></div><div class="r">→ <b>Piece C2</b> 380 × 120</div></div></li><li class="cut"><span class="n">16</span><div><div class="m">260 mm<em>across the length</em></div><div class="r">→ <b>Piece C3</b> 260 × 120</div></div></li><li class="cut"><span class="n">17</span><div><div class="m">450 mm<em>across the length</em></div><div class="r">→ <b>Piece C4</b> 450 × 120</div><div class="r">leaves offcut 957.2 × 120</div></div></li><li class="cut"><span class="n">18</span><div><div class="m">90 mm<em>along the length</em></div><div class="r">→ <b>Kicker</b> 260 × 90</div><div class="r">leaves offcut 260 × 26.8</div></div></li><li class="cut"><span class="n">19</span><div><div class="m">90 mm<em>along the length</em></div><div class="r">→ <b>Rail</b> 450 × 90</div><div class="r">leaves offcut 450 × 26.8</div></div></li></ol>
+    </aside>
+    <div class="pl-tables">
+      <div class="overview-grid">
+        <section class="card"><div class="card-head"><h2 style="font:var(--t-headline)">Parts on this panel</h2></div>
+          <div class="card-body"><table class="data"><thead><tr><th>Part</th><th>Size</th><th class="r">Qty</th></tr></thead><tbody><tr><td>Fixed shelf</td><td class="num">320 × 320.5</td><td class="r num">2</td></tr><tr><td>Side</td><td class="num">1040.5 × 630</td><td class="r num">2</td></tr><tr><td>Shelf</td><td class="num">1110 × 420</td><td class="r num">2</td></tr><tr><td>Cleat</td><td class="num">210.5 × 140</td><td class="r num">1</td></tr><tr><td>Stretcher</td><td class="num">380 × 120</td><td class="r num">2</td></tr><tr><td>Kicker</td><td class="num">260 × 90</td><td class="r num">1</td></tr><tr><td>Rail</td><td class="num">450 × 90</td><td class="r num">1</td></tr></tbody></table></div></section>
+        <section class="card"><div class="card-head"><h2 style="font:var(--t-headline)">Offcuts</h2><span class="meta">largest first</span></div>
+          <div class="card-body"><table class="data"><thead><tr><th>Size</th><th class="r">Area</th></tr></thead><tbody><tr><td class="num">957.2 × 120</td><td class="r num muted">0.115 m²</td></tr><tr><td class="num">2440 × 27.2</td><td class="r num muted">0.066 m²</td></tr><tr><td class="num">70.4 × 420</td><td class="r num muted">0.030 m²</td></tr><tr><td class="num">140 × 206.3</td><td class="r num muted">0.029 m²</td></tr><tr><td class="num">28.9 × 643.2</td><td class="r num muted">0.019 m²</td></tr><tr><td class="num">450 × 26.8</td><td class="r num muted">0.012 m²</td></tr></tbody></table>
+          <p class="help">3 smaller offcuts not listed. Slivers thinner than the kerf are counted as saw dust.</p></div></section>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>
