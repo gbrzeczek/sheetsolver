@@ -1,0 +1,89 @@
+name: Docker
+
+# Builds the single sheetsolver image (API + web UI, see the Dockerfile)
+# and pushes it to ghcr.io/<owner>/sheetsolver.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Tags: the branch (main), the version for v* tags (v1.2.3 → 1.2.3,
+      # 1.2), the commit (sha-…), and latest for main.
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/sheetsolver
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------------
+  # DEPLOY: not set up yet. The owner has not given the server's details.
+  # Pick one option, fill in the placeholders, and uncomment it. The
+  # server needs Docker and deploy/docker-compose.yml (with OWNER filled
+  # in) in its deploy directory, and must be able to pull from GHCR
+  # (`docker login ghcr.io` with a token that can read packages, unless
+  # the package is public).
+  # ---------------------------------------------------------------------
+  #
+  # Option 1: a self-hosted runner on the server itself pulls the new
+  # image and restarts the service. Nothing to open to the internet.
+  #
+  # deploy:
+  #   needs: image
+  #   if: github.ref == 'refs/heads/main'
+  #   runs-on: [self-hosted, sheetsolver]   # labels of the server's runner
+  #   steps:
+  #     - run: |
+  #         cd /srv/sheetsolver               # holds docker-compose.yml
+  #         docker compose pull
+  #         docker compose up -d
+  #         docker image prune -f
+  #
+  # Option 2: a GitHub-hosted runner logs in to the server over SSH.
+  # Needs repository secrets DEPLOY_HOST, DEPLOY_USER and DEPLOY_SSH_KEY
+  # (a key allowed only to run this), and the server's SSH port open.
+  #
+  # deploy:
+  #   needs: image
+  #   if: github.ref == 'refs/heads/main'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: appleboy/ssh-action@v1
+  #       with:
+  #         host: ${{ secrets.DEPLOY_HOST }}
+  #         username: ${{ secrets.DEPLOY_USER }}
+  #         key: ${{ secrets.DEPLOY_SSH_KEY }}
+  #         script: |
+  #           cd /srv/sheetsolver
+  #           docker compose pull
+  #           docker compose up -d
+  #           docker image prune -f

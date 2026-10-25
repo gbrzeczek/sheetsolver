@@ -156,11 +156,6 @@ pub async fn openapi() -> impl IntoResponse {
     Json(crate::openapi::document())
 }
 
-/// The answer to every other path.
-pub async fn not_found() -> ApiError {
-    ApiError::NotFound
-}
-
 /// The job named by `id`; an id that is not a UUID names no job.
 fn find(store: &JobStore, id: &str) -> Result<Arc<Job>, ApiError> {
     let id = Uuid::parse_str(id).map_err(|_| ApiError::NotFound)?;

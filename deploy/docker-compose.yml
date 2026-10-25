@@ -1,0 +1,24 @@
+# sheetsolver on a server: `docker compose pull && docker compose up -d`
+# in the directory holding this file. Replace OWNER with the GitHub owner
+# of the repository (lower case), as in ghcr.io/OWNER/sheetsolver.
+#
+# Jobs live in the server's memory, so there is no volume: a restart
+# forgets every job (see docs/API.md, "Limits").
+
+services:
+  sheetsolver:
+    image: ghcr.io/OWNER/sheetsolver:latest
+    restart: unless-stopped
+    ports:
+      # host:container; put a reverse proxy with TLS in front for the
+      # internet, and keep this on 127.0.0.1 then.
+      - "8080:8080"
+    environment:
+      # Every `api` option is also a variable (`api --help`).
+      SHEETSOLVER_LISTEN: "0.0.0.0:8080"
+      # SHEETSOLVER_MAX_RUNNING_JOBS: "4"   # default: the CPU cores
+      # SHEETSOLVER_MAX_QUEUED_JOBS: "32"
+      # SHEETSOLVER_KEEP_JOBS_FOR: "3600"
+    # The solvers use one CPU each; cap the container if the server does
+    # other work.
+    # cpus: 4

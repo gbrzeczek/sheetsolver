@@ -1,0 +1,11 @@
+# Only the Cargo workspace (and later web/) goes into the image build.
+.git
+.github
+target
+data
+tools
+**/node_modules
+web/dist
+deploy
+Dockerfile
+.dockerignore

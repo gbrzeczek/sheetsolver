@@ -53,6 +53,36 @@ Split `web/` into its own repository if it gets its own team, release
 cycle, or starts talking to other backends. Nothing in this layout makes
 that split hard.
 
+## Deployment
+
+Decision (owner, 2026-10-25): **one container**. The `api` binary serves
+the built UI as static files (`--web-dir`, at `/`) next to the API, from
+one Docker image (`Dockerfile`): a Node stage builds `web/`, a Rust stage
+builds `api` in release, and a small Debian image runs it as a non-root
+user. A GitHub Action (`.github/workflows/docker.yml`) builds the image
+on pushes to `main` and on `v*` tags and pushes it to
+`ghcr.io/<owner>/sheetsolver`; the server runs it with
+`deploy/docker-compose.yml`. The deploy step itself waits for the
+server's details (a commented-out job in the workflow shows the two
+usual ways).
+
+Why:
+- One thing to deploy, version and roll back: the UI and the API it was
+  built against always ship together, so the generated client always
+  matches the server.
+- Same origin: the UI calls the API on its own host, so production needs
+  no CORS and no second web server. CORS stays only for the UI's
+  development server on another origin.
+- Nothing else to run: jobs live in memory (no database), and serving a
+  few static files costs the API nothing next to the solver.
+
+The UI stays a separate build in `web/`, talking to the API only over
+HTTP (see above): serving its files is the only thing `api` knows about
+it, and putting a CDN or reverse proxy in front later changes nothing.
+Client-side routes must not start with an API path (`/jobs`,
+`/openapi.json`); the UI's hash routes (`#/jobs/…`) never reach the
+server.
+
 ## Data contracts (draft)
 
 Lengths are millimetres with at most one decimal (`3.2`, `720`) in JSON,
