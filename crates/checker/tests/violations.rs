@@ -164,6 +164,22 @@ fn pieces_must_be_one_kerf_apart() {
 }
 
 #[test]
+fn children_must_be_listed_in_position_order() {
+    let mut s = solution();
+    // The same rectangles, the second A part listed before the first.
+    let children = strip(&mut s)["children"].as_array_mut().unwrap();
+    children.swap(0, 1);
+    let found = problems(&instance(), &s);
+    assert!(
+        found.contains(&Problem::WrongPosition {
+            expected: mm(0),
+            found: mm(22)
+        }),
+        "{found:?}"
+    );
+}
+
+#[test]
 fn children_must_not_reach_beyond_the_piece() {
     let mut s = solution();
     strip(&mut s)["children"][2]["width"] = json!(7);

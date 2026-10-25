@@ -29,10 +29,14 @@ Dependency direction (no cycles, no shortcuts):
 ```
 model ← checker
 model ← treesearch ← guillotine ← cli, api
-checker ← cli, tests
+checker ← cli, api, tests
 ```
 
-`checker` must never depend on `treesearch` or `guillotine`.
+`checker` must never depend on `treesearch` or `guillotine`. `api` uses
+`checker` to check every plan before serving it and to compute its
+metrics, and `treesearch` for the `Stop` it hands the solver. `model`'s
+`openapi` feature (used by `api` only) adds `utoipa::ToSchema` to its
+types without changing their JSON.
 
 ## UI in the same repository
 
@@ -94,7 +98,8 @@ FIELDS.md  →  /// doc comment on the model field  →  utoipa  →  openapi.js
 ```
 
 A test in the `api` crate fails if any field in `openapi.json` has no
-description.
+description, or if an instance field's description differs from its
+help text in `FIELDS.md`.
 
 User-supplied `id` strings are carried through to the solution; internal
 code uses dense integer indices.
@@ -141,6 +146,36 @@ kinds when they move to In.
 The tree rules (children side by side in the stage's cut direction, each
 spanning its parent, exactly one kerf apart, at most one kerf left at the
 end) are the checker's (`crates/checker`).
+
+What a client may rely on when it draws a plan or lists its cuts (each
+rule is enforced by the checker, or was verified on every golden plan in
+`data/golden/`):
+
+- **Children are in position order** along their parent's cut axis: each
+  child starts exactly one kerf after the previous one ends, so listing
+  them out of order is a violation (`WrongPosition`; test
+  `children_must_be_listed_in_position_order`).
+- **Cut directions alternate by stage**: the panel's children are cut in
+  the pattern's `first_cuts` direction, theirs in the other, and so on.
+  This holds for unlimited stages too, which cut the same way twice in a
+  row through a wrapper piece (below).
+- **A wrapper piece needs no cut**: a `piece` whose only child covers
+  exactly the same rectangle passes through a stage unchanged. It does
+  not count as a stage, and a cut list should skip it.
+- **Trimming cuts are stage `stages + 1`**: with 2 or 3 stages and
+  last-stage trimming allowed (`non_exact`), a piece at stage `stages`
+  may hold exactly one part and at most one offcut (leftovers aside);
+  that part and offcut are at stage `stages + 1`, and the cut between
+  them is the trimming cut, not an extra stage. In the golden plans this
+  happens only with `non_exact` (e.g. a 100 × 660 part trimmed from a
+  100 × 1050 piece). Not with `exact` or `homogenous`; with unlimited
+  stages there is no limit to exceed.
+- **Offcuts thinner than the kerf are intended**: the remainder at the
+  end of a piece may be thinner than a kerf (e.g. a 0.4 mm strip along a
+  2440 mm edge with a 3.2 mm kerf), and up to one kerf may also be left
+  with no node at all. Either way it is in `waste_area`, which is the
+  panel area minus parts and leftover, so no area is lost from the
+  metrics; a drawing may treat such strips as saw dust.
 
 ### Metrics
 
