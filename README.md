@@ -47,7 +47,9 @@ docker run --rm -p 9000:9000 -e SHEETSOLVER_LISTEN=0.0.0.0:9000 \
 
 Pushes to `main` and `v*` tags build the image and publish it as
 `ghcr.io/<owner>/sheetsolver` (`.github/workflows/docker.yml`). On the
-server, `deploy/docker-compose.yml` runs it; the automatic deploy step is
+server, `deploy/docker-compose.yml` runs it on the external `web`
+Docker network, behind your reverse proxy (`http://sheetsolver:8080`, no
+host port); the automatic deploy step is
 still to be set up.
 
 ## Developer CLI

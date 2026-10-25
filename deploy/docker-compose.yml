@@ -2,6 +2,11 @@
 # in the directory holding this file. Replace OWNER with the GitHub owner
 # of the repository (lower case), as in ghcr.io/OWNER/sheetsolver.
 #
+# The app joins the external `web` network, shared with the reverse proxy
+# that handles TLS and the domain, and publishes no port on the host: the
+# proxy reaches it at http://sheetsolver:8080. Create the network once
+# with `docker network create web` if the proxy has not already.
+#
 # Jobs live in the server's memory, so there is no volume: a restart
 # forgets every job (see docs/API.md, "Limits").
 
@@ -9,10 +14,10 @@ services:
   sheetsolver:
     image: ghcr.io/OWNER/sheetsolver:latest
     restart: unless-stopped
-    ports:
-      # host:container; put a reverse proxy with TLS in front for the
-      # internet, and keep this on 127.0.0.1 then.
-      - "8080:8080"
+    expose:
+      - "8080"
+    networks:
+      - web
     environment:
       # Every `api` option is also a variable (`api --help`).
       SHEETSOLVER_LISTEN: "0.0.0.0:8080"
@@ -22,3 +27,7 @@ services:
     # The solvers use one CPU each; cap the container if the server does
     # other work.
     # cpus: 4
+
+networks:
+  web:
+    external: true
