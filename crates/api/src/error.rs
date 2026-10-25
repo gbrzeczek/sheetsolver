@@ -1,7 +1,7 @@
 //! Error responses: every one has an [`ErrorBody`].
 
 use axum::Json;
-use axum::http::StatusCode;
+use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 
 use crate::types::{ErrorBody, ErrorCode, FieldProblem};
@@ -22,8 +22,11 @@ pub enum ApiError {
     #[error("The job cannot be solved as entered.")]
     InvalidInstance(Vec<FieldProblem>),
     /// Too many jobs are waiting.
-    #[error("Too many jobs are waiting for a solver; try again later.")]
-    Busy,
+    #[error("Too many jobs are waiting for a solver; try again in {retry_after} s.")]
+    Busy {
+        /// Seconds after which to try again (`Retry-After`).
+        retry_after: u64,
+    },
 }
 
 impl ApiError {
@@ -36,7 +39,7 @@ impl ApiError {
             ApiError::InvalidInstance(_) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, ErrorCode::InvalidInstance)
             }
-            ApiError::Busy => (StatusCode::SERVICE_UNAVAILABLE, ErrorCode::Busy),
+            ApiError::Busy { .. } => (StatusCode::SERVICE_UNAVAILABLE, ErrorCode::Busy),
         }
     }
 }
@@ -45,6 +48,10 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, error) = self.code();
         let message = self.to_string();
+        let retry_after = match &self {
+            ApiError::Busy { retry_after } => Some(*retry_after),
+            _ => None,
+        };
         let problems = match self {
             ApiError::InvalidInstance(problems) => problems,
             _ => Vec::new(),
@@ -54,6 +61,12 @@ impl IntoResponse for ApiError {
             message,
             problems,
         };
-        (status, Json(body)).into_response()
+        let mut response = (status, Json(body)).into_response();
+        if let Some(seconds) = retry_after {
+            response
+                .headers_mut()
+                .insert(header::RETRY_AFTER, HeaderValue::from(seconds));
+        }
+        response
     }
 }

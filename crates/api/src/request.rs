@@ -12,6 +12,7 @@
 use model::{Instance, Length, Stages};
 use serde_json::{Map, Value};
 
+use crate::fields::{CUT_TYPE, Choice, FIRST_CUTS, OBJECTIVE};
 use crate::types::{DEFAULT_TIME_LIMIT, FieldProblem, MAX_TIME_LIMIT, MIN_TIME_LIMIT};
 
 /// A job to run: a valid instance and its time limit in seconds.
@@ -105,8 +106,8 @@ enum Kind {
     Number,
     /// `true` or `false`.
     Flag,
-    /// One of these strings.
-    Choice(&'static [&'static str]),
+    /// One of the string options of this field.
+    Choice(&'static Choice),
     /// [`Stages`].
     Stages,
     /// An object of this shape.
@@ -147,21 +148,9 @@ const fn field(name: &'static str, kind: Kind, presence: Presence) -> Field {
 
 use Presence::{Nullable, Optional, Required};
 
-/// The values of `model::Objective`.
-pub(crate) const OBJECTIVES: &[&str] = &[
-    "bin_packing",
-    "knapsack",
-    "open_dimension_x",
-    "open_dimension_y",
-];
-/// The values of `model::CutType`.
-pub(crate) const CUT_TYPES: &[&str] = &["non_exact", "exact", "homogenous"];
-/// The values of `model::FirstCuts`.
-pub(crate) const FIRST_CUTS: &[&str] = &["either", "along_length", "across_length"];
-
 /// `model::Instance`.
 static INSTANCE: [Field; 4] = [
-    field("objective", Kind::Choice(OBJECTIVES), Required),
+    field("objective", Kind::Choice(&OBJECTIVE), Optional),
     field("saw", Kind::Object(&SAW), Required),
     field("panels", Kind::List(&PANEL), Required),
     field("parts", Kind::List(&PART), Required),
@@ -169,10 +158,10 @@ static INSTANCE: [Field; 4] = [
 
 /// `model::Saw`.
 static SAW: [Field; 4] = [
-    field("kerf", Kind::Length, Required),
-    field("stages", Kind::Stages, Required),
-    field("cut_type", Kind::Choice(CUT_TYPES), Required),
-    field("first_cuts", Kind::Choice(FIRST_CUTS), Optional),
+    field("kerf", Kind::Length, Optional),
+    field("stages", Kind::Stages, Optional),
+    field("cut_type", Kind::Choice(&CUT_TYPE), Optional),
+    field("first_cuts", Kind::Choice(&FIRST_CUTS), Optional),
 ];
 
 /// `model::Panel`.
@@ -189,7 +178,7 @@ static PART: [Field; 6] = [
     field("id", Kind::Text, Required),
     field("length", Kind::Length, Required),
     field("width", Kind::Length, Required),
-    field("quantity", Kind::Count, Required),
+    field("quantity", Kind::Count, Optional),
     field("grain", Kind::Flag, Optional),
     field("value", Kind::Number, Nullable),
 ];
@@ -254,7 +243,7 @@ fn check_value(value: &Value, kind: Kind) -> Option<String> {
         Kind::Count => value.as_u64().is_some_and(|n| u32::try_from(n).is_ok()),
         Kind::Number => value.is_number(),
         Kind::Flag => value.is_boolean(),
-        Kind::Choice(choices) => value.as_str().is_some_and(|s| choices.contains(&s)),
+        Kind::Choice(choice) => value.as_str().is_some_and(|s| choice.has_text(s)),
         Kind::Stages => serde_json::from_value::<Stages>(value.clone()).is_ok(),
         Kind::Object(_) | Kind::List(_) => unreachable!("checked by check_field"),
     };
@@ -267,7 +256,7 @@ fn check_value(value: &Value, kind: Kind) -> Option<String> {
         Kind::Count => "must be a whole number, such as 1 or 4".to_string(),
         Kind::Number => "must be a number".to_string(),
         Kind::Flag => "must be true or false".to_string(),
-        Kind::Choice(choices) => format!("must be one of: {}", choices.join(", ")),
+        Kind::Choice(choice) => format!("must be one of: {}", choice.texts().join(", ")),
         Kind::Stages => "must be 2, 3 or \"unlimited\"".to_string(),
         Kind::Object(_) | Kind::List(_) => unreachable!("checked by check_field"),
     })
@@ -363,23 +352,31 @@ mod tests {
     fn a_missing_instance_or_a_non_object_body_is_a_problem() {
         assert_eq!(fields(&parse_job(&json!({})).unwrap_err()), ["instance"]);
         assert_eq!(fields(&parse_job(&json!([1, 2])).unwrap_err()), ["-"]);
-        let body = json!({ "instance": { "objective": "knapsack" } });
+        let body = json!({ "instance": { "objective": "knapsack", "saw": { "kerf": "3" } } });
         assert_eq!(
             fields(&parse_job(&body).unwrap_err()),
-            ["instance.saw", "instance.panels", "instance.parts"]
+            ["instance.saw.kerf", "instance.panels", "instance.parts"]
         );
     }
 
     #[test]
-    fn choices_are_the_enums_values() {
-        for value in OBJECTIVES {
-            serde_json::from_value::<model::Objective>(json!(value)).unwrap();
-        }
-        for value in CUT_TYPES {
-            serde_json::from_value::<model::CutType>(json!(value)).unwrap();
-        }
-        for value in FIRST_CUTS {
-            serde_json::from_value::<model::FirstCuts>(json!(value)).unwrap();
+    fn options_are_the_enums_values() {
+        use crate::fields::{CHOICES, OptionValue};
+        for choice in CHOICES {
+            for (option, _) in choice.options {
+                let value = match option {
+                    OptionValue::Text(text) => json!(text),
+                    OptionValue::Number(number) => json!(number),
+                };
+                let ok = match choice.schema {
+                    "Objective" => serde_json::from_value::<model::Objective>(value).is_ok(),
+                    "Stages" => serde_json::from_value::<model::Stages>(value).is_ok(),
+                    "CutType" => serde_json::from_value::<model::CutType>(value).is_ok(),
+                    "FirstCuts" => serde_json::from_value::<model::FirstCuts>(value).is_ok(),
+                    other => panic!("unknown choice {other}"),
+                };
+                assert!(ok, "{} {option:?}", choice.schema);
+            }
         }
     }
 

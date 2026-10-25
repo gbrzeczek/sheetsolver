@@ -40,7 +40,8 @@ const KEEP_ALIVE: Duration = Duration::from_secs(15);
         (status = 400, description = "The body is not JSON (`invalid_json`).", body = ErrorBody),
         (status = 413, description = "The body is larger than 2 MB (`too_large`).", body = ErrorBody),
         (status = 422, description = "The body is not a valid job (`invalid_instance`); `problems` lists every problem found.", body = ErrorBody),
-        (status = 503, description = "Too many jobs are waiting (`busy`).", body = ErrorBody),
+        (status = 503, description = "Too many jobs are waiting (`busy`).", body = ErrorBody,
+            headers(("Retry-After" = u64, description = "Seconds after which to try again: when the first running job reaches its time limit, at the latest."))),
     ),
 )]
 pub async fn submit(
@@ -55,13 +56,17 @@ pub async fn submit(
         serde_json::from_slice(&body).map_err(|error| ApiError::InvalidJson(error.to_string()))?;
     let spec = parse_job(&value).map_err(ApiError::InvalidInstance)?;
     let job = store.submit(spec).map_err(|error| match error {
-        SubmitError::Busy => ApiError::Busy,
+        SubmitError::Busy { retry_after } => ApiError::Busy {
+            // Whole seconds, rounded up, and never 0: a solver may free
+            // up any moment, but asking again at once is pointless.
+            retry_after: retry_after.as_secs_f64().ceil().max(1.0) as u64,
+        },
     })?;
     let location = format!("/jobs/{}", job.id);
     Ok((
         StatusCode::CREATED,
         [(header::LOCATION, location)],
-        Json(job.status()),
+        Json(store.status(&job)),
     )
         .into_response())
 }
@@ -82,7 +87,8 @@ pub async fn status(
     State(store): State<Arc<JobStore>>,
     Path(id): Path<String>,
 ) -> Result<Json<JobStatus>, ApiError> {
-    Ok(Json(find(&store, &id)?.status()))
+    let job = find(&store, &id)?;
+    Ok(Json(store.status(&job)))
 }
 
 /// Stop the search; the best plan so far is kept.
@@ -107,7 +113,7 @@ pub async fn cancel(
 ) -> Result<(StatusCode, Json<JobStatus>), ApiError> {
     let job = find(&store, &id)?;
     job.cancel();
-    Ok((StatusCode::ACCEPTED, Json(job.status())))
+    Ok((StatusCode::ACCEPTED, Json(store.status(&job))))
 }
 
 /// Live stream of better plans and state changes (Server-Sent Events).

@@ -7,7 +7,7 @@
 //! leave the queue in the order they were submitted.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -18,7 +18,7 @@ use treesearch::Stop;
 use uuid::Uuid;
 
 use crate::request::JobSpec;
-use crate::types::{JobState, JobStatus, PlanReport, StateEvent};
+use crate::types::{EndedBy, JobState, JobStatus, PlanReport, StateEvent};
 
 /// Settings of the job store.
 #[derive(Debug, Clone)]
@@ -42,6 +42,8 @@ pub struct JobData {
     started: Option<Instant>,
     /// When the job ended; `None` until then.
     ended: Option<Instant>,
+    /// Why the job ended, unless it failed.
+    pub ended_by: Option<EndedBy>,
     /// How many better plans have been found.
     pub plans_found: u32,
     /// The best plan so far.
@@ -65,6 +67,7 @@ impl JobData {
     pub fn state_event(&self) -> StateEvent {
         StateEvent {
             state: self.state,
+            ended_by: self.ended_by,
             elapsed: self.elapsed(),
             plans_found: self.plans_found,
             message: self.message.clone(),
@@ -84,6 +87,10 @@ pub struct Job {
     pub id: Uuid,
     /// The time limit, in seconds.
     pub time_limit: u32,
+    /// The order of submission: queued jobs start in this order.
+    sequence: u64,
+    /// The instance to solve.
+    instance: Instance,
     /// Set to stop the search: by `DELETE`, or when a plan fails the
     /// checker.
     stop: Arc<AtomicBool>,
@@ -92,20 +99,6 @@ pub struct Job {
 }
 
 impl Job {
-    /// The job status, as `GET /jobs/{id}` returns it.
-    pub fn status(&self) -> JobStatus {
-        let data = self.data.borrow();
-        JobStatus {
-            id: self.id,
-            state: data.state,
-            time_limit: self.time_limit,
-            elapsed: data.elapsed(),
-            plans_found: data.plans_found,
-            best: data.best.as_deref().cloned(),
-            message: data.message.clone(),
-        }
-    }
-
     /// A receiver that sees every change of the job's state.
     pub fn subscribe(&self) -> watch::Receiver<JobData> {
         self.data.subscribe()
@@ -117,6 +110,7 @@ impl Job {
         self.data.send_if_modified(|data| match data.state {
             JobState::Queued => {
                 data.state = JobState::Cancelled;
+                data.ended_by = Some(EndedBy::Cancelled);
                 data.ended = Some(Instant::now());
                 true
             }
@@ -128,12 +122,23 @@ impl Job {
         });
     }
 
+    fn state(&self) -> JobState {
+        self.data.borrow().state
+    }
+
     /// Whether the job has ended more than `keep` ago.
     fn expired(&self, keep: Duration) -> bool {
         self.data
             .borrow()
             .ended
             .is_some_and(|ended| ended.elapsed() > keep)
+    }
+
+    /// When the job reaches its time limit, if it is running.
+    fn deadline(&self) -> Option<Instant> {
+        let data = self.data.borrow();
+        let started = data.started.filter(|_| data.state == JobState::Running)?;
+        Some(started + Duration::from_secs(self.time_limit.into()))
     }
 }
 
@@ -142,7 +147,12 @@ impl Job {
 pub enum SubmitError {
     /// Too many jobs are waiting already.
     #[error("too many jobs are waiting")]
-    Busy,
+    Busy {
+        /// When to try again: the time until the first running job
+        /// reaches its time limit, at the latest. A solver then takes the
+        /// first queued job, which frees a place in the queue.
+        retry_after: Duration,
+    },
 }
 
 /// Every job the server knows, and the solvers that run them.
@@ -151,6 +161,8 @@ pub struct JobStore {
     limits: Limits,
     jobs: Mutex<HashMap<Uuid, Arc<Job>>>,
     solvers: Arc<Semaphore>,
+    /// The sequence number of the next job.
+    next_sequence: AtomicU64,
 }
 
 impl JobStore {
@@ -161,6 +173,7 @@ impl JobStore {
             limits,
             jobs: Mutex::new(HashMap::new()),
             solvers,
+            next_sequence: AtomicU64::new(0),
         }
     }
 
@@ -175,6 +188,31 @@ impl JobStore {
         Some(Arc::clone(job))
     }
 
+    /// The job status, as `GET /jobs/{id}` returns it.
+    pub fn status(&self, job: &Job) -> JobStatus {
+        let data = job.data.borrow().clone();
+        let queue_position = (data.state == JobState::Queued).then(|| {
+            let jobs = self.jobs.lock().expect("job store poisoned");
+            let ahead = jobs
+                .values()
+                .filter(|other| other.sequence < job.sequence && other.state() == JobState::Queued)
+                .count();
+            ahead as u32 + 1
+        });
+        JobStatus {
+            id: job.id,
+            state: data.state,
+            ended_by: data.ended_by,
+            queue_position,
+            time_limit: job.time_limit,
+            elapsed: data.elapsed(),
+            plans_found: data.plans_found,
+            best: data.best.as_deref().cloned(),
+            message: data.message,
+            instance: job.instance.clone(),
+        }
+    }
+
     /// Adds a job and starts it as soon as a solver is free. Must be
     /// called inside a Tokio runtime.
     pub fn submit(&self, spec: JobSpec) -> Result<Arc<Job>, SubmitError> {
@@ -186,17 +224,26 @@ impl JobStore {
         // than `max_queued_jobs` others do.
         let queued = jobs
             .values()
-            .filter(|job| job.data.borrow().state == JobState::Queued)
+            .filter(|job| job.state() == JobState::Queued)
             .count();
         let free = self.solvers.available_permits();
         if queued + 1 > self.limits.max_queued_jobs + free {
-            return Err(SubmitError::Busy);
+            let now = Instant::now();
+            let retry_after = jobs
+                .values()
+                .filter_map(|job| job.deadline())
+                .min()
+                .map_or(Duration::ZERO, |deadline| {
+                    deadline.saturating_duration_since(now)
+                });
+            return Err(SubmitError::Busy { retry_after });
         }
 
         let (data, _) = watch::channel(JobData {
             state: JobState::Queued,
             started: None,
             ended: None,
+            ended_by: None,
             plans_found: 0,
             best: None,
             message: None,
@@ -204,13 +251,14 @@ impl JobStore {
         let job = Arc::new(Job {
             id: Uuid::new_v4(),
             time_limit: spec.time_limit,
+            sequence: self.next_sequence.fetch_add(1, Ordering::Relaxed),
+            instance: spec.instance,
             stop: Arc::new(AtomicBool::new(false)),
             data,
         });
         jobs.insert(job.id, Arc::clone(&job));
         tokio::spawn(run(
             Arc::clone(&job),
-            spec.instance,
             Arc::clone(&self.solvers),
             self.limits.queue_size,
         ));
@@ -219,7 +267,7 @@ impl JobStore {
 }
 
 /// Waits for a solver, then solves the job on a blocking thread.
-async fn run(job: Arc<Job>, instance: Instance, solvers: Arc<Semaphore>, queue_size: u64) {
+async fn run(job: Arc<Job>, solvers: Arc<Semaphore>, queue_size: u64) {
     let mut changes = job.subscribe();
     let permit = tokio::select! {
         permit = Arc::clone(&solvers).acquire_owned() => permit.expect("solver semaphore closed"),
@@ -239,34 +287,39 @@ async fn run(job: Arc<Job>, instance: Instance, solvers: Arc<Semaphore>, queue_s
     }
 
     let solver_job = Arc::clone(&job);
-    let failure =
-        match tokio::task::spawn_blocking(move || solve_job(&solver_job, &instance, queue_size))
-            .await
-        {
-            Ok(failure) => failure,
-            Err(_) => Some("the solver stopped unexpectedly".to_string()),
-        };
+    let ending = tokio::task::spawn_blocking(move || solve_job(&solver_job, queue_size))
+        .await
+        .unwrap_or_else(|_| Err("the solver stopped unexpectedly".to_string()));
     drop(permit);
 
     job.data.send_modify(|data| {
-        data.state = match &failure {
-            Some(_) => JobState::Failed,
-            None if job.stop.load(Ordering::Relaxed) => JobState::Cancelled,
-            None => JobState::Done,
-        };
-        data.message = failure;
+        match ending {
+            Ok(ended_by) => {
+                data.state = match ended_by {
+                    EndedBy::Cancelled => JobState::Cancelled,
+                    EndedBy::Complete | EndedBy::TimeLimit => JobState::Done,
+                };
+                data.ended_by = Some(ended_by);
+            }
+            Err(message) => {
+                data.state = JobState::Failed;
+                data.message = Some(message);
+            }
+        }
         data.ended = Some(Instant::now());
     });
 }
 
 /// Solves the job's instance, publishing each better plan that passes
-/// the checker. Returns why the job failed, if it did.
-fn solve_job(job: &Job, instance: &Instance, queue_size: u64) -> Option<String> {
+/// the checker. Returns why the search ended, or why the job failed.
+fn solve_job(job: &Job, queue_size: u64) -> Result<EndedBy, String> {
+    let instance = &job.instance;
     let start = job.data.borrow().started.unwrap_or_else(Instant::now);
+    let deadline = start + Duration::from_secs(job.time_limit.into());
     let params = SolveParams {
         queue_size,
         stop: Stop {
-            deadline: Some(start + Duration::from_secs(job.time_limit.into())),
+            deadline: Some(deadline),
             cancel: Some(Arc::clone(&job.stop)),
             ..Stop::default()
         },
@@ -279,13 +332,25 @@ fn solve_job(job: &Job, instance: &Instance, queue_size: u64) -> Option<String> 
         last: None,
         failure: None,
     };
-    match solve(instance, &params, |solution| publisher.offer(solution)) {
+    let result = solve(instance, &params, |solution| publisher.offer(solution));
+    // The solver stops early only for the stop flag or the deadline (see
+    // `treesearch::Stop`), so whichever holds now is why it stopped; if
+    // neither does, it ran to its end. A plan that failed the checker
+    // sets the flag too, but then the failure is reported instead.
+    let cancelled = job.stop.load(Ordering::Relaxed);
+    let timed_out = Instant::now() >= deadline;
+    match result {
         // The final plan is the last one reported; offering it again
         // changes nothing unless a solver path forgot to report it.
         Ok(output) => publisher.offer(&output.solution),
         Err(error) => publisher.failure = Some(format!("the solver refused the job: {error}")),
     }
-    publisher.failure
+    match publisher.failure {
+        Some(failure) => Err(failure),
+        None if cancelled => Ok(EndedBy::Cancelled),
+        None if timed_out => Ok(EndedBy::TimeLimit),
+        None => Ok(EndedBy::Complete),
+    }
 }
 
 /// Checks the plans the solver reports and publishes the good ones.

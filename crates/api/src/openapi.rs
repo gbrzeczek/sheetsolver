@@ -1,8 +1,9 @@
 //! The OpenAPI document, generated from the handlers and the types.
 
-use serde_json::Value;
+use serde_json::{Map, Value, json};
 use utoipa::OpenApi;
 
+use crate::fields::{CHOICES, INPUT_FIELDS, OptionValue};
 use crate::routes;
 use crate::types::{PlanReport, StateEvent};
 
@@ -32,7 +33,66 @@ pub fn document() -> Value {
     let mut document = serde_json::to_value(ApiDoc::openapi()).expect("the document serializes");
     hoist_descriptions(&mut document);
     unwrap_descriptions(&mut document);
+    annotate_input_fields(&mut document);
+    name_options(&mut document);
     document
+}
+
+/// The component schema called `name`.
+fn component<'a>(document: &'a mut Value, name: &str) -> &'a mut Map<String, Value> {
+    document["components"]["schemas"][name]
+        .as_object_mut()
+        .unwrap_or_else(|| panic!("no schema {name}"))
+}
+
+/// Adds each input field's label, default and bounds (see `fields.rs`).
+fn annotate_input_fields(document: &mut Value) {
+    for field in INPUT_FIELDS {
+        let property = component(document, field.schema)["properties"][field.property]
+            .as_object_mut()
+            .unwrap_or_else(|| panic!("no property {}.{}", field.schema, field.property));
+        property.insert("title".into(), json!(field.title));
+        if let Some(default) = field.default {
+            let default: Value = serde_json::from_str(default).expect("defaults are JSON");
+            property.insert("default".into(), default);
+        }
+        if let Some(minimum) = field.minimum {
+            property.insert("minimum".into(), number(minimum));
+        }
+        if let Some(maximum) = field.maximum {
+            property.insert("maximum".into(), number(maximum));
+        }
+    }
+}
+
+/// `value` as JSON, whole numbers without a decimal point.
+fn number(value: f64) -> Value {
+    if value.fract() == 0.0 {
+        json!(value as i64)
+    } else {
+        json!(value)
+    }
+}
+
+/// Names each option of the fields with options: `oneOf` one `const`
+/// per value, with the option's name as its `title`. String enums keep
+/// their `enum` too, for generators that ignore `const`.
+fn name_options(document: &mut Value) {
+    for choice in CHOICES {
+        let options: Vec<Value> = choice
+            .options
+            .iter()
+            .map(|(value, title)| match value {
+                OptionValue::Text(text) => {
+                    json!({ "type": "string", "const": text, "title": title })
+                }
+                OptionValue::Number(number) => {
+                    json!({ "type": "integer", "const": number, "title": title })
+                }
+            })
+            .collect();
+        component(document, choice.schema).insert("oneOf".into(), Value::Array(options));
+    }
 }
 
 /// Joins the lines of each description into paragraphs.

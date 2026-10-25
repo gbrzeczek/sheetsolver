@@ -6,12 +6,15 @@
 //! `docs/API.md`.
 //!
 //! - `types`: the JSON bodies.
+//! - `fields`: labels, defaults, bounds and option names of the input
+//!   fields, for `openapi.json`.
 //! - `request`: reading a submitted job, reporting every problem.
 //! - `jobs`: the queue and the solver threads.
 //! - `routes`: the HTTP handlers.
 //! - `openapi`: the generated OpenAPI document.
 
 mod error;
+mod fields;
 mod jobs;
 mod openapi;
 mod request;

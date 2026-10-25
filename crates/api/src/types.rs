@@ -26,7 +26,6 @@ pub struct JobRequest {
     /// usually appears within a second; longer searches find plans with
     /// less waste. You can stop the search at any time and keep the best
     /// plan so far.
-    #[schema(minimum = 1, maximum = 600, default = 10)]
     #[serde(default = "default_time_limit")]
     pub time_limit: u32,
 }
@@ -61,6 +60,20 @@ impl JobState {
     }
 }
 
+/// Why a job ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum EndedBy {
+    /// The search ran to its end within the time limit: a longer time
+    /// limit would give the same plan.
+    Complete,
+    /// The time limit was reached: a longer search may find a better
+    /// plan.
+    TimeLimit,
+    /// Stopped by `DELETE /jobs/{id}`.
+    Cancelled,
+}
+
 /// A plan found by a job, with its figures.
 #[derive(Debug, Clone, PartialEq, Serialize, ToSchema)]
 pub struct PlanReport {
@@ -82,6 +95,14 @@ pub struct JobStatus {
     pub id: Uuid,
     /// Where the job is in its life.
     pub state: JobState,
+    /// Why the job ended: `complete` (the search ran to its end; a longer
+    /// time limit would give the same plan), `time_limit` (a longer search
+    /// may find a better plan) or `cancelled`. `null` until the job ends,
+    /// and for a failed job.
+    pub ended_by: Option<EndedBy>,
+    /// For a queued job, its place in the queue: 1 runs next. `null` once
+    /// the job has left the queue.
+    pub queue_position: Option<u32>,
     /// The time limit the job runs with, in seconds.
     pub time_limit: u32,
     /// Seconds spent searching: 0 while queued, growing while running,
@@ -93,6 +114,9 @@ pub struct JobStatus {
     pub best: Option<PlanReport>,
     /// Why the job failed, in state `failed`; otherwise `null`.
     pub message: Option<String>,
+    /// The instance as submitted, with left-out fields filled with their
+    /// defaults (and unknown fields dropped).
+    pub instance: Instance,
 }
 
 /// The data of a `state` event: a job's state changed.
@@ -100,6 +124,8 @@ pub struct JobStatus {
 pub struct StateEvent {
     /// Where the job is in its life.
     pub state: JobState,
+    /// Why the job ended, as in the job status; `null` until it ends.
+    pub ended_by: Option<EndedBy>,
     /// Seconds spent searching so far, as in the job status.
     pub elapsed: f64,
     /// How many better plans have been found so far.

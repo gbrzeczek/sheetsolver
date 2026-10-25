@@ -54,7 +54,10 @@ Request body:
 }
 ```
 
-- `instance`: the instance, exactly as in `ARCHITECTURE.md`.
+- `instance`: the instance, exactly as in `ARCHITECTURE.md`. Fields with
+  a default in `FIELDS.md` may be left out: `objective`, `saw.kerf`,
+  `saw.stages`, `saw.cut_type`, `saw.first_cuts`, a part's `quantity`
+  and `grain` (the `saw` object itself is required).
 - `time_limit` (optional, default 10): how long the solver may search,
   in whole seconds, 1–600 (`FIELDS.md`, *Time limit*). The clock starts
   when the job starts running, not while it waits.
@@ -71,6 +74,8 @@ The response is the job status (below), usually in state `queued` or
 {
   "id": "0f8b3c8e-5a43-4d4e-9d8b-3f7c2a1e6b90",
   "state": "running",
+  "ended_by": null,
+  "queue_position": null,
   "time_limit": 10,
   "elapsed": 1.284,
   "plans_found": 3,
@@ -85,7 +90,8 @@ The response is the job status (below), usually in state `queued` or
     },
     "plan": { "patterns": [ "…as in ARCHITECTURE.md…" ] }
   },
-  "message": null
+  "message": null,
+  "instance": { "…the instance as submitted…": "" }
 }
 ```
 
@@ -93,11 +99,14 @@ The response is the job status (below), usually in state `queued` or
 |---|---|
 | `id` | The job's id (a UUID), used in the other URLs. |
 | `state` | See [Job states](#job-states). |
+| `ended_by` | Why the job ended: `complete`, `time_limit` or `cancelled` (see [Job states](#job-states)); `null` until it ends, and for a failed job. |
+| `queue_position` | For a `queued` job, its place in the queue: 1 runs next. `null` once the job has left the queue. Not sent as an event: poll `GET` to follow it. |
 | `time_limit` | The time limit the job runs with, in seconds. |
 | `elapsed` | Seconds spent searching: 0 while queued, growing while running, final once the job has ended. |
 | `plans_found` | How many better plans have been found so far. |
 | `best` | The best plan so far, or `null` if none yet (or none exists: see below). A plan always cuts at least one part. |
 | `message` | Why the job failed, for state `failed`; otherwise `null`. |
+| `instance` | The instance as submitted, with left-out fields filled with their defaults and unknown fields dropped, so that a job link opened elsewhere can show and edit the job. |
 
 `best` (also the payload of the `plan` event):
 
@@ -150,9 +159,24 @@ queued ──► running ──► done
 |---|---|---|
 | `queued` | Waiting for a free solver (see [Limits](#limits)). | no |
 | `running` | Searching. `best` improves over time. | no |
-| `done` | The search finished: it was complete, or the time limit was reached. `best` is the result. | yes |
-| `cancelled` | Stopped by `DELETE /jobs/{id}`. `best` is the best plan found before the stop, if any. | yes |
+| `done` | The search finished: it was complete (`ended_by: "complete"`), or the time limit was reached (`ended_by: "time_limit"`). `best` is the result. | yes |
+| `cancelled` | Stopped by `DELETE /jobs/{id}` (`ended_by: "cancelled"`). `best` is the best plan found before the stop, if any. | yes |
 | `failed` | Stopped by an internal error; `message` says why. | yes |
+
+`ended_by` tells the woodworker what a longer search could do:
+
+- `complete`: the search ran all its steps within the time limit. The
+  search is deterministic, so a longer time limit gives the same plan:
+  this is the best this search can do (not a proof that no better plan
+  exists).
+- `time_limit`: the time limit stopped the search; a longer one may find
+  a plan with less waste.
+- `cancelled`: stopped by `DELETE`.
+
+The server knows which from the solver's stop conditions, not from a
+guess: the solver stops early only when the cancellation flag is set or
+the deadline has passed, so if neither holds when it returns, it ran to
+its end.
 
 ### `DELETE /jobs/{id}`
 
@@ -173,7 +197,7 @@ names:
 | Event | `data` (JSON) | Sent when |
 |---|---|---|
 | `plan` | A plan report: the same object as `best` in the job status (`number`, `found_after`, `metrics`, `plan`; `PlanReport` in `openapi.json`). | A better plan is found. |
-| `state` | `{ "state": "running", "elapsed": 0.003, "plans_found": 0, "message": null }`, fields as in the job status (`StateEvent` in `openapi.json`). | The state changes. |
+| `state` | `{ "state": "running", "ended_by": null, "elapsed": 0.003, "plans_found": 0, "message": null }`, fields as in the job status (`StateEvent` in `openapi.json`). | The state changes. |
 
 Order:
 
@@ -201,8 +225,28 @@ sent every 15 seconds to keep idle connections open.
 
 OpenAPI 3.1, generated from the Rust types with `utoipa`. Every property
 has a `description`: for instance fields and `time_limit`, exactly the
-help text from `FIELDS.md` (one paragraph, markdown: `**bold**` marks the
-name of an option; a test compares them). The UI shows these next to its
+help text from `FIELDS.md` (one paragraph; the only markup is
+`**bold**` for the name of an option and `*italic*` for the name of
+another field; a test compares them). For these input fields,
+`openapi.json` also gives:
+
+- `title`: the field's UI label from `FIELDS.md` ("Saw blade thickness
+  (kerf)").
+- `default`: the value the server uses when the field is left out (kerf
+  3.2, stages 3, cut type `non_exact`, first cuts `either`, objective
+  `bin_packing`, part quantity 1, grain `false`, time limit 10).
+- `minimum` / `maximum`: the bounds the server accepts (lengths ≥ 0.1,
+  kerf ≥ 0, quantities ≥ 1, cost and value ≥ 0, time limit 1–600).
+  Lengths are also `multipleOf: 0.1` (the `Length` schema).
+- For `objective`, `stages`, `cut_type` and `first_cuts`: the type's
+  schema lists each value as a `oneOf` branch `{ "const": …, "title": … }`,
+  the title being the option's name from `FIELDS.md` ("Allowed", "Not
+  allowed", …). `stages` is the union `2 | 3 | "unlimited"`: two integer
+  constants and one string constant.
+
+A test holds every `default` and bound to what the server does: left
+out, a field takes its default; at a bound it is accepted; one step
+beyond, it is refused with a problem for that field. The UI shows these next to its
 inputs and generates its TypeScript client from this file. The event
 payloads are the components `PlanReport` and `StateEvent`.
 
@@ -235,7 +279,9 @@ Every error response has this body:
   body (`instance.saw.kerf`, `instance.parts[2].quantity`, `time_limit`),
   with 0-based list positions. A problem with a whole list points at the
   list ("add at least one part": `instance.parts`); `field` is `null`
-  only when the body is not a JSON object. `message` is written
+  only when the body is not a JSON object. Positions are those of the
+  submitted lists (`instance.parts[3]` is the fourth part as sent) and
+  names are exactly the JSON property names. `message` is written
   for the woodworker and can be shown next to the field as is, e.g.
   "this field is required", "must be one of: non_exact, exact,
   homogenous", "quantity of part \"Side left\" must be at least 1".
@@ -246,7 +292,7 @@ Every error response has this body:
 | 404 | `not_found` | No job with this id (or the id is not a UUID), it has expired, or no such path. |
 | 413 | `too_large` | The body is larger than 2 MB. |
 | 422 | `invalid_instance` | The body is JSON but not a valid job: a missing or mistyped field, a length with more than one decimal, a time limit outside 1–600, or anything `Instance::validate` rejects (no parts, duplicate names, quantity 0, …). |
-| 503 | `busy` | Every solver is busy and `--max-queued-jobs` jobs are already waiting; try again later. |
+| 503 | `busy` | Every solver is busy and `--max-queued-jobs` jobs are already waiting. The `Retry-After` header (and `message`) gives the seconds until the first running job reaches its time limit, at the latest; a solver then takes the first queued job and a place in the queue frees up. Jobs often end sooner. |
 
 A JSON field the server does not know is ignored, as is a missing
 optional field.
@@ -305,3 +351,20 @@ for reconciling the UI. None changes a field name or a JSON shape.
     `cancel_job`, `job_events`, `get_openapi`; the event payloads are
     the components `PlanReport` and `StateEvent`. New option
     `--print-openapi`.
+- 2026-10-25, the UI's requests (`web/DESIGN.md` §8, as triaged):
+  - #1 `title` = the `FIELDS.md` UI label on every input property.
+  - #2 `oneOf` `{const, title}` per value of `objective`, `stages`,
+    `cut_type`, `first_cuts`, with names from the new "Option names"
+    table in `FIELDS.md`.
+  - #3 `default`, `minimum`, `maximum` on the input properties.
+    `objective`, `saw.kerf`, `saw.stages`, `saw.cut_type` and a part's
+    `quantity` may now be left out and take their `FIELDS.md` defaults
+    (before, they were required). Bodies that were valid stay valid.
+  - #9 `ended_by` (`complete`, `time_limit`, `cancelled`, or `null`) in
+    the job status and every `state` event.
+  - #10 `queue_position` in the job status.
+  - #11 `Retry-After` on `503 busy`; `message` gives the same seconds.
+  - #18 `instance` in the job status (all three endpoints that return it).
+  - #5, #6, #20 documented here; #12, #14, #15, #16 in
+    `ARCHITECTURE.md` (*Solution*). The checker already rejects children
+    out of position order; a test now covers it.

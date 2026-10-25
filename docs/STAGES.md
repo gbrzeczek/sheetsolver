@@ -311,6 +311,17 @@ Result:
   `503 busy`; `422` with every problem; `400`, `404`, `413`; expiry;
   CORS. A test also walks all test instances to make sure the problem
   walk accepts everything serde accepts.
+- Follow-up for the UI (its requests in `web/DESIGN.md` §8, as
+  triaged): input properties carry `title` (UI label), `default`,
+  `minimum`/`maximum`, and the option types name each value
+  (`oneOf` `{const, title}`), from one table (`crates/api/src/fields.rs`)
+  that tests hold to `FIELDS.md` and to what the server accepts; fields
+  with a `FIELDS.md` default may be left out. The job status gains
+  `ended_by` (also in `state` events), `queue_position` and `instance`;
+  `503 busy` gains `Retry-After`. `ARCHITECTURE.md` now states the plan
+  tree rules clients rely on (child order, alternating directions,
+  wrapper pieces, trimming at stage `stages + 1`, sub-kerf offcuts), each
+  checked against the checker and the golden plans.
 
 **Goal:** solver as a service.
 

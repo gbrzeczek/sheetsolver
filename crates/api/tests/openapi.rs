@@ -1,8 +1,6 @@
 //! `openapi.json`: every field is described, and instance fields carry
 //! the exact help text of `docs/FIELDS.md`.
 
-use std::collections::BTreeMap;
-
 use serde_json::Value;
 
 fn document() -> Value {
@@ -60,50 +58,125 @@ fn every_field_has_a_description() {
     }
 }
 
-/// The help text of each field in `docs/FIELDS.md`, by section.
-fn help_texts() -> BTreeMap<(String, String), String> {
-    let text = include_str!("../../../docs/FIELDS.md");
-    let mut section = String::new();
-    let mut texts = BTreeMap::new();
-    for line in text.lines() {
-        if let Some(title) = line.strip_prefix("### ") {
-            section = title.to_string();
-        } else if section.is_empty() || line.starts_with("## Later") {
-            continue;
-        } else if let Some(row) = line.strip_prefix("| `") {
-            let cells: Vec<&str> = row.split(" | ").collect();
-            let field = cells[0].trim_end_matches('`').to_string();
-            texts.insert((section.clone(), field), cells[2].to_string());
-        }
-        if line.starts_with("## Later") {
-            section.clear();
+/// A field row of `docs/FIELDS.md`.
+struct FieldRow {
+    /// The schema whose property it is.
+    schema: &'static str,
+    /// The field's name.
+    field: String,
+    /// The UI label.
+    label: String,
+    /// The help text.
+    help: String,
+}
+
+/// The cells of a table row, if `line` is one.
+fn cells(line: &str) -> Option<Vec<&str>> {
+    let row = line.strip_prefix("| `")?;
+    Some(
+        row.trim_end_matches(" |")
+            .split(" | ")
+            .map(|cell| cell.trim_matches('`'))
+            .collect(),
+    )
+}
+
+const FIELDS_MD: &str = include_str!("../../../docs/FIELDS.md");
+
+/// The rows of the tables under "## Fields".
+fn field_rows() -> Vec<FieldRow> {
+    let mut chapter = "";
+    let mut section = "";
+    let mut rows = Vec::new();
+    for line in FIELDS_MD.lines() {
+        if let Some(title) = line.strip_prefix("## ") {
+            chapter = title;
+        } else if let Some(title) = line.strip_prefix("### ") {
+            section = title;
+        } else if chapter == "Fields" {
+            if let Some(cells) = cells(line) {
+                let schema = match (section, cells[0]) {
+                    ("Job", "time_limit") => "JobRequest",
+                    ("Job", _) => "Instance",
+                    ("Panels (stock sheets)", _) => "Panel",
+                    ("Parts", _) => "Part",
+                    ("Saw and cutting", _) => "Saw",
+                    _ => panic!("unknown section {section}"),
+                };
+                rows.push(FieldRow {
+                    schema,
+                    field: cells[0].to_string(),
+                    label: cells[1].to_string(),
+                    help: cells[2].to_string(),
+                });
+            }
         }
     }
-    texts
+    rows
+}
+
+/// The rows of the table under "## Option names": field, value, name.
+fn option_rows() -> Vec<(String, String, String)> {
+    let mut chapter = "";
+    let mut rows = Vec::new();
+    for line in FIELDS_MD.lines() {
+        if let Some(title) = line.strip_prefix("## ") {
+            chapter = title;
+        } else if chapter == "Option names" {
+            if let Some(cells) = cells(line) {
+                rows.push((cells[0].into(), cells[1].into(), cells[2].into()));
+            }
+        }
+    }
+    rows
 }
 
 #[test]
-fn instance_fields_carry_the_help_text_of_fields_md() {
+fn input_fields_carry_the_help_text_and_label_of_fields_md() {
     let document = document();
     let schemas = &document["components"]["schemas"];
-    let texts = help_texts();
-    assert!(texts.len() >= 17, "{texts:?}");
-    for ((section, field), help) in &texts {
-        let schema = match (section.as_str(), field.as_str()) {
-            ("Job", "time_limit") => "JobRequest",
-            ("Job", _) => "Instance",
-            ("Panels (stock sheets)", _) => "Panel",
-            ("Parts", _) => "Part",
-            ("Saw and cutting", _) => "Saw",
-            _ => panic!("unknown section {section}"),
-        };
-        let description = &schemas[schema]["properties"][field]["description"];
+    let rows = field_rows();
+    assert_eq!(rows.len(), 17);
+    for row in &rows {
+        let property = &schemas[row.schema]["properties"][&row.field];
+        let name = format!("{}.{}", row.schema, row.field);
         assert_eq!(
-            description.as_str(),
-            Some(help.as_str()),
-            "{schema}.{field} differs from FIELDS.md"
+            property["description"].as_str(),
+            Some(row.help.as_str()),
+            "{name} help text"
+        );
+        assert_eq!(
+            property["title"].as_str(),
+            Some(row.label.as_str()),
+            "{name} label"
         );
     }
+}
+
+#[test]
+fn every_option_is_named_as_in_fields_md() {
+    let document = document();
+    let schemas = &document["components"]["schemas"];
+    let mut found = Vec::new();
+    for (field, schema) in [
+        ("objective", "Objective"),
+        ("stages", "Stages"),
+        ("cut_type", "CutType"),
+        ("first_cuts", "FirstCuts"),
+    ] {
+        for option in schemas[schema]["oneOf"].as_array().unwrap() {
+            let value = match &option["const"] {
+                Value::String(text) => text.clone(),
+                other => other.to_string(),
+            };
+            found.push((
+                field.to_string(),
+                value,
+                option["title"].as_str().unwrap().to_string(),
+            ));
+        }
+    }
+    assert_eq!(found, option_rows());
 }
 
 #[test]

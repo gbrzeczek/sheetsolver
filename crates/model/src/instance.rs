@@ -24,6 +24,7 @@ pub struct Instance {
     /// (e.g. a long board or a roll); cut every part using the shortest
     /// possible length. **Shortest width from one panel**: the same, but
     /// the length is fixed and the width is minimised.
+    #[serde(default)]
     pub objective: Objective,
     /// How the saw cuts.
     pub saw: Saw,
@@ -34,11 +35,12 @@ pub struct Instance {
 }
 
 /// What the plan optimises. See [`Instance::objective`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum Objective {
     /// Use as few panels as possible (upstream `BinPacking`).
+    #[default]
     BinPacking,
     /// Best use of the panels I have (upstream `Knapsack`).
     Knapsack,
@@ -70,6 +72,7 @@ pub struct Saw {
     /// between two parts uses this much material, so parts are spaced by
     /// it. Typical values: 3.2–4.4 mm for panel and table saws, 2.2–2.8 mm
     /// for track saws. Set 0 only if your dimensions already include it.
+    #[serde(default = "default_kerf")]
     pub kerf: Length,
     /// How many times a piece is turned and cut again. **Stage 1**:
     /// full-length cuts across the whole panel, splitting it into strips.
@@ -80,6 +83,7 @@ pub struct Saw {
     /// "Unlimited" gives the least waste with the most handling: cuts may
     /// then go either way at every stage, and the last-stage trimming
     /// setting does not apply.
+    #[serde(default)]
     pub stages: Stages,
     /// Whether a part may be cut free from a small offcut after the last
     /// stage. **Allowed** (recommended): a strip may hold parts of
@@ -88,6 +92,7 @@ pub struct Saw {
     /// strip exactly, with no offcut — fewer cuts, more waste. **One part
     /// per strip**: every part in a last-stage strip is the same part —
     /// the simplest plans to cut, the most waste.
+    #[serde(default)]
     pub cut_type: CutType,
     /// Which way the first, full-panel cuts run. **Either** (recommended):
     /// the solver tries both and keeps the better plan. With one panel
@@ -101,6 +106,11 @@ pub struct Saw {
     /// either way.
     #[serde(default)]
     pub first_cuts: FirstCuts,
+}
+
+/// The kerf when none is given: 3.2 mm, a typical panel-saw blade.
+fn default_kerf() -> Length {
+    Length::from_tenths(32)
 }
 
 /// Which way the first cuts may run. See [`Saw::first_cuts`].
@@ -148,6 +158,13 @@ pub enum Stages {
     Unlimited,
 }
 
+impl Default for Stages {
+    /// 3 stages, which suit most panel-saw work.
+    fn default() -> Self {
+        Stages::Limited(3)
+    }
+}
+
 impl Serialize for Stages {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self {
@@ -177,11 +194,12 @@ impl<'de> Deserialize<'de> for Stages {
 
 /// Whether parts may be trimmed free after the last stage. See
 /// [`Saw::cut_type`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum CutType {
     /// Last-stage trimming allowed (upstream `NonExact`).
+    #[default]
     NonExact,
     /// No last-stage trimming: parts fill their strip exactly (upstream
     /// `Exact`).
@@ -238,6 +256,7 @@ pub struct Part {
     /// How many identical parts you need. With "Best use of the panels I
     /// have", this is the most that will be cut; fewer may be cut if they
     /// don't fit.
+    #[serde(default = "one")]
     pub quantity: u32,
     /// Tick this if the part must keep its grain running the same way as
     /// the panel's grain (veneered or solid-wood panels, brushed or
@@ -253,6 +272,11 @@ pub struct Part {
     /// every part to 1 to cut as many parts as possible.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<f64>,
+}
+
+/// A part's quantity when none is given.
+fn one() -> u32 {
+    1
 }
 
 impl Part {
@@ -493,6 +517,25 @@ mod tests {
         assert!(instance.parts[0].grain);
         assert_eq!(instance.panels[0].quantity, Some(10));
         assert_eq!(instance.validate(), Ok(()));
+    }
+
+    #[test]
+    fn fields_left_out_take_their_defaults_from_fields_md() {
+        let instance: Instance = serde_json::from_str(
+            r#"{
+                "saw": {},
+                "panels": [{ "id": "Ply", "length": 2500, "width": 1250 }],
+                "parts": [{ "id": "Shelf", "length": 800, "width": 300 }]
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(instance.objective, Objective::BinPacking);
+        assert_eq!(instance.saw.kerf, Length::from_tenths(32));
+        assert_eq!(instance.saw.stages, Stages::Limited(3));
+        assert_eq!(instance.saw.cut_type, CutType::NonExact);
+        assert_eq!(instance.saw.first_cuts, FirstCuts::Either);
+        assert_eq!(instance.parts[0].quantity, 1);
+        assert!(!instance.parts[0].grain);
     }
 
     #[test]

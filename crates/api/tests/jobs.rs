@@ -267,6 +267,7 @@ async fn cancelling_a_running_job_keeps_its_best_plan() {
     assert_eq!(response["id"], id);
     let job = wait_until_final(&app, id, Duration::from_secs(10)).await;
     assert_eq!(job["state"], "cancelled");
+    assert_eq!(job["ended_by"], "cancelled");
     assert!(job["elapsed"].as_f64().unwrap() < 60.0);
     assert_valid_plan(SLOW, &job["best"]);
 
@@ -303,6 +304,8 @@ async fn a_queued_job_is_cancelled_at_once_and_jobs_beyond_the_queue_are_refused
     let (status, job, _) = send(&app, Method::DELETE, &format!("/jobs/{queued}"), None).await;
     assert_eq!(status, StatusCode::ACCEPTED);
     assert_eq!(job["state"], "cancelled");
+    assert_eq!(job["ended_by"], "cancelled");
+    assert!(job["queue_position"].is_null());
     assert!(job["best"].is_null());
     let events = read_events(&app, queued).await;
     assert_eq!(events.len(), 1);
@@ -430,4 +433,235 @@ async fn browsers_may_call_from_other_origins() {
             .headers()
             .contains_key(header::ACCESS_CONTROL_ALLOW_ORIGIN)
     );
+}
+
+/// A one-part job that solves at once, with every field given.
+fn tiny_job() -> Value {
+    json!({
+        "instance": {
+            "objective": "bin_packing",
+            "saw": { "kerf": 3.2, "stages": 3, "cut_type": "non_exact", "first_cuts": "either" },
+            "panels": [{ "id": "Ply", "length": 100, "width": 100, "quantity": 1, "cost": 1 }],
+            "parts": [{ "id": "A", "length": 10, "width": 10, "quantity": 1, "grain": false, "value": 1 }]
+        },
+        "time_limit": 1
+    })
+}
+
+/// The value at `path` (object keys and list positions) in `value`.
+fn at<'a>(value: &'a mut Value, path: &[Value]) -> &'a mut Value {
+    path.iter().fold(value, |value, step| match step {
+        Value::String(key) => &mut value[key.as_str()],
+        Value::Number(index) => &mut value[index.as_u64().unwrap() as usize],
+        _ => unreachable!(),
+    })
+}
+
+/// `path` as a `problems[].field`: `instance.parts[0].length`.
+fn field_name(path: &[Value]) -> String {
+    let mut name = String::new();
+    for step in path {
+        match step {
+            Value::String(key) if name.is_empty() => name.push_str(key),
+            Value::String(key) => name.push_str(&format!(".{key}")),
+            other => name.push_str(&format!("[{other}]")),
+        }
+    }
+    name
+}
+
+/// Every `default`, `minimum` and `maximum` in `openapi.json` is what the
+/// server does: a left-out field takes its default, the bounds are
+/// accepted and one step beyond them is refused, for that field.
+#[tokio::test(flavor = "multi_thread")]
+async fn schema_defaults_and_bounds_are_what_the_server_applies() {
+    let app = api::router(&api::Config {
+        max_queued_jobs: 1000,
+        ..config()
+    });
+    let document = api::openapi_document();
+    let schemas = &document["components"]["schemas"];
+    let mut checked = 0;
+    for (schema, prefix) in [
+        ("JobRequest", json!([])),
+        ("Instance", json!(["instance"])),
+        ("Saw", json!(["instance", "saw"])),
+        ("Panel", json!(["instance", "panels", 0])),
+        ("Part", json!(["instance", "parts", 0])),
+    ] {
+        for (name, property) in schemas[schema]["properties"].as_object().unwrap() {
+            let mut path = prefix.as_array().unwrap().clone();
+            path.push(json!(name));
+            let (parent, key) = path.split_at(path.len() - 1);
+            let key = key[0].as_str().unwrap();
+
+            if let Some(default) = property.get("default") {
+                let mut body = tiny_job();
+                at(&mut body, parent).as_object_mut().unwrap().remove(key);
+                let (status, mut job, _) = send(
+                    &app,
+                    Method::POST,
+                    "/jobs",
+                    Some(body.to_string().into_bytes()),
+                )
+                .await;
+                assert_eq!(status, StatusCode::CREATED, "{schema}.{name}: {job}");
+                // The job status holds the instance, plus `time_limit`.
+                let applied = if schema == "JobRequest" {
+                    job[key].clone()
+                } else {
+                    let instance_path = &path[1..];
+                    at(&mut job["instance"], instance_path).clone()
+                };
+                // `grain: false` is left out of the JSON.
+                let applied = if applied.is_null() && *default == json!(false) {
+                    json!(false)
+                } else {
+                    applied
+                };
+                assert_eq!(&applied, default, "default of {schema}.{name}");
+                checked += 1;
+            }
+
+            let is_length = property["$ref"] == "#/components/schemas/Length";
+            let step = if is_length { 0.1 } else { 1.0 };
+            for (bound, beyond) in [("minimum", -step), ("maximum", step)] {
+                let Some(limit) = property.get(bound).and_then(Value::as_f64) else {
+                    continue;
+                };
+                let number = |value: f64| {
+                    // Round off float noise: 0.1 - 0.1 is 0, not 1e-17.
+                    let value = (value * 10.0).round() / 10.0;
+                    if value.fract() == 0.0 {
+                        json!(value as i64)
+                    } else {
+                        json!(value)
+                    }
+                };
+                let mut body = tiny_job();
+                *at(&mut body, &path) = number(limit);
+                let (status, job, _) = send(
+                    &app,
+                    Method::POST,
+                    "/jobs",
+                    Some(body.to_string().into_bytes()),
+                )
+                .await;
+                assert_eq!(
+                    status,
+                    StatusCode::CREATED,
+                    "{bound} of {schema}.{name}: {job}"
+                );
+
+                *at(&mut body, &path) = number(limit + beyond);
+                let (status, error, _) = send(
+                    &app,
+                    Method::POST,
+                    "/jobs",
+                    Some(body.to_string().into_bytes()),
+                )
+                .await;
+                assert_eq!(
+                    status,
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "beyond {bound} of {schema}.{name}"
+                );
+                let fields: Vec<&str> = error["problems"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|problem| problem["field"].as_str().unwrap())
+                    .collect();
+                assert_eq!(
+                    fields,
+                    [field_name(&path)],
+                    "beyond {bound} of {schema}.{name}"
+                );
+                checked += 1;
+            }
+        }
+    }
+    // 8 defaults, 10 minimums, 1 maximum.
+    assert_eq!(checked, 19);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_job_says_why_it_ended() {
+    // Solved within the time limit: complete.
+    let app = api::router(&config());
+    let job = submit(&app, SMALL, 60).await;
+    assert!(job["ended_by"].is_null());
+    let id = job["id"].as_str().unwrap();
+    let job = wait_until_final(&app, id, Duration::from_secs(60)).await;
+    assert_eq!(job["state"], "done");
+    assert_eq!(job["ended_by"], "complete");
+    let events = read_events(&app, id).await;
+    assert_eq!(events.last().unwrap().data["ended_by"], "complete");
+
+    // Stopped by the time limit.
+    let app = api::router(&slow_config());
+    let job = submit(&app, SLOW, 1).await;
+    let id = job["id"].as_str().unwrap();
+    let events = read_events(&app, id).await;
+    let last = &events.last().unwrap().data;
+    assert_eq!(last["state"], "done");
+    assert_eq!(last["ended_by"], "time_limit");
+    assert!(last["elapsed"].as_f64().unwrap() >= 1.0);
+    assert_eq!(get(&app, id).await["ended_by"], "time_limit");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn queued_jobs_know_their_place_and_busy_says_when_to_retry() {
+    let app = api::router(&api::Config {
+        max_queued_jobs: 2,
+        ..slow_config()
+    });
+    let running = submit(&app, SLOW, 30).await;
+    let running = running["id"].as_str().unwrap();
+    wait_until_running(&app, running).await;
+    assert!(get(&app, running).await["queue_position"].is_null());
+
+    let first = submit(&app, SMALL, 5).await;
+    let second = submit(&app, SMALL, 5).await;
+    assert_eq!(first["queue_position"], 1);
+    assert_eq!(second["queue_position"], 2);
+
+    let body = json!({ "instance": instance(SMALL) })
+        .to_string()
+        .into_bytes();
+    let (status, error, headers) = send(&app, Method::POST, "/jobs", Some(body)).await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    let retry_after: u64 = headers[header::RETRY_AFTER]
+        .to_str()
+        .unwrap()
+        .parse()
+        .unwrap();
+    assert!((1..=30).contains(&retry_after), "{retry_after}");
+    assert!(
+        error["message"]
+            .as_str()
+            .unwrap()
+            .contains(&format!("{retry_after} s"))
+    );
+
+    // The first leaves the queue: the second moves up.
+    let first = first["id"].as_str().unwrap();
+    send(&app, Method::DELETE, &format!("/jobs/{first}"), None).await;
+    let second = second["id"].as_str().unwrap();
+    assert_eq!(get(&app, second).await["queue_position"], 1);
+
+    send(&app, Method::DELETE, &format!("/jobs/{running}"), None).await;
+    let job = wait_until_final(&app, second, Duration::from_secs(60)).await;
+    assert_eq!(job["state"], "done");
+    assert!(job["queue_position"].is_null());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_job_status_holds_the_submitted_instance() {
+    let app = api::router(&config());
+    let job = submit(&app, SMALL, 5).await;
+    let id = job["id"].as_str().unwrap();
+    let submitted: Instance = serde_json::from_value(instance(SMALL)).unwrap();
+    let served: Instance = serde_json::from_value(get(&app, id).await["instance"].clone()).unwrap();
+    assert_eq!(served, submitted);
 }
