@@ -535,6 +535,32 @@ What the UI uses from `docs/API.md`, and what is missing or awkward.
 `docs/API.md` is being implemented in parallel and may change, so these
 are requests, not changes made here.
 
+### Summary of requests (for triage)
+
+Numbers refer to the detailed items below. **Priority:** *High* means
+cheap now and awkward to retrofit; *Medium* means clearly better UX;
+*Low* is nice to have. None changes scope, except where marked.
+
+| # | Request | Screen / interaction that needs it | Fallback without it | Priority |
+|---|---|---|---|---|
+| 1 | `title` = FIELDS.md UI label on every property in `openapi.json` | Every input's label (editor) | Labels hard-coded in the UI; can drift from FIELDS.md | High |
+| 2 | Per-value option names for `objective`, `cut_type`, `first_cuts`, `stages` (`oneOf` + `const` + `title`) | Goal options, segmented controls (editor) | Parsed from the bold words of the help text (fragile) or hard-coded | High |
+| 3 | `default`, `minimum`/`maximum`, `multipleOf: 0.1` in the schema | New job defaults; validation as you type (editor) | Defaults and bounds copied by hand into the UI | High |
+| 4 | Named `PlanReport` and `StateEvent` schemas | Typed SSE handling (search progress) | Hand-written TS types for the events | High |
+| 7 | `--print-openapi` (or a build-time file) | UI build and CI without a running server | CI starts the API to fetch `/openapi.json` | Medium |
+| 9 | `ended_by: "complete" \| "time_limit"` on the status and the final `state` event | Plan header advice: "best this search can do" vs "a longer search may save material" | Neutral wording: "Search finished" | Medium |
+| 13 | `cuts: "along_length" \| "across_length"` on every `piece` with children | Cut order list and badges (panel view), above all for unlimited stages | Direction inferred from the children's geometry (works, implicit) | Medium |
+| 18 | The instance in `GET /jobs/{id}` (or `GET /jobs/{id}/instance`) | Plan opened from a link on another device: parts summary, parts not cut, *Edit job* | Shows only what the plan tree holds; *Edit job* works only in the browser that submitted | Medium |
+| 8 | Per-pattern `metrics` | Panel header and overview cards (waste, parts per panel) | Computed from the tree in the UI (done in the mockups) | Low |
+| 10 | `queue_position` for `queued` jobs | "Waiting for a free solver" state | "Waiting…" without a count | Low |
+| 11 | `Retry-After` on `503 busy` | Busy state, retry button | Fixed retry hint ("try again in a minute") | Low |
+| 19 | `POST /instances/validate` (dry run, same `problems`) | Server-side problems shown before submitting (editor) | Client checks + 422 on submit (enough for v1) | Low |
+| 12, 14, 15, 16, 20 | Documentation only: children in position order; trimming appears as stage `stages + 1`; wrapper pieces; sub-kerf offcuts; `problems[].field` positions = submitted arrays | Cut order derivation, error mapping | The UI relies on today's behaviour | High (it's only docs) |
+| 5, 6 | `stages` type (`2 \| 3 \| "unlimited"`); help-text markup (`*italic*` used in FIELDS.md) | Generated types; help rendering | Works as is; the UI renders bold and italic | Low |
+
+No request needs server-side persistence. The local draft (§9.1) is
+browser-only.
+
 ### What the UI uses
 
 | Need | Endpoint / field | Status |
