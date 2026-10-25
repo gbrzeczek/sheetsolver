@@ -175,6 +175,7 @@ td.idx { color: var(--faint); width: 22px; text-align: right; padding-right: 2px
 .w-name { min-width: 150px; }
 .w-len { width: 96px; }
 .w-qty { width: 72px; }
+.w-qty-wide { width: 104px; }
 .w-chk { width: 84px; }
 .w-del { width: 36px; }
 tr.err-row td { border-bottom: 1px solid var(--line); padding: 0 6px 8px; }
@@ -257,7 +258,7 @@ details.advanced .inner { margin-top: 16px; }
 /* ---------- Plan: workbench layout ---------- */
 .workbench {
   display: grid; grid-template-columns: 170px minmax(0, 1fr) 320px; gap: 20px 24px; align-items: start;
-  grid-template-areas: "nav main cuts" "nav below cuts";
+  grid-template-areas: "nav main cuts" "nav below below";
 }
 .wb-nav { grid-area: nav; } .wb-main { grid-area: main; min-width: 0; }
 .wb-cuts { grid-area: cuts; } .wb-below { grid-area: below; min-width: 0; }
@@ -309,8 +310,14 @@ details.advanced .inner { margin-top: 16px; }
 .cutlist .cut.done { color: var(--faint); }
 .cutlist .cut.done .m, .cutlist .cut.done .r b { color: var(--faint); }
 .cutlist .cut.done .n { border-style: dashed; color: var(--faint); }
-.scroll { max-height: 820px; overflow: auto; position: sticky; top: 20px; }
-@media (max-width: 1099px) { .scroll { max-height: none; position: static; } }
+/* The cut order shares the drawing's row: as tall as the drawing card,
+   aligned with it, and scrolling inside itself. */
+.wb-cuts { align-self: stretch; position: relative; min-height: 420px; }
+.wb-cuts > .scroll { position: absolute; inset: 0; overflow: auto; }
+@media (max-width: 1099px) {
+  .wb-cuts { min-height: 0; }
+  .wb-cuts > .scroll { position: static; }
+}
 
 .below { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px; }
 @media (max-width: 720px) { .below { grid-template-columns: 1fr; } }

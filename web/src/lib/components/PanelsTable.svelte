@@ -21,7 +21,7 @@
     { name: "id", cls: "w-name", numeric: false, placeholder: "" },
     { name: "length", cls: "w-len num", unit: "mm", numeric: true, placeholder: "" },
     { name: "width", cls: "w-len num", unit: "mm", numeric: true, placeholder: "" },
-    { name: "quantity", cls: "w-qty num", numeric: true, placeholder: "Unlimited" },
+    { name: "quantity", cls: "w-qty-wide num", numeric: true, placeholder: "Unlimited" },
     { name: "cost", cls: "w-qty num", numeric: true, placeholder: "Area" },
   ] as const;
 

@@ -41,7 +41,7 @@
     const row = list?.querySelector<HTMLElement>(`[data-cut="${current}"]`);
     const box = list?.closest<HTMLElement>(".scroll");
     if (!row || !box || box.scrollHeight <= box.clientHeight) return;
-    const top = row.offsetTop - box.offsetTop;
+    const top = row.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
     if (top < box.scrollTop) box.scrollTop = top - 40;
     else if (top + row.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = top + row.offsetHeight - box.clientHeight + 16;
   });

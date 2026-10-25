@@ -392,13 +392,40 @@ Exit criteria:
 
 ## Stage 7 — Web UI ✅ done 2026-10-25
 
-Result: `web/` (Vite + Svelte 5 + TypeScript), served by the API
-(`--web-dir`) and built in the Docker image. Every exit criterion is
-covered by `npm run e2e` (Playwright, desktop and tablet, against the real
-API): enter a job → solve → a plan the checker passed, followed cut by
-cut; every field of `FIELDS.md` has its help button with the exact text.
-Unit tests check the cut order and per-panel figures against all golden
-plans. Open follow-ups are in `web/DESIGN.md` §9.
+Result:
+- Design first (`web/DESIGN.md`, static mockups and screenshots in
+  `web/mockups/`), following the owner's design handoff: *Guided setup*
+  for the job, *Workbench* for the plan. Help text sits behind a (?)
+  button on every label and column header (owner's decision), and names
+  are optional: an empty part or panel name is sent as its generated
+  default ("Part 9"), and the job name goes to the API (`name`, #21).
+- `web/`: Vite + Svelte 5 + TypeScript (versions pinned, at least two
+  weeks old). The client types come from `openapi.json` (checked in; CI
+  fails if it differs from what the Rust types print), and every input's
+  label, help, default and bounds from the same file
+  (`scripts/gen-fields.mjs`), so an input without help does not compile.
+- Job setup: parts and panels tables, Goal and kerf, the other settings
+  collapsed with a summary; local checks with the API's paths and
+  wording, and `422` problems next to their field; the draft kept in
+  the browser. Cutting plan: the live search (time bar, figures, plans
+  found, Stop), then the headline ("All 21 parts fit"), figures, a
+  status line that tells a finished search from a time limit, all
+  panels with a parts checklist, and one panel drawn to scale with
+  rulers, numbered cuts, the current cut (in the URL) and the cut order;
+  no-plan, failed, expired and busy states.
+- The cut order, cut directions (inferred from geometry, §8 #13) and
+  per-panel figures are computed in `src/lib/plan`; unit tests check
+  them against all 562 golden plans (Vitest, 23 tests).
+- Exit criteria, covered by `npm run e2e` (Playwright, desktop and
+  tablet, against the real API serving the built UI; 14 tests): enter a
+  job → solve → a plan the checker passed, followed cut by cut, reloaded
+  without the browser's storage; every `FIELDS.md` field has its (?)
+  button with the exact text, and every input points at its help; stop
+  a running search; the no-plan cause; field problems; the draft
+  survives a reload.
+- The Dockerfile's Node stage builds `web/` into the image; CI has a
+  `web` job (`openapi.json` in sync, `svelte-check`, Vitest, Playwright).
+  Open follow-ups: `web/DESIGN.md` §9.
 
 Design (screens, flows, visual language, front-end stack, and what the UI
 needs from the API): `web/DESIGN.md`, with static mockups in

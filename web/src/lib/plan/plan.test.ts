@@ -30,6 +30,8 @@ describe("cut order", () => {
     expect(cuts.slice(0, 3).map((c) => names.get(c.produces))).toEqual(["Strip A", "Strip B", "Strip C"]);
     expect(cuts[3]!.group).toBe("Strip A");
     expect(names.get(cuts[3]!.produces)).toBe("Piece A1");
+    // A cut yielding a part through a wrapper piece names the part.
+    expect(cuts[13]!.produces).toMatchObject({ kind: "part", part_id: "Part 11" });
     // The last full-panel cut leaves the 27.2 mm offcut along the top edge.
     expect(cuts[2]!.leaves?.kind).toBe("offcut");
     expect(cuts[2]!.leaves?.width).toBe(27.2);

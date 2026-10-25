@@ -50,6 +50,11 @@ function isWrapper(piece: PlanNode): boolean {
   return kids.length === 1 && sameSize(kids[0]!, piece);
 }
 
+/** What a node really is: through wrapper pieces down to the part or piece inside. */
+export function unwrap(node: PlanNode): PlanNode {
+  return isWrapper(node) ? unwrap(children(node)[0]!) : node;
+}
+
 export interface CutOrder {
   cuts: Cut[];
   /** Names of the intermediate pieces: Strip A, Piece A1, Piece A1.1. */
@@ -89,8 +94,8 @@ export function cutOrder(pattern: Pattern, kerf: number, stages: number | "unlim
         piece,
         direction,
         measure: direction === "across" ? child.length : child.width,
-        produces: child,
-        leaves: rest,
+        produces: unwrap(child),
+        leaves: rest && unwrap(rest),
         leavesSawDust: restThin,
         group,
         trim,

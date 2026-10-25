@@ -31,13 +31,24 @@ stop it with `DELETE /jobs/{id}`; see [docs/API.md](docs/API.md).
 
 ## Web UI
 
-The UI in [`web/`](web/README.md) is a Svelte app the API serves itself.
-Design: [web/DESIGN.md](web/DESIGN.md).
+The UI in [`web/`](web/README.md) is a Svelte app that the API serves
+itself, on the same origin. Design: [web/DESIGN.md](web/DESIGN.md).
 
 ```bash
-cd web && npm ci && npm run build          # builds web/dist
-cargo run --release -p api -- --web-dir web/dist   # then open http://127.0.0.1:8080
+# Through the API: build the UI once, then open http://127.0.0.1:8080.
+(cd web && npm ci && npm run build)
+cargo run --release -p api -- --web-dir web/dist
+
+# While working on the UI: the API, and Vite's dev server on
+# http://localhost:5173 (it forwards /jobs and /openapi.json to :8080).
+cargo run --release -p api
+(cd web && npm run dev)
+
+# Checks: types, unit tests, end-to-end tests against the real API.
+(cd web && npm run check && npm test && npm run e2e)
 ```
+
+The Docker image below builds and serves the UI the same way.
 
 ## Docker image
 

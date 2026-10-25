@@ -319,10 +319,12 @@
             </div>
           </section>
         </div>
-        <aside class="side scroll wb-cuts" aria-label="Cut order">
-          <div class="side-head"><h3>Cut order</h3><small>{order.cuts.length} cuts</small></div>
-          <p class="help">Each size is the piece to cut off, measured from the edge you cut from: set the fence or stop to it.</p>
-          <CutList {order} {current} onselect={goCut} />
+        <aside class="side wb-cuts" aria-label="Cut order">
+          <div class="scroll">
+            <div class="side-head"><h3>Cut order</h3><small>{order.cuts.length} cuts</small></div>
+            <p class="help">Each size is the piece to cut off, measured from the edge you cut from: set the fence or stop to it.</p>
+            <CutList {order} {current} onselect={goCut} />
+          </div>
         </aside>
         <div class="wb-below">
           <div class="below" style="margin-top:0">
