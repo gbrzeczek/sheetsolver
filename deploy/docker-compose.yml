@@ -1,6 +1,6 @@
-# sheetsolver on a server: `docker compose pull && docker compose up -d`
-# in the directory holding this file. Replace OWNER with the GitHub owner
-# of the repository (lower case), as in ghcr.io/OWNER/sheetsolver.
+# sheetsolver on the server. The deploy job of .github/workflows/docker.yml
+# copies this file to the server's deploy directory and runs
+# `docker compose pull && docker compose up -d` there (docs/DEPLOY.md).
 #
 # The app joins the external `web` network, shared with the reverse proxy
 # that handles TLS and the domain, and publishes no port on the host: the
@@ -12,7 +12,7 @@
 
 services:
   sheetsolver:
-    image: ghcr.io/OWNER/sheetsolver:latest
+    image: ghcr.io/gbrzeczek/sheetsolver:latest
     restart: unless-stopped
     expose:
       - "8080"

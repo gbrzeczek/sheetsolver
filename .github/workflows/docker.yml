@@ -45,45 +45,52 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ---------------------------------------------------------------------
-  # DEPLOY: not set up yet. The owner has not given the server's details.
-  # Pick one option, fill in the placeholders, and uncomment it. The
-  # server needs Docker and deploy/docker-compose.yml (with OWNER filled
-  # in) in its deploy directory, and must be able to pull from GHCR
-  # (`docker login ghcr.io` with a token that can read packages, unless
-  # the package is public).
-  # ---------------------------------------------------------------------
-  #
-  # Option 1: a self-hosted runner on the server itself pulls the new
-  # image and restarts the service. Nothing to open to the internet.
-  #
-  # deploy:
-  #   needs: image
-  #   if: github.ref == 'refs/heads/main'
-  #   runs-on: [self-hosted, sheetsolver]   # labels of the server's runner
-  #   steps:
-  #     - run: |
-  #         cd /srv/sheetsolver               # holds docker-compose.yml
-  #         docker compose pull
-  #         docker compose up -d
-  #         docker image prune -f
-  #
-  # Option 2: a GitHub-hosted runner logs in to the server over SSH.
-  # Needs repository secrets DEPLOY_HOST, DEPLOY_USER and DEPLOY_SSH_KEY
-  # (a key allowed only to run this), and the server's SSH port open.
-  #
-  # deploy:
-  #   needs: image
-  #   if: github.ref == 'refs/heads/main'
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: appleboy/ssh-action@v1
-  #       with:
-  #         host: ${{ secrets.DEPLOY_HOST }}
-  #         username: ${{ secrets.DEPLOY_USER }}
-  #         key: ${{ secrets.DEPLOY_SSH_KEY }}
-  #         script: |
-  #           cd /srv/sheetsolver
-  #           docker compose pull
-  #           docker compose up -d
-  #           docker image prune -f
+  # Deploys the new image to the server over SSH, reaching it through
+  # Tailscale: the runner joins the tailnet for this job only, so the
+  # server's SSH port need not be open to the internet. Skipped until the
+  # repository variable DEPLOY_HOST is set. Setup: docs/DEPLOY.md.
+  deploy:
+    needs: image
+    if: github.ref == 'refs/heads/main' && vars.DEPLOY_HOST != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - name: Set up SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Pull and restart on the server
+        env:
+          TARGET: ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}
+          DEPLOY_DIR: ${{ vars.DEPLOY_DIR || '/srv/sheetsolver' }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ssh_() { ssh -i ~/.ssh/id_deploy -o BatchMode=yes "$TARGET" "$@"; }
+          ssh_ "mkdir -p '$DEPLOY_DIR'"
+          scp -i ~/.ssh/id_deploy -o BatchMode=yes deploy/docker-compose.yml "$TARGET:$DEPLOY_DIR/docker-compose.yml"
+          # This job's token lets the server pull the image; it expires
+          # with the job, and the server logs out again either way.
+          printf '%s' "$GHCR_TOKEN" | ssh_ "set -e
+            trap 'docker logout ghcr.io >/dev/null' EXIT
+            docker login ghcr.io -u '$GHCR_USER' --password-stdin
+            cd '$DEPLOY_DIR'
+            docker compose pull
+            docker compose up -d
+            docker image prune -f"

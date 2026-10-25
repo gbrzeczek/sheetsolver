@@ -64,9 +64,9 @@ on pushes to `main` and on `v*` tags and pushes it to
 `ghcr.io/<owner>/sheetsolver`; the server runs it with
 `deploy/docker-compose.yml`, on the external `web` Docker network shared
 with the reverse proxy (TLS, domain), with no port published on the
-host. The deploy step itself waits for the
-server's details (a commented-out job in the workflow shows the two
-usual ways).
+host. After each image build on `main`, a deploy
+job joins the tailnet (Tailscale) and redeploys over SSH; see
+`DEPLOY.md`.
 
 Why:
 - One thing to deploy, version and roll back: the UI and the API it was

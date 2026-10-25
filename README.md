@@ -49,8 +49,8 @@ Pushes to `main` and `v*` tags build the image and publish it as
 `ghcr.io/<owner>/sheetsolver` (`.github/workflows/docker.yml`). On the
 server, `deploy/docker-compose.yml` runs it on the external `web`
 Docker network, behind your reverse proxy (`http://sheetsolver:8080`, no
-host port); the automatic deploy step is
-still to be set up.
+host port), deployed over SSH through Tailscale after each build once
+configured: see [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Developer CLI
 
