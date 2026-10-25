@@ -85,6 +85,8 @@ fn seconds(duration: Duration) -> f64 {
 pub struct Job {
     /// The job's id.
     pub id: Uuid,
+    /// The job's name, if it has one.
+    name: Option<String>,
     /// The time limit, in seconds.
     pub time_limit: u32,
     /// The order of submission: queued jobs start in this order.
@@ -201,6 +203,7 @@ impl JobStore {
         });
         JobStatus {
             id: job.id,
+            name: job.name.clone(),
             state: data.state,
             ended_by: data.ended_by,
             queue_position,
@@ -250,6 +253,7 @@ impl JobStore {
         });
         let job = Arc::new(Job {
             id: Uuid::new_v4(),
+            name: spec.name,
             time_limit: spec.time_limit,
             sequence: self.next_sequence.fetch_add(1, Ordering::Relaxed),
             instance: spec.instance,

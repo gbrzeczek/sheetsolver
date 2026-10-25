@@ -62,6 +62,9 @@ fn annotate_input_fields(document: &mut Value) {
         if let Some(maximum) = field.maximum {
             property.insert("maximum".into(), number(maximum));
         }
+        if let Some(max_length) = field.max_length {
+            property.insert("maxLength".into(), json!(max_length));
+        }
     }
 }
 

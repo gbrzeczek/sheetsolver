@@ -96,7 +96,7 @@ fn field_rows() -> Vec<FieldRow> {
         } else if chapter == "Fields" {
             if let Some(cells) = cells(line) {
                 let schema = match (section, cells[0]) {
-                    ("Job", "time_limit") => "JobRequest",
+                    ("Job", "time_limit" | "name") => "JobRequest",
                     ("Job", _) => "Instance",
                     ("Panels (stock sheets)", _) => "Panel",
                     ("Parts", _) => "Part",
@@ -136,7 +136,7 @@ fn input_fields_carry_the_help_text_and_label_of_fields_md() {
     let document = document();
     let schemas = &document["components"]["schemas"];
     let rows = field_rows();
-    assert_eq!(rows.len(), 17);
+    assert_eq!(rows.len(), 18);
     for row in &rows {
         let property = &schemas[row.schema]["properties"][&row.field];
         let name = format!("{}.{}", row.schema, row.field);

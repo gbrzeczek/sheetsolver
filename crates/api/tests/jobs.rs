@@ -667,3 +667,77 @@ async fn the_job_status_holds_the_submitted_instance() {
     let served: Instance = serde_json::from_value(get(&app, id).await["instance"].clone()).unwrap();
     assert_eq!(served, submitted);
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_job_may_have_a_name() {
+    let app = api::router(&config());
+    let post = |name: Value| {
+        let mut body = tiny_job();
+        body["name"] = name;
+        let app = app.clone();
+        async move {
+            send(
+                &app,
+                Method::POST,
+                "/jobs",
+                Some(body.to_string().into_bytes()),
+            )
+            .await
+        }
+    };
+
+    // Trimmed, and echoed by every status.
+    let (status, job, _) = post(json!("  Kitchen units ")).await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(job["name"], "Kitchen units");
+    let id = job["id"].as_str().unwrap();
+    assert_eq!(get(&app, id).await["name"], "Kitchen units");
+
+    // Left out, null or blank: no name.
+    for name in [Value::Null, json!(""), json!("   ")] {
+        let (status, job, _) = post(name.clone()).await;
+        assert_eq!(status, StatusCode::CREATED, "{name}");
+        assert!(job["name"].is_null(), "{name}");
+    }
+    let mut body = tiny_job();
+    body.as_object_mut().unwrap().remove("name");
+    let (_, job, _) = send(
+        &app,
+        Method::POST,
+        "/jobs",
+        Some(body.to_string().into_bytes()),
+    )
+    .await;
+    assert!(job["name"].is_null());
+
+    // At most 100 characters, counted after trimming, not bytes.
+    let longest = "é".repeat(100);
+    let (status, job, _) = post(json!(format!(" {longest} "))).await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(job["name"], longest);
+    let document = api::openapi_document();
+    assert_eq!(
+        document["components"]["schemas"]["JobRequest"]["properties"]["name"]["maxLength"],
+        100
+    );
+
+    for (name, message) in [
+        (
+            json!("x".repeat(101)),
+            "job name must be at most 100 characters, not 101",
+        ),
+        (
+            json!("Kitchen\nunits"),
+            "job name must be one line, without tabs or line breaks",
+        ),
+        (json!(42), "must be text"),
+    ] {
+        let (status, error, _) = post(name.clone()).await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{name}");
+        assert_eq!(
+            error["problems"],
+            json!([{ "field": "name", "message": message }]),
+            "{name}"
+        );
+    }
+}

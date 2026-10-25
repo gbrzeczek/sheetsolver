@@ -24,6 +24,8 @@ pub struct InputField {
     pub minimum: Option<f64>,
     /// The largest value accepted.
     pub maximum: Option<f64>,
+    /// The most characters accepted, for text.
+    pub max_length: Option<usize>,
 }
 
 const fn input(schema: &'static str, property: &'static str, title: &'static str) -> InputField {
@@ -34,6 +36,7 @@ const fn input(schema: &'static str, property: &'static str, title: &'static str
         default: None,
         minimum: None,
         maximum: None,
+        max_length: None,
     }
 }
 
@@ -52,6 +55,11 @@ impl InputField {
         self.maximum = Some(maximum);
         self
     }
+
+    const fn max_length(mut self, max_length: usize) -> Self {
+        self.max_length = Some(max_length);
+        self
+    }
 }
 
 /// The shortest length accepted: lengths are in steps of 0.1 mm and must
@@ -60,6 +68,7 @@ const SHORTEST: f64 = 0.1;
 
 /// Every input field, in the order of `FIELDS.md`.
 pub static INPUT_FIELDS: &[InputField] = &[
+    input("JobRequest", "name", "Job name").max_length(crate::types::MAX_NAME_CHARS),
     input("Instance", "objective", "Goal").default("\"bin_packing\""),
     input("JobRequest", "time_limit", "Time limit")
         .default("10")
