@@ -72,7 +72,8 @@ These shapes are the API contract; Stage 1 finalises them.
   "saw": {
     "kerf": 3.2,
     "stages": 3,
-    "cut_type": "non_exact"
+    "cut_type": "non_exact",
+    "first_cuts": "either"
   },
   "panels": [
     { "id": "Birch ply 18 mm", "length": 2500, "width": 1250, "quantity": 10 }
@@ -167,8 +168,15 @@ interface.
 
 ## Hot path guidelines
 
-- Search nodes live in an arena (`Vec<Node>`) and refer to parents by
-  index; no `Rc`/`Box` per node.
+- The `treesearch` crate is generic over the node type
+  (`BranchingScheme::Node`, any cheap `Clone` handle), so each scheme
+  picks its representation. Schemes start with `Rc<Node>` and parent
+  `Rc`s, as upstream does with `shared_ptr`: discarded children are freed
+  at once. A plain arena would keep every generated node until the end
+  of an iteration (millions at large queue sizes); an arena with reuse is
+  the option to benchmark if allocation shows up in profiles.
+- Queues are `BTreeMap`s keyed by the scheme's `Priority` (guide value,
+  then node id), matching upstream's `std::set` ordered by its comparator.
 - Small fixed-size collections (subplate fronts, stage positions) use
   arrays or `smallvec`.
 - Dominance hashing uses a fast non-cryptographic hasher (`rustc-hash` /

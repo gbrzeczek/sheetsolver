@@ -1,0 +1,275 @@
+{
+  "best": {
+    "items": [
+      0,
+      1,
+      2,
+      4,
+      7,
+      10,
+      13
+    ],
+    "profit": 32,
+    "weight": 23
+  },
+  "callbacks": [
+    {
+      "best": {
+        "items": [
+          0
+        ],
+        "profit": 5,
+        "weight": 3
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          13
+        ],
+        "profit": 8,
+        "weight": 4
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          2
+        ],
+        "profit": 9,
+        "weight": 7
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          13
+        ],
+        "profit": 13,
+        "weight": 7
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          1,
+          13
+        ],
+        "profit": 16,
+        "weight": 10
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          2,
+          13
+        ],
+        "profit": 17,
+        "weight": 11
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          4,
+          5,
+          13
+        ],
+        "profit": 19,
+        "weight": 14
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          4,
+          6,
+          13
+        ],
+        "profit": 20,
+        "weight": 13
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          7,
+          10,
+          13
+        ],
+        "profit": 21,
+        "weight": 13
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          7,
+          10,
+          12,
+          13
+        ],
+        "profit": 24,
+        "weight": 16
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          13
+        ],
+        "profit": 25,
+        "weight": 19
+      },
+      "optimal": false,
+      "queue_size": 64
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          1,
+          2,
+          4,
+          5,
+          13
+        ],
+        "profit": 26,
+        "weight": 21
+      },
+      "optimal": false,
+      "queue_size": 64
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          13
+        ],
+        "profit": 27,
+        "weight": 23
+      },
+      "optimal": false,
+      "queue_size": 64
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          6,
+          13
+        ],
+        "profit": 28,
+        "weight": 22
+      },
+      "optimal": false,
+      "queue_size": 64
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          1,
+          2,
+          4,
+          6,
+          7,
+          13
+        ],
+        "profit": 31,
+        "weight": 22
+      },
+      "optimal": false,
+      "queue_size": 64
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          1,
+          2,
+          4,
+          7,
+          10,
+          13
+        ],
+        "profit": 32,
+        "weight": 23
+      },
+      "optimal": false,
+      "queue_size": 64
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          1,
+          2,
+          4,
+          7,
+          10,
+          13
+        ],
+        "profit": 32,
+        "weight": 23
+      },
+      "optimal": true,
+      "queue_size": 64
+    }
+  ],
+  "final_queue_size": 64,
+  "nodes_added": 254,
+  "nodes_expanded": 135,
+  "nodes_generated": 885,
+  "nodes_processed": 185,
+  "optimal": true,
+  "parameters": {
+    "growth_factor": 64.0,
+    "maximum_nodes_expanded": -1,
+    "maximum_queue_size": 65,
+    "minimum_queue_size": 1
+  }
+}

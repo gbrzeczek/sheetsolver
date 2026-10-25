@@ -1,0 +1,53 @@
+{
+  "capacity": 46,
+  "items": [
+    {
+      "weight": 15,
+      "profit": 26
+    },
+    {
+      "weight": 3,
+      "profit": 13
+    },
+    {
+      "weight": 19,
+      "profit": 37
+    },
+    {
+      "weight": 3,
+      "profit": 17
+    },
+    {
+      "weight": 19,
+      "profit": 19
+    },
+    {
+      "weight": 20,
+      "profit": 39
+    },
+    {
+      "weight": 2,
+      "profit": 4
+    },
+    {
+      "weight": 2,
+      "profit": 9
+    },
+    {
+      "weight": 14,
+      "profit": 28
+    },
+    {
+      "weight": 7,
+      "profit": 21
+    },
+    {
+      "weight": 2,
+      "profit": 1
+    },
+    {
+      "weight": 11,
+      "profit": 17
+    }
+  ]
+}

@@ -85,7 +85,23 @@ Exit criteria:
   constraint (overlap, out of bounds, wrong copies, non-guillotine cut,
   too many stages, …).
 
-## Stage 2 — Generic iterative beam search
+## Stage 2 — Generic iterative beam search ✅ done 2026-10-25
+
+Result:
+- `treesearch` crate: `BranchingScheme` trait, `iterative_beam_search`
+  (upstream `iterative_beam_search_2`), `Parameters` (including
+  `fixed_queue_size`, upstream's deterministic settings), `Stop`
+  (deadline and cancellation flag), `Guide` (f64 ordered like C++ `<`).
+- `tools/oracle/treesearch_toy.cpp`: upstream's search on a toy knapsack
+  scheme; the same scheme in Rust in `crates/treesearch/tests/`.
+- On 5 seeded instances × 5 parameter sets (deterministic, anytime-like,
+  node limit), the Rust search reproduces upstream exactly: node
+  counters, best solution and every new-solution callback. Breaking the
+  tie-breaking or the dominance rule makes the test fail.
+- Left out as unused: `goal`, `cutoff`, `global_history`, solution pools
+  larger than one, JSON search-tree export. Upstream's other variant,
+  `iterative_beam_search` (used by the maximal-spaces search), is ported
+  in Stage 5.
 
 **Goal:** a port of the part of `treesearchsolver` that the guillotine
 solver uses.
@@ -110,6 +126,9 @@ Deliverables:
 - `guillotine` crate: port of `rectangleguillotine` `BranchingScheme`
   (insertions, subplates, front, guides, bounds, dominance) for the **In**
   features only, plus conversion from search nodes to `model::Solution`.
+- All three first-cut directions: upstream solves "along the length" on a
+  flipped instance (`instance_flipper.cpp`) and "either" by running one
+  search per direction (`tree_search.cpp`, `tree_search()`).
 - `solve(&Instance, &Params, on_solution) -> Output`.
 - Criterion benchmarks on a few representative instances.
 
@@ -145,7 +164,8 @@ at a time with those single-panel searches.
 Deliverables:
 - `guillotine` crate, new modules:
   - port of `tree_search_maximal_spaces` (its own branching scheme on the
-    `treesearch` crate);
+    `treesearch` crate), and of treesearchsolver's `iterative_beam_search`
+    (not `_2`), which it runs on;
   - port of `tree_search_hypergraph_infinite_copies` (dynamic programming
     over a hypergraph of cuts);
   - ports of sequential single knapsack and sequential value correction

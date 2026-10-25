@@ -1,0 +1,359 @@
+{
+  "best": {
+    "items": [
+      0,
+      3,
+      8,
+      14,
+      15,
+      17,
+      18,
+      19
+    ],
+    "profit": 510,
+    "weight": 243
+  },
+  "callbacks": [
+    {
+      "best": {
+        "items": [
+          0
+        ],
+        "profit": 67,
+        "weight": 22
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          5
+        ],
+        "profit": 89,
+        "weight": 56
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          9
+        ],
+        "profit": 93,
+        "weight": 49
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          13
+        ],
+        "profit": 101,
+        "weight": 51
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          2
+        ],
+        "profit": 126,
+        "weight": 71
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          5
+        ],
+        "profit": 156,
+        "weight": 78
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          9
+        ],
+        "profit": 160,
+        "weight": 71
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          13
+        ],
+        "profit": 168,
+        "weight": 73
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          1,
+          13
+        ],
+        "profit": 176,
+        "weight": 81
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          2,
+          5
+        ],
+        "profit": 215,
+        "weight": 127
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          2,
+          9
+        ],
+        "profit": 219,
+        "weight": 120
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          2,
+          13
+        ],
+        "profit": 227,
+        "weight": 122
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          3,
+          5,
+          6
+        ],
+        "profit": 257,
+        "weight": 125
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          3,
+          5,
+          9
+        ],
+        "profit": 273,
+        "weight": 137
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          3,
+          5,
+          13
+        ],
+        "profit": 281,
+        "weight": 139
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          8,
+          9,
+          13
+        ],
+        "profit": 306,
+        "weight": 138
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          8,
+          9,
+          10,
+          12
+        ],
+        "profit": 333,
+        "weight": 189
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          8,
+          9,
+          10,
+          13
+        ],
+        "profit": 360,
+        "weight": 187
+      },
+      "optimal": false,
+      "queue_size": 1
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          3,
+          8,
+          9,
+          10,
+          13
+        ],
+        "profit": 384,
+        "weight": 197
+      },
+      "optimal": false,
+      "queue_size": 2
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          3,
+          8,
+          14,
+          16,
+          17
+        ],
+        "profit": 423,
+        "weight": 200
+      },
+      "optimal": false,
+      "queue_size": 2
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          3,
+          8,
+          14,
+          15,
+          17
+        ],
+        "profit": 426,
+        "weight": 192
+      },
+      "optimal": false,
+      "queue_size": 3
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          3,
+          8,
+          13,
+          16,
+          17
+        ],
+        "profit": 428,
+        "weight": 203
+      },
+      "optimal": false,
+      "queue_size": 3
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          3,
+          8,
+          14,
+          15,
+          17,
+          18
+        ],
+        "profit": 495,
+        "weight": 238
+      },
+      "optimal": false,
+      "queue_size": 3
+    },
+    {
+      "best": {
+        "items": [
+          0,
+          3,
+          8,
+          14,
+          15,
+          17,
+          18,
+          19
+        ],
+        "profit": 510,
+        "weight": 243
+      },
+      "optimal": false,
+      "queue_size": 3
+    }
+  ],
+  "final_queue_size": 4,
+  "nodes_added": 435,
+  "nodes_expanded": 151,
+  "nodes_generated": 1712,
+  "nodes_processed": 155,
+  "optimal": false,
+  "parameters": {
+    "growth_factor": 1.5,
+    "maximum_nodes_expanded": 150,
+    "maximum_queue_size": 1000,
+    "minimum_queue_size": 1
+  }
+}

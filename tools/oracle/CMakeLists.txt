@@ -32,3 +32,10 @@ target_compile_definitions(sheetsolver_oracle PRIVATE
     PACKINGSOLVER_COMMIT="${PACKINGSOLVER_COMMIT}")
 target_link_libraries(sheetsolver_oracle PRIVATE
     PackingSolver::rectangleguillotine)
+
+# Reference for the treesearch crate (Stage 2): upstream's beam search on a
+# toy knapsack scheme.
+add_executable(sheetsolver_treesearch_toy treesearch_toy.cpp)
+set_target_properties(sheetsolver_treesearch_toy PROPERTIES CXX_STANDARD 17)
+target_link_libraries(sheetsolver_treesearch_toy PRIVATE
+    TreeSearchSolver::treesearchsolver)

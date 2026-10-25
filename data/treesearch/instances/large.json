@@ -1,0 +1,117 @@
+{
+  "capacity": 524,
+  "items": [
+    {
+      "weight": 68,
+      "profit": 104
+    },
+    {
+      "weight": 38,
+      "profit": 128
+    },
+    {
+      "weight": 78,
+      "profit": 126
+    },
+    {
+      "weight": 75,
+      "profit": 149
+    },
+    {
+      "weight": 35,
+      "profit": 56
+    },
+    {
+      "weight": 89,
+      "profit": 105
+    },
+    {
+      "weight": 53,
+      "profit": 68
+    },
+    {
+      "weight": 11,
+      "profit": 29
+    },
+    {
+      "weight": 75,
+      "profit": 96
+    },
+    {
+      "weight": 94,
+      "profit": 91
+    },
+    {
+      "weight": 30,
+      "profit": 40
+    },
+    {
+      "weight": 71,
+      "profit": 140
+    },
+    {
+      "weight": 97,
+      "profit": 196
+    },
+    {
+      "weight": 76,
+      "profit": 113
+    },
+    {
+      "weight": 36,
+      "profit": 80
+    },
+    {
+      "weight": 67,
+      "profit": 149
+    },
+    {
+      "weight": 66,
+      "profit": 63
+    },
+    {
+      "weight": 40,
+      "profit": 86
+    },
+    {
+      "weight": 41,
+      "profit": 58
+    },
+    {
+      "weight": 35,
+      "profit": 28
+    },
+    {
+      "weight": 74,
+      "profit": 145
+    },
+    {
+      "weight": 96,
+      "profit": 184
+    },
+    {
+      "weight": 79,
+      "profit": 99
+    },
+    {
+      "weight": 78,
+      "profit": 86
+    },
+    {
+      "weight": 74,
+      "profit": 156
+    },
+    {
+      "weight": 86,
+      "profit": 185
+    },
+    {
+      "weight": 52,
+      "profit": 80
+    },
+    {
+      "weight": 33,
+      "profit": 63
+    }
+  ]
+}

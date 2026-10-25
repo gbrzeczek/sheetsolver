@@ -1,0 +1,85 @@
+{
+  "capacity": 254,
+  "items": [
+    {
+      "weight": 22,
+      "profit": 67
+    },
+    {
+      "weight": 8,
+      "profit": 8
+    },
+    {
+      "weight": 49,
+      "profit": 59
+    },
+    {
+      "weight": 10,
+      "profit": 24
+    },
+    {
+      "weight": 29,
+      "profit": 31
+    },
+    {
+      "weight": 56,
+      "profit": 89
+    },
+    {
+      "weight": 37,
+      "profit": 77
+    },
+    {
+      "weight": 29,
+      "profit": 52
+    },
+    {
+      "weight": 16,
+      "profit": 45
+    },
+    {
+      "weight": 49,
+      "profit": 93
+    },
+    {
+      "weight": 49,
+      "profit": 54
+    },
+    {
+      "weight": 16,
+      "profit": 11
+    },
+    {
+      "weight": 53,
+      "profit": 74
+    },
+    {
+      "weight": 51,
+      "profit": 101
+    },
+    {
+      "weight": 48,
+      "profit": 96
+    },
+    {
+      "weight": 51,
+      "profit": 93
+    },
+    {
+      "weight": 59,
+      "profit": 90
+    },
+    {
+      "weight": 45,
+      "profit": 101
+    },
+    {
+      "weight": 46,
+      "profit": 69
+    },
+    {
+      "weight": 5,
+      "profit": 15
+    }
+  ]
+}

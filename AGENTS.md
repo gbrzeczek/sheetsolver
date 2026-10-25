@@ -49,9 +49,9 @@ Read these before starting any task:
    `left, right, bottom, top`; `df` → `depth`), small functions, and doc
    comments on every public item. Explain *why* in comments, not *what*.
 6. **Performance matters, but measure first.** The hot path is node
-   expansion in the tree search. Avoid per-node heap allocation there
-   (arena/`Vec` with index parents instead of `Rc`), but do not optimise
-   anything without a benchmark showing it matters.
+   expansion in the tree search. Nodes start as `Rc` handles, like
+   upstream's `shared_ptr` (see `docs/ARCHITECTURE.md`); move to an arena
+   or other allocation tricks only when a benchmark shows it matters.
 7. **No `unsafe`** without a written justification in the code and a
    benchmark that requires it.
 8. **Every user-facing field has precise help text**, written in

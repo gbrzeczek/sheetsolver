@@ -1,0 +1,61 @@
+{
+  "capacity": 23,
+  "items": [
+    {
+      "weight": 3,
+      "profit": 5
+    },
+    {
+      "weight": 3,
+      "profit": 3
+    },
+    {
+      "weight": 4,
+      "profit": 4
+    },
+    {
+      "weight": 2,
+      "profit": 1
+    },
+    {
+      "weight": 3,
+      "profit": 4
+    },
+    {
+      "weight": 4,
+      "profit": 2
+    },
+    {
+      "weight": 3,
+      "profit": 3
+    },
+    {
+      "weight": 2,
+      "profit": 4
+    },
+    {
+      "weight": 4,
+      "profit": 2
+    },
+    {
+      "weight": 3,
+      "profit": 2
+    },
+    {
+      "weight": 4,
+      "profit": 4
+    },
+    {
+      "weight": 4,
+      "profit": 4
+    },
+    {
+      "weight": 3,
+      "profit": 3
+    },
+    {
+      "weight": 4,
+      "profit": 8
+    }
+  ]
+}
