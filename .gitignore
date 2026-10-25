@@ -1,0 +1,6 @@
+/target
+**/*.rs.bk
+/tools/oracle/build
+.DS_Store
+/web/node_modules
+/web/dist
