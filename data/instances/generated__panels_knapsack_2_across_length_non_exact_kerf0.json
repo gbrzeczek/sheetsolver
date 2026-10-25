@@ -1,0 +1,96 @@
+{
+  "objective": "knapsack",
+  "saw": {
+    "kerf": 0,
+    "stages": 2,
+    "cut_type": "non_exact",
+    "first_cuts": "across_length"
+  },
+  "panels": [
+    {
+      "id": "Panel 1",
+      "length": 2500,
+      "width": 1250,
+      "quantity": 1
+    },
+    {
+      "id": "Panel 2",
+      "length": 2440,
+      "width": 1220,
+      "quantity": 2
+    }
+  ],
+  "parts": [
+    {
+      "id": "Part 1",
+      "length": 1060.5,
+      "width": 560.5,
+      "quantity": 8
+    },
+    {
+      "id": "Part 2",
+      "length": 560,
+      "width": 430,
+      "quantity": 8,
+      "grain": true
+    },
+    {
+      "id": "Part 3",
+      "length": 630.5,
+      "width": 530,
+      "quantity": 2
+    },
+    {
+      "id": "Part 4",
+      "length": 980,
+      "width": 510,
+      "quantity": 4,
+      "grain": true
+    },
+    {
+      "id": "Part 5",
+      "length": 680,
+      "width": 270,
+      "quantity": 2
+    },
+    {
+      "id": "Part 6",
+      "length": 580,
+      "width": 210,
+      "quantity": 8
+    },
+    {
+      "id": "Part 7",
+      "length": 380,
+      "width": 340,
+      "quantity": 2,
+      "grain": true
+    },
+    {
+      "id": "Part 8",
+      "length": 820,
+      "width": 350,
+      "quantity": 2,
+      "grain": true
+    },
+    {
+      "id": "Part 9",
+      "length": 180,
+      "width": 150,
+      "quantity": 12
+    },
+    {
+      "id": "Part 10",
+      "length": 160.5,
+      "width": 120.5,
+      "quantity": 2
+    },
+    {
+      "id": "Part 11",
+      "length": 310,
+      "width": 240,
+      "quantity": 2,
+      "grain": true
+    }
+  ]
+}

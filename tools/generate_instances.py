@@ -12,6 +12,13 @@ every combination of objective, number of stages, cut type and kerf (0 and
 3.2 mm), cycling through the first-cut directions, with cabinet-like parts on standard board sizes, some of them
 with half-millimetre dimensions.
 
+A second set (`generated__panels_*`) lists two or three panel sizes, for
+every combination of objective (bin packing and knapsack), 2 and 3 stages,
+first-cut direction and kerf, cycling through the cut types. It exercises
+upstream's paths for several panel sizes: with first cuts "either", one
+search in which each new panel picks its own direction, and for knapsack,
+the panels taken smallest first whatever order they are listed in.
+
 Output is deterministic (fixed seed), so regenerating never changes
 existing files unless this script changes.
 """
@@ -79,6 +86,38 @@ def instance(rng, objective, stages, cut_type, kerf, first_cuts):
     }
 
 
+# The multi-panel set: only the objectives that allow several panel sizes.
+MULTI_PANEL_SEED = 20261026
+MULTI_PANEL_OBJECTIVES = ["bin_packing", "knapsack"]
+MULTI_PANEL_STAGES = [2, 3]
+
+
+def multi_panel_instance(rng, objective, stages, cut_type, kerf, first_cuts):
+    """Two or three distinct board sizes, listed in random order."""
+    boards = rng.sample(BOARDS, rng.choice([2, 3]))
+    items = parts(rng, rng.randint(6, 14))
+    panels = [{"id": f"Panel {i + 1}", "length": length, "width": width}
+              for i, (length, width) in enumerate(boards)]
+    if objective == "bin_packing":
+        # Panels are used in the order listed, so every size but the last
+        # is limited, or the later ones would never be used.
+        for panel in panels[:-1]:
+            panel["quantity"] = rng.choice([1, 2])
+    else:
+        # One or two of each: not enough for every part.
+        for panel in panels:
+            panel["quantity"] = rng.choice([1, 2])
+        for part in items:
+            part["quantity"] *= 2
+    return {
+        "objective": objective,
+        "saw": {"kerf": kerf, "stages": stages, "cut_type": cut_type,
+                "first_cuts": first_cuts},
+        "panels": panels,
+        "parts": items,
+    }
+
+
 def main():
     if len(sys.argv) != 2:
         sys.exit(__doc__)
@@ -96,7 +135,24 @@ def main():
                     data = instance(rng, objective, stages, cut_type, kerf, first_cuts)
                     (out / name).write_text(json.dumps(data, indent=2) + "\n")
                     count += 1
-    print(f"generated {count}")
+    # A separate generator, so adding this set left the files above unchanged.
+    rng = random.Random(MULTI_PANEL_SEED)
+    multi_count = 0
+    for objective in MULTI_PANEL_OBJECTIVES:
+        for stages in MULTI_PANEL_STAGES:
+            for first_cuts in FIRST_CUTS:
+                for kerf in KERFS:
+                    # Shifted by one for each objective and stage count, so
+                    # every first-cut direction sees every cut type.
+                    shift = multi_count // (len(FIRST_CUTS) * len(KERFS))
+                    cut_type = CUT_TYPES[(multi_count + shift) % len(CUT_TYPES)]
+                    kerf_name = str(kerf).replace(".", "_")
+                    name = (f"generated__panels_{objective}_{stages}_{first_cuts}"
+                            f"_{cut_type}_kerf{kerf_name}.json")
+                    data = multi_panel_instance(rng, objective, stages, cut_type, kerf, first_cuts)
+                    (out / name).write_text(json.dumps(data, indent=2) + "\n")
+                    multi_count += 1
+    print(f"generated {count} + {multi_count} with several panel sizes")
 
 
 if __name__ == "__main__":

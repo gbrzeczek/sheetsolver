@@ -131,11 +131,16 @@ Result:
 - With trims, defects, minimum waste, cut distances, cut counts, costs,
   resources and roadef2018 all out of scope, most of upstream's
   `update()` reduces to three rules; `scheme.rs` says which.
-- Differential test (`crates/guillotine/tests/golden.rs`): all 84
+- Differential test (`crates/guillotine/tests/golden.rs`): all 108
   instances with 2 or 3 stages give exactly the golden plan at queue
-  sizes 64 and 2048 (168 plans, the empty ones included), and every
+  sizes 64 and 2048 (216 plans, the empty ones included), and every
   plan passes the checker. Reversing the node-id tie-break or the
-  rotation order makes 19 to 48 of them differ.
+  rotation order made 19 to 48 of the first 84 differ.
+- 24 generated instances with two or three panel sizes
+  (`generated__panels_*`, bin packing and knapsack) cover upstream's
+  multi-panel paths: one search with first cuts "either" in which each
+  new panel picks its direction, and knapsack using the smallest panels
+  first.
 - Bounds: as `TESTING.md` assumed, upstream's early stop on bounds never
   changes the plan (verified, see there). The port keeps only upstream's
   in-search stop after an exhaustive search.
@@ -144,8 +149,7 @@ Result:
   the port takes 0.61–0.69× upstream's time on all 6 instances at both
   queue sizes (e.g. 566 ms against 869 ms for the slowest at 2048), with
   `Rc` nodes and the standard hasher; no arena needed.
-- Found: with first cuts "either" and one panel size (every instance so
-  far), upstream runs one search per direction, so every panel of a plan
+- Found: with first cuts "either" and one panel size, upstream runs one search per direction, so every panel of a plan
   is cut the same way; only with several panel sizes may each panel pick
   its direction. The `first_cuts` help text said otherwise and is fixed.
   Ties between the searches go to the earliest, in the order guide 0

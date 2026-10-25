@@ -1,0 +1,609 @@
+{
+  "oracle": {
+    "algorithm": "tree_search",
+    "internal_length_unit": "0.1 mm",
+    "optimization_mode": "not_anytime_sequential",
+    "queue_size": 2048,
+    "upstream_commit": "9b656a0dcafd1e9019bf39a5910d4307af65579a"
+  },
+  "patterns": [
+    {
+      "first_cuts": "across_length",
+      "panel_id": "Panel 1",
+      "repeat": 1,
+      "root": {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 130.5,
+                    "part_id": "Part 1",
+                    "rotated": true,
+                    "stage": 3,
+                    "width": 670,
+                    "x": 0,
+                    "y": 0
+                  },
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 130.5,
+                    "part_id": "Part 1",
+                    "rotated": true,
+                    "stage": 3,
+                    "width": 670,
+                    "x": 133.7,
+                    "y": 0
+                  }
+                ],
+                "kind": "piece",
+                "length": 264.2,
+                "stage": 2,
+                "width": 670,
+                "x": 0,
+                "y": 0
+              },
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 220.5,
+                    "part_id": "Part 10",
+                    "rotated": true,
+                    "stage": 3,
+                    "width": 370,
+                    "x": 0,
+                    "y": 673.2
+                  },
+                  {
+                    "children": [],
+                    "kind": "offcut",
+                    "length": 40.5,
+                    "stage": 3,
+                    "width": 370,
+                    "x": 223.7,
+                    "y": 673.2
+                  }
+                ],
+                "kind": "piece",
+                "length": 264.2,
+                "stage": 2,
+                "width": 370,
+                "x": 0,
+                "y": 673.2
+              },
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 160,
+                    "part_id": "Part 2",
+                    "rotated": false,
+                    "stage": 3,
+                    "width": 80,
+                    "x": 0,
+                    "y": 1046.4
+                  },
+                  {
+                    "children": [],
+                    "kind": "offcut",
+                    "length": 101,
+                    "stage": 3,
+                    "width": 80,
+                    "x": 163.2,
+                    "y": 1046.4
+                  }
+                ],
+                "kind": "piece",
+                "length": 264.2,
+                "stage": 2,
+                "width": 80,
+                "x": 0,
+                "y": 1046.4
+              },
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 160,
+                    "part_id": "Part 2",
+                    "rotated": false,
+                    "stage": 3,
+                    "width": 80,
+                    "x": 0,
+                    "y": 1129.6
+                  },
+                  {
+                    "children": [],
+                    "kind": "offcut",
+                    "length": 101,
+                    "stage": 3,
+                    "width": 80,
+                    "x": 163.2,
+                    "y": 1129.6
+                  }
+                ],
+                "kind": "piece",
+                "length": 264.2,
+                "stage": 2,
+                "width": 80,
+                "x": 0,
+                "y": 1129.6
+              },
+              {
+                "children": [],
+                "kind": "offcut",
+                "length": 264.2,
+                "stage": 2,
+                "width": 37.2,
+                "x": 0,
+                "y": 1212.8
+              }
+            ],
+            "kind": "piece",
+            "length": 264.2,
+            "stage": 1,
+            "width": 1250,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 980,
+                    "part_id": "Part 7",
+                    "rotated": false,
+                    "stage": 3,
+                    "width": 380,
+                    "x": 267.4,
+                    "y": 0
+                  },
+                  {
+                    "children": [],
+                    "kind": "offcut",
+                    "length": 61,
+                    "stage": 3,
+                    "width": 380,
+                    "x": 1250.6,
+                    "y": 0
+                  }
+                ],
+                "kind": "piece",
+                "length": 1044.2,
+                "stage": 2,
+                "width": 380,
+                "x": 267.4,
+                "y": 0
+              },
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 520.5,
+                    "part_id": "Part 5",
+                    "rotated": true,
+                    "stage": 3,
+                    "width": 550,
+                    "x": 267.4,
+                    "y": 383.2
+                  },
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 520.5,
+                    "part_id": "Part 5",
+                    "rotated": true,
+                    "stage": 3,
+                    "width": 550,
+                    "x": 791.1,
+                    "y": 383.2
+                  }
+                ],
+                "kind": "piece",
+                "length": 1044.2,
+                "stage": 2,
+                "width": 550,
+                "x": 267.4,
+                "y": 383.2
+              },
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 960,
+                    "part_id": "Part 6",
+                    "rotated": false,
+                    "stage": 3,
+                    "width": 200,
+                    "x": 267.4,
+                    "y": 936.4
+                  },
+                  {
+                    "children": [],
+                    "kind": "offcut",
+                    "length": 81,
+                    "stage": 3,
+                    "width": 200,
+                    "x": 1230.6,
+                    "y": 936.4
+                  }
+                ],
+                "kind": "piece",
+                "length": 1044.2,
+                "stage": 2,
+                "width": 200,
+                "x": 267.4,
+                "y": 936.4
+              },
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 520,
+                    "part_id": "Part 8",
+                    "rotated": false,
+                    "stage": 3,
+                    "width": 90,
+                    "x": 267.4,
+                    "y": 1139.6
+                  },
+                  {
+                    "children": [],
+                    "kind": "offcut",
+                    "length": 521,
+                    "stage": 3,
+                    "width": 90,
+                    "x": 790.6,
+                    "y": 1139.6
+                  }
+                ],
+                "kind": "piece",
+                "length": 1044.2,
+                "stage": 2,
+                "width": 90,
+                "x": 267.4,
+                "y": 1139.6
+              },
+              {
+                "children": [],
+                "kind": "offcut",
+                "length": 1044.2,
+                "stage": 2,
+                "width": 17.2,
+                "x": 267.4,
+                "y": 1232.8
+              }
+            ],
+            "kind": "piece",
+            "length": 1044.2,
+            "stage": 1,
+            "width": 1250,
+            "x": 267.4,
+            "y": 0
+          },
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 570.5,
+                    "part_id": "Part 9",
+                    "rotated": false,
+                    "stage": 3,
+                    "width": 480,
+                    "x": 1314.8,
+                    "y": 0
+                  },
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 570.5,
+                    "part_id": "Part 9",
+                    "rotated": false,
+                    "stage": 3,
+                    "width": 480,
+                    "x": 1888.5,
+                    "y": 0
+                  }
+                ],
+                "kind": "piece",
+                "length": 1144.2,
+                "stage": 2,
+                "width": 480,
+                "x": 1314.8,
+                "y": 0
+              },
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 550.5,
+                    "part_id": "Part 4",
+                    "rotated": false,
+                    "stage": 3,
+                    "width": 440,
+                    "x": 1314.8,
+                    "y": 483.2
+                  },
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 550.5,
+                    "part_id": "Part 4",
+                    "rotated": false,
+                    "stage": 3,
+                    "width": 440,
+                    "x": 1868.5,
+                    "y": 483.2
+                  },
+                  {
+                    "children": [],
+                    "kind": "offcut",
+                    "length": 36.8,
+                    "stage": 3,
+                    "width": 440,
+                    "x": 2422.2,
+                    "y": 483.2
+                  }
+                ],
+                "kind": "piece",
+                "length": 1144.2,
+                "stage": 2,
+                "width": 440,
+                "x": 1314.8,
+                "y": 483.2
+              },
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 370,
+                    "part_id": "Part 10",
+                    "rotated": false,
+                    "stage": 3,
+                    "width": 220.5,
+                    "x": 1314.8,
+                    "y": 926.4
+                  },
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 370,
+                    "part_id": "Part 10",
+                    "rotated": false,
+                    "stage": 3,
+                    "width": 220.5,
+                    "x": 1688,
+                    "y": 926.4
+                  },
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 370,
+                    "part_id": "Part 10",
+                    "rotated": false,
+                    "stage": 3,
+                    "width": 220.5,
+                    "x": 2061.2,
+                    "y": 926.4
+                  },
+                  {
+                    "children": [],
+                    "kind": "offcut",
+                    "length": 24.6,
+                    "stage": 3,
+                    "width": 220.5,
+                    "x": 2434.4,
+                    "y": 926.4
+                  }
+                ],
+                "kind": "piece",
+                "length": 1144.2,
+                "stage": 2,
+                "width": 220.5,
+                "x": 1314.8,
+                "y": 926.4
+              },
+              {
+                "children": [],
+                "kind": "offcut",
+                "length": 1144.2,
+                "stage": 2,
+                "width": 99.9,
+                "x": 1314.8,
+                "y": 1150.1
+              }
+            ],
+            "kind": "piece",
+            "length": 1144.2,
+            "stage": 1,
+            "width": 1250,
+            "x": 1314.8,
+            "y": 0
+          },
+          {
+            "children": [],
+            "kind": "offcut",
+            "length": 37.8,
+            "stage": 1,
+            "width": 1250,
+            "x": 2462.2,
+            "y": 0
+          }
+        ],
+        "kind": "piece",
+        "length": 2500,
+        "stage": 0,
+        "width": 1250,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "first_cuts": "across_length",
+      "panel_id": "Panel 1",
+      "repeat": 1,
+      "root": {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 480,
+                    "part_id": "Part 11",
+                    "rotated": false,
+                    "stage": 3,
+                    "width": 400,
+                    "x": 0,
+                    "y": 0
+                  },
+                  {
+                    "children": [],
+                    "kind": "offcut",
+                    "length": 260,
+                    "stage": 3,
+                    "width": 400,
+                    "x": 483.2,
+                    "y": 0
+                  }
+                ],
+                "kind": "piece",
+                "length": 743.2,
+                "stage": 2,
+                "width": 400,
+                "x": 0,
+                "y": 0
+              },
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 360,
+                    "part_id": "Part 3",
+                    "rotated": true,
+                    "stage": 3,
+                    "width": 520.5,
+                    "x": 0,
+                    "y": 403.2
+                  },
+                  {
+                    "children": [],
+                    "kind": "offcut",
+                    "length": 380,
+                    "stage": 3,
+                    "width": 520.5,
+                    "x": 363.2,
+                    "y": 403.2
+                  }
+                ],
+                "kind": "piece",
+                "length": 743.2,
+                "stage": 2,
+                "width": 520.5,
+                "x": 0,
+                "y": 403.2
+              },
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 370,
+                    "part_id": "Part 10",
+                    "rotated": false,
+                    "stage": 3,
+                    "width": 220.5,
+                    "x": 0,
+                    "y": 926.9
+                  },
+                  {
+                    "children": [],
+                    "kind": "part",
+                    "length": 370,
+                    "part_id": "Part 10",
+                    "rotated": false,
+                    "stage": 3,
+                    "width": 220.5,
+                    "x": 373.2,
+                    "y": 926.9
+                  }
+                ],
+                "kind": "piece",
+                "length": 743.2,
+                "stage": 2,
+                "width": 220.5,
+                "x": 0,
+                "y": 926.9
+              },
+              {
+                "children": [],
+                "kind": "offcut",
+                "length": 743.2,
+                "stage": 2,
+                "width": 99.4,
+                "x": 0,
+                "y": 1150.6
+              }
+            ],
+            "kind": "piece",
+            "length": 743.2,
+            "stage": 1,
+            "width": 1250,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "children": [],
+            "kind": "leftover",
+            "length": 1753.6,
+            "stage": 1,
+            "width": 1250,
+            "x": 746.4,
+            "y": 0
+          }
+        ],
+        "kind": "piece",
+        "length": 2500,
+        "stage": 0,
+        "width": 1250,
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "upstream_metrics": {
+    "area": 405800000,
+    "feasible": true,
+    "full_area": 625000000,
+    "height": 12500,
+    "item_area": 328523000,
+    "number_of_bins": 2,
+    "number_of_items": 21,
+    "profit": 3285230.0,
+    "waste": 77277000,
+    "waste_percentage": 0.19043124691966487,
+    "width": 7432
+  }
+}

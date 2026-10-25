@@ -3,12 +3,13 @@
 
 Usage:
 
-    python3 -I tools/run_oracle.py ORACLE_BINARY [--queue-size N] [--check]
+    python3 -I tools/run_oracle.py ORACLE_BINARY [--queue-size N] [--check] [--filter TEXT]
 
 Without --check, writes data/golden/<commit>/<instance>.q<N>.json for every
 instance in data/instances/. With --check, runs the oracle again into a
 temporary directory and fails if any output differs from the golden file,
-which shows the oracle is reproducible.
+which shows the oracle is reproducible. --filter limits either to the
+instances whose file name contains TEXT.
 """
 
 import argparse
@@ -42,9 +43,11 @@ def main():
     parser.add_argument("oracle")
     parser.add_argument("--queue-size", type=int, default=2048)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--filter", default="")
     args = parser.parse_args()
 
-    instances = sorted(p for p in INSTANCES.glob("*.json") if p.name != "MANIFEST.json")
+    instances = sorted(p for p in INSTANCES.glob("*.json")
+                       if p.name != "MANIFEST.json" and args.filter in p.name)
     failures = 0
     total = 0.0
     with tempfile.TemporaryDirectory() as temp:
