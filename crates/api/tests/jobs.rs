@@ -230,8 +230,10 @@ async fn the_event_stream_sends_each_better_plan_then_the_final_state() {
         .filter(|event| event.name == "state")
         .map(|event| event.data["state"].as_str().unwrap())
         .collect();
+    // A stream that connects late starts from the current state.
+    let all = ["queued", "running", "done"];
     assert!(
-        [&["queued", "running", "done"][..], &["running", "done"]].contains(&&states[..]),
+        (0..all.len()).any(|skipped| states == all[skipped..]),
         "{states:?}"
     );
 

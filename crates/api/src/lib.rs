@@ -12,6 +12,7 @@
 //! - `jobs`: the queue and the solver threads.
 //! - `routes`: the HTTP handlers.
 //! - `openapi`: the generated OpenAPI document.
+//! - `web`: serving the built UI (`--web-dir`).
 
 mod error;
 mod fields;
@@ -20,7 +21,9 @@ mod openapi;
 mod request;
 mod routes;
 pub mod types;
+mod web;
 
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -31,6 +34,7 @@ use axum::routing::{get, post};
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
 pub use crate::openapi::document as openapi_document;
+pub use crate::web::{WebDirError, check_web_dir};
 
 /// The largest request body accepted, in bytes.
 pub const MAX_BODY_BYTES: usize = 2 * 1024 * 1024;
@@ -47,8 +51,14 @@ pub struct Config {
     pub keep_jobs_for: Duration,
     /// The solver's beam width.
     pub queue_size: u64,
-    /// Browser origins allowed to call the API; empty allows any.
+    /// Browser origins allowed to call the API; empty allows any. Only
+    /// needed for a UI served from another origin, such as a development
+    /// server.
     pub cors_origins: Vec<HeaderValue>,
+    /// A directory of static files (the built UI) to serve at `/`, with
+    /// `index.html` for pages that are not files. `None` serves the API
+    /// alone.
+    pub web_dir: Option<PathBuf>,
 }
 
 impl Default for Config {
@@ -59,6 +69,7 @@ impl Default for Config {
             keep_jobs_for: Duration::from_secs(3600),
             queue_size: 2048,
             cors_origins: Vec::new(),
+            web_dir: None,
         }
     }
 }
@@ -88,7 +99,12 @@ pub fn router(config: &Config) -> Router {
         .route("/jobs/{id}", get(routes::status).delete(routes::cancel))
         .route("/jobs/{id}/events", get(routes::events))
         .route("/openapi.json", get(routes::openapi))
-        .fallback(routes::not_found)
+        .fallback({
+            let web_dir = config.web_dir.clone();
+            move |request: axum::extract::Request| async move {
+                web::fallback(web_dir.as_deref(), request).await
+            }
+        })
         .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
         .layer(cors)
         .with_state(store)

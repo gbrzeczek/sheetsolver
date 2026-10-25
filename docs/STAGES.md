@@ -322,6 +322,15 @@ Result:
   tree rules clients rely on (child order, alternating directions,
   wrapper pieces, trimming at stage `stages + 1`, sub-kerf offcuts), each
   checked against the checker and the golden plans.
+- Deployment (owner's decision: one container): `--web-dir` serves the
+  built UI at `/`, with `index.html` for client-side routes, the API's
+  paths keeping priority (tests in `crates/api/tests/web.rs`); every
+  option is also a `SHEETSOLVER_*` variable. A multi-stage `Dockerfile`
+  (cargo-chef for cached dependencies, a placeholder for the Node stage
+  until `web/` builds, a non-root Debian runtime), a workflow that
+  pushes the image to GHCR, and `deploy/docker-compose.yml`; the deploy
+  job waits for the server's details. See `ARCHITECTURE.md`,
+  *Deployment*.
 
 **Goal:** solver as a service.
 

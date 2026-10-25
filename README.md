@@ -29,6 +29,29 @@ cargo run -p api -- --print-openapi > openapi.json
 Submit a job with `POST /jobs`, follow it with `GET /jobs/{id}/events`,
 stop it with `DELETE /jobs/{id}`; see [docs/API.md](docs/API.md).
 
+## Docker image
+
+One image holds the API and the web UI it serves (see
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#deployment)). Until the UI
+in `web/` builds, the image serves the API alone.
+
+```bash
+# Build and run it locally; then open http://localhost:8080/openapi.json.
+docker build -t sheetsolver .
+docker run --rm -p 8080:8080 sheetsolver
+
+# Settings are SHEETSOLVER_* variables named after the api options:
+docker run --rm -p 9000:9000 -e SHEETSOLVER_LISTEN=0.0.0.0:9000 \
+  -e SHEETSOLVER_MAX_RUNNING_JOBS=2 sheetsolver
+```
+
+Pushes to `main` and `v*` tags build the image and publish it as
+`ghcr.io/<owner>/sheetsolver` (`.github/workflows/docker.yml`). On the
+server, `deploy/docker-compose.yml` runs it on the external `web`
+Docker network, behind your reverse proxy (`http://sheetsolver:8080`, no
+host port), deployed over SSH through Tailscale after each build once
+configured: see [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ## Developer CLI
 
 Run from the repository; `--release` makes the larger searches fast.

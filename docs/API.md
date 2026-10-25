@@ -35,7 +35,8 @@ property in `openapi.json`.
 | `DELETE /jobs/{id}` | Stop the search; the best plan so far is kept | `202 Accepted`, body: job status |
 | `GET /openapi.json` | The OpenAPI 3.1 description of this API | `200 OK` |
 
-Any other path answers `404 not_found`. In `openapi.json` the operations
+Any other path answers `404 not_found`, unless the server also serves
+the UI (`--web-dir`, see [Serving the UI](#serving-the-ui)). In `openapi.json` the operations
 are `submit_job`, `get_job`, `cancel_job`, `job_events` and `get_openapi`.
 
 ### `POST /jobs`
@@ -297,10 +298,29 @@ Every error response has this body:
 A JSON field the server does not know is ignored, as is a missing
 optional field.
 
+## Serving the UI
+
+With `--web-dir <path>` (or `SHEETSOLVER_WEB_DIR`), the server also
+serves the built UI from that directory, as the Docker image does
+(`docs/ARCHITECTURE.md`, *Deployment*):
+
+- The API's routes always win: a file in the directory named like an
+  API path is never served.
+- An unknown path under the API (`/jobs…`, `/openapi.json`) is still
+  `404 not_found` JSON.
+- Any other path is a file from the directory (`/` is its
+  `index.html`). A `GET` or `HEAD` that accepts `text/html` and names no
+  file gets `index.html`, so a client-side route can be reloaded; any
+  other missing file is `404 not_found` JSON.
+
+Without `--web-dir`, nothing of this applies: only the API is served.
+
 ## CORS
 
-The UI is served separately in development (e.g. the Vite dev server on
-`http://localhost:5173`), so the API answers cross-origin requests: by
+Only needed when the UI is served from another origin than the API,
+i.e. its development server (e.g. Vite on `http://localhost:5173`); in
+production the server serves the UI itself (above), on the same origin.
+The API answers cross-origin requests: by
 default from any origin (`Access-Control-Allow-Origin: *`; there are no
 cookies or credentials to protect). `--cors-origin` restricts it to the
 given origins. Allowed methods: `GET`, `POST`, `DELETE`; allowed request
@@ -308,7 +328,12 @@ header: `Content-Type`; exposed response header: `Location`.
 
 ## Limits
 
-Command-line options of `cargo run -p api -- …` (`--help` lists them):
+Command-line options of `cargo run -p api -- …` (`--help` lists them).
+Each can also be set by an environment variable named after it:
+`SHEETSOLVER_LISTEN`, `SHEETSOLVER_WEB_DIR`,
+`SHEETSOLVER_MAX_RUNNING_JOBS`, `SHEETSOLVER_MAX_QUEUED_JOBS`,
+`SHEETSOLVER_KEEP_JOBS_FOR`, `SHEETSOLVER_QUEUE_SIZE`,
+`SHEETSOLVER_CORS_ORIGINS` (comma-separated).
 
 | Option | Default | What it limits |
 |---|---|---|
@@ -317,7 +342,8 @@ Command-line options of `cargo run -p api -- …` (`--help` lists them):
 | `--max-queued-jobs` | 32 | Jobs that may wait; beyond that `POST /jobs` answers `503 busy`. |
 | `--keep-jobs-for` | 3600 | Seconds a job stays readable after it ends; then `GET` answers `404`. A queued or running job never expires. |
 | `--queue-size` | 2048 | The solver's beam width (not user-facing; larger finds better plans, slower). |
-| `--cors-origin` | any | Allowed browser origin; repeat for several. |
+| `--web-dir` | none | Directory of the built UI to serve at `/` (see [Serving the UI](#serving-the-ui)). |
+| `--cors-origin` | any | Allowed browser origin; repeat for several. Only for a UI on another origin. |
 | `--print-openapi` | | Print `openapi.json` and exit. |
 
 Fixed limits: `time_limit` 1–600 seconds (default 10), request body
@@ -368,3 +394,10 @@ for reconciling the UI. None changes a field name or a JSON shape.
   - #5, #6, #20 documented here; #12, #14, #15, #16 in
     `ARCHITECTURE.md` (*Solution*). The checker already rejects children
     out of position order; a test now covers it.
+- 2026-10-25, single-container deployment (owner's decision):
+  - `--web-dir` / `SHEETSOLVER_WEB_DIR`: the server serves the built UI
+    at `/`, with `index.html` for page loads that name no file. API
+    paths keep priority and their JSON `404`; without `--web-dir`
+    nothing changes. See [Serving the UI](#serving-the-ui).
+  - Every option can be set by a `SHEETSOLVER_*` environment variable.
+  - CORS is documented as needed only for the UI's development server.
