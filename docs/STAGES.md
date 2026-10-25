@@ -417,15 +417,18 @@ Result:
   per-panel figures are computed in `src/lib/plan`; unit tests check
   them against all 562 golden plans (Vitest, 23 tests).
 - Exit criteria, covered by `npm run e2e` (Playwright, desktop and
-  tablet, against the real API serving the built UI; 14 tests): enter a
+  tablet, against the real API serving the built UI; 16 tests): enter a
   job → solve → a plan the checker passed, followed cut by cut, reloaded
   without the browser's storage; every `FIELDS.md` field has its (?)
   button with the exact text, and every input points at its help; stop
   a running search; the no-plan cause; field problems; the draft
-  survives a reload.
+  survives a reload; New job with Undo; one print page per panel.
 - The Dockerfile's Node stage builds `web/` into the image; CI has a
   `web` job (`openapi.json` in sync, `svelte-check`, Vitest, Playwright).
-  Open follow-ups: `web/DESIGN.md` §9.
+- Owner's decisions on the open questions (`web/DESIGN.md` §9): the
+  draft stays in the browser, with "New job"; a print stylesheet (one
+  A4 page per panel: drawing, cut order, parts checklist); sizes shown
+  with thin-space thousands (1 040.5); turned parts labelled as drawn.
 
 Design (screens, flows, visual language, front-end stack, and what the UI
 needs from the API): `web/DESIGN.md`, with static mockups in

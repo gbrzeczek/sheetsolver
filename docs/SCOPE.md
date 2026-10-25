@@ -82,6 +82,8 @@ Upstream names are given so the port can be traced back.
 | Edge banding allowance, grain matching across parts, labels | Open |
 | Persistence of jobs/instances (database) | Open |
 | Authentication / multi-tenant | Open |
+| Printing a plan (print stylesheet: one panel per page with its cut order and parts) | **In** (2026-10-25) |
+| Keeping the job being edited in the browser (no server storage) | **In** (2026-10-25) |
 | Export (PDF, DXF, CSV cut lists) | Open |
 
 ## Decisions log
@@ -141,3 +143,8 @@ Record every scope decision here with a date, so agents can see why.
 - 2026-10-25 — The job name is now carried by the API (`name` on
   `POST /jobs`, echoed in the job status); the UI's browser-only
   fallback is gone.
+- 2026-10-25 — Owner's answers to the UI's open questions
+  (`web/DESIGN.md` §9): the job being edited stays in the browser, with
+  a "New job" button; printing is In as a print stylesheet (one panel
+  per page), file exports stay Open; shown sizes group thousands with a
+  narrow space (1 040.5); turned parts are labelled as drawn.

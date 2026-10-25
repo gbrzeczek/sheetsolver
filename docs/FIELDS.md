@@ -29,6 +29,9 @@ Rules:
 - All lengths are in **millimetres with at most one decimal** (e.g. 720,
   3.2, 18.5). More decimals are rejected with a clear message, never
   silently rounded. Internally lengths are whole tenths of a millimetre.
+- Sizes are **shown** with a narrow space between thousands (1 040.5,
+  2 440 × 1 220; a no-break space, so a size never splits across lines).
+  They are typed without it, though a pasted "1 040.5" is accepted.
 - Areas shown to the user are in mm² (or m² where more readable).
 - A panel is drawn with its **length horizontal** and its **width
   vertical**. The panel's length is along its X axis, its width along its

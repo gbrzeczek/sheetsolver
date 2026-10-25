@@ -108,9 +108,12 @@ type Parsed<T> = { ok: true; value: T } | { ok: false; message: string };
 
 const DECIMAL = /^\d+(?:[.,]\d+)?$/;
 
-/** Millimetres with at most one decimal; a comma is accepted as the decimal mark. */
+/**
+ * Millimetres with at most one decimal. A comma is accepted as the decimal
+ * mark, and spaces as thousands separators ("1 040.5", as the plan shows it).
+ */
 export function parseLength(text: string, what: string, minimum: number): Parsed<number> {
-  const t = text.trim();
+  const t = text.trim().replace(/(?<=\d)[\s\u202f\u2009](?=\d{3}(?:\D|$))/g, "");
   if (!t) return { ok: false, message: `enter the ${what} in millimetres` };
   if (!DECIMAL.test(t)) return { ok: false, message: "must be a length in millimetres, such as 720 or 3.2" };
   const normal = t.replace(",", ".");

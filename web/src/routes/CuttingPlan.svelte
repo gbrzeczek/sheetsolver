@@ -6,6 +6,7 @@
   import CutList from "../lib/components/CutList.svelte";
   import SheetNav from "../lib/components/SheetNav.svelte";
   import Legend from "../lib/components/Legend.svelte";
+  import PrintSheets from "../lib/components/PrintSheets.svelte";
   import { session } from "../lib/job/session.svelte";
   import { router, href } from "../lib/router.svelte";
   import { cutOrder } from "../lib/plan/cutorder";
@@ -259,7 +260,10 @@
         <h1>{headline(instance, best.metrics)}</h1>
         <p class="muted">{panelsLine(instance, best.plan)}</p>
       </div>
-      <div class="actions"><button class="button" type="button" onclick={() => session.edit()}>Edit job</button></div>
+      <div class="actions">
+        {#if !searching}<button class="button" type="button" onclick={() => window.print()}>Print</button>{/if}
+        <button class="button" type="button" onclick={() => session.edit()}>Edit job</button>
+      </div>
     </div>
     {@render figures()}
     <p class="statusline" style="margin:-8px 0 20px" aria-live="polite">
@@ -386,6 +390,7 @@
       </div>
     {/if}
   </main>
+  {#if !searching}<PrintSheets {job} {instance} {best} grain={grainOf} />{/if}
 {:else}
   {@render stateBlock("Searching", "Waiting for the first plan", "The first plan usually appears within a second.", [])}
 {/if}

@@ -65,10 +65,18 @@ export function patternStats(pattern: Pattern): PatternStats {
   };
 }
 
-/** Millimetres as typed: 720, 3.2, 1040.5. */
+/**
+ * The thousands separator in shown sizes: a narrow no-break space, so
+ * "1 040.5" never breaks across lines (owner's decision, docs/FIELDS.md).
+ */
+export const THOUSANDS = "\u202f";
+
+/** Millimetres for reading: 720, 3.2, 1 040.5, 2 440. */
 export function mm(value: number): string {
   const rounded = Math.round(value * 10) / 10;
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  const [whole, decimal] = (Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)).split(".");
+  const grouped = whole!.length >= 4 ? whole!.replace(/\B(?=(\d{3})+$)/g, THOUSANDS) : whole!;
+  return decimal ? `${grouped}.${decimal}` : grouped;
 }
 
 export function size(node: { length: number; width: number }): string {

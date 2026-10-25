@@ -6,7 +6,7 @@
   import PlanSettings from "../lib/components/PlanSettings.svelte";
   import { session } from "../lib/job/session.svelte";
   import { byPath, place } from "../lib/job/problems";
-  import { emptyPanel, emptyPart, type PanelRow, type PartRow } from "../lib/job/draft";
+  import { emptyPanel, emptyPart, newDraft, type Draft, type PanelRow, type PartRow } from "../lib/job/draft";
 
   const problems = $derived(byPath(session.problems));
   const pageProblems = $derived(session.problems.filter((p) => place(p.field).section === "page"));
@@ -30,6 +30,23 @@
     edited();
     undo = { list, index, row: row!, timer: window.setTimeout(() => (undo = null), 6000) };
   }
+  // "New job": start over, with Undo instead of a confirmation.
+  let previous = $state<{ draft: Draft; timer: number } | null>(null);
+  function startOver() {
+    if (previous) clearTimeout(previous.timer);
+    previous = { draft: $state.snapshot(session.draft) as Draft, timer: window.setTimeout(() => (previous = null), 8000) };
+    session.draft = newDraft();
+    session.problems = [];
+    edited();
+  }
+  function bringBack() {
+    if (!previous) return;
+    clearTimeout(previous.timer);
+    session.draft = previous.draft;
+    previous = null;
+    edited();
+  }
+
   function restore() {
     if (!undo) return;
     const rows = (undo.list === "parts" ? draft.parts : draft.panels) as (PartRow | PanelRow)[];
@@ -86,6 +103,7 @@
         for what a field means.
       </p>
     </div>
+    <div class="actions"><button class="button" type="button" onclick={startOver}>New job</button></div>
   </div>
 
   {#if session.problems.length}
@@ -173,7 +191,9 @@
   </div>
 </form>
 
-{#if undo}
+{#if previous}
+  <div class="toast" role="status">New job started. <button class="link" type="button" onclick={bringBack}>Undo</button></div>
+{:else if undo}
   <div class="toast" role="status">Row removed. <button class="link" type="button" onclick={restore}>Undo</button></div>
 {/if}
 

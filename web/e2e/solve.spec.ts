@@ -41,14 +41,14 @@ test("enter a job, solve it, and follow the plan cut by cut", async ({ page, req
   // One panel: drawing, current cut, cut order.
   await page.getByRole("link", { name: /^Panel 1/ }).click();
   await expect(page.getByRole("img", { name: /Panel 1 of \d: Birch ply 18 mm/ })).toBeVisible();
-  const cuts = page.locator(".cutlist .cut");
+  const cuts = page.locator(".wb-cuts .cutlist .cut");
   const count = await cuts.count();
   expect(count).toBeGreaterThan(2);
   await expect(page.getByText(`Cut 1 of ${count}`)).toBeVisible();
   await page.getByRole("button", { name: "Next cut" }).click();
   await expect(page.getByText(`Cut 2 of ${count}`)).toBeVisible();
   await expect(page).toHaveURL(/cut=2/);
-  await expect(page.locator('.cutlist .cut[aria-current="step"] .n')).toHaveText("2");
+  await expect(page.locator('.wb-cuts .cut[aria-current="step"] .n')).toHaveText("2");
 
   // Reloading keeps the place: the job comes back from the server, name
   // included, even without this browser's draft (another device).
@@ -56,6 +56,18 @@ test("enter a job, solve it, and follow the plan cut by cut", async ({ page, req
   await page.reload();
   await expect(page.getByText(`Cut 2 of ${count}`)).toBeVisible();
   await expect(page.locator(".context")).toHaveText("Test cabinet");
+
+  // Printing gives one page per panel: drawing, cut order, parts.
+  await page.goto(page.url().replace(/\/panels\/.*$/, ""));
+  await expect(page.getByRole("button", { name: "Print" })).toBeVisible();
+  const panels = await page.locator(".sheet-choice").count() - 1;
+  await page.emulateMedia({ media: "print" });
+  await expect(page.locator(".print-sheet")).toHaveCount(panels);
+  await expect(page.locator(".print-sheet").first()).toBeVisible();
+  await expect(page.locator(".print-sheet").first().locator(".cutlist .cut")).toHaveCount(count);
+  await expect(page.locator("main")).toBeHidden();
+  await page.emulateMedia({ media: "screen" });
+  await expect(page.locator(".print-sheet").first()).toBeHidden();
 
   // Edit job brings the job back, the generated name still generated.
   await page.getByRole("button", { name: "Edit job" }).click();
@@ -87,5 +99,5 @@ test("a part larger than every panel gives the no-plan state with its cause", as
   await enterJob(page, [{ name: "Worktop", length: "2600", width: "600", grain: true }], { length: "2440", width: "1220" }, "1");
   await findPlan(page);
   await expect(page.getByRole("heading", { name: "Not every part fits" })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByText(/“Worktop”, 2600 × 600 mm/)).toBeVisible();
+  await expect(page.getByText(/“Worktop”, 2\u202f600 × 600 mm/)).toBeVisible();
 });
