@@ -1,0 +1,85 @@
+// Stage 7 exit criterion: no input without help text; wording matches FIELDS.md.
+import { expect, test } from "@playwright/test";
+import { enterJob, fieldsMd } from "./helpers";
+
+test("every input has a help button whose text is the FIELDS.md help text", async ({ page }) => {
+  const help = fieldsMd();
+  await page.goto("/#/");
+  // Show every field: the Value column needs the goal "Best use of the panels I have".
+  await page.locator("#objective").selectOption("knapsack");
+  await page.locator("summary", { hasText: "More cutting settings" }).click();
+
+  const buttons = page.locator("button.help-btn");
+  const count = await buttons.count();
+  const seen = new Set<string>();
+  for (let i = 0; i < count; i++) {
+    const button = buttons.nth(i);
+    const id = (await button.getAttribute("aria-controls"))!;
+    const key = id.replace(/^help-/, "").replace("-", ".");
+    const expected = help.get(key);
+    expect(expected, `FIELDS.md has help for ${key}`).toBeDefined();
+    expect(await button.getAttribute("aria-label")).toBe(`About ${expected!.label}`);
+    await button.click();
+    const target = page.locator(`#${id}`);
+    await expect(target).toBeVisible();
+    // The popover's title row repeats the label; compare the help text itself.
+    const shown = await target.evaluate((el) => {
+      const copy = el.cloneNode(true) as HTMLElement;
+      copy.querySelector(".pop-title")?.remove();
+      return copy.textContent!.replace(/\s+/g, " ").trim();
+    });
+    expect(shown, key).toBe(expected!.help);
+    await button.click({ force: true });
+    await expect(target).toBeHidden();
+    seen.add(key);
+  }
+  // Every field of FIELDS.md has its help button on the page.
+  expect([...help.keys()].filter((k) => !seen.has(k))).toEqual([]);
+
+  // And every input points at its help.
+  for (const input of await page.locator("main input, form input, select").all()) {
+    const described = await input.getAttribute("aria-describedby");
+    expect(described, await input.evaluate((e) => e.outerHTML)).toBeTruthy();
+  }
+});
+
+test("problems are shown next to their field, and clear when it is edited", async ({ page }) => {
+  await enterJob(page, [{ name: "Side", length: "720", width: "560.25" }, { name: "Side", length: "100", width: "100", quantity: "0" }], { length: "2440", width: "1220" });
+  await page.getByRole("button", { name: /Find cutting plan/ }).last().click();
+  const alert = page.getByRole("alert").first();
+  await expect(alert).toContainText("The job cannot be solved as entered.");
+  await expect(alert).toContainText("Row 1, Width: length 560.25 mm has more than one decimal");
+  await expect(alert).toContainText('Row 2, Name: part name "Side" is used more than once');
+  await expect(alert).toContainText("Row 2, Quantity: quantity must be at least 1");
+  await expect(page.locator("#part-0-width")).toHaveAttribute("aria-invalid", "true");
+  await page.locator("#part-0-width").fill("560.2");
+  await expect(page.locator("#part-0-width")).not.toHaveAttribute("aria-invalid", "true");
+  await expect(alert).not.toContainText("Row 1, Width");
+});
+
+test("problems the server finds map to the same fields (422)", async ({ page }) => {
+  await enterJob(page, [{ name: "Side", length: "720", width: "560" }], { length: "2440", width: "1220" });
+  // A problem only the server could know: replay a real 422 body shape.
+  await page.route("**/jobs", (route) =>
+    route.fulfill({
+      status: 422,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: "invalid_instance",
+        message: "The job cannot be solved as entered.",
+        problems: [{ field: "instance.panels[0].width", message: "width of panel \"Panel 1\" must be at least 0.1 mm" }],
+      }),
+    }),
+  );
+  await page.getByRole("button", { name: /Find cutting plan/ }).last().click();
+  await expect(page.getByRole("alert").first()).toContainText("Row 1, Width: width of panel");
+  await expect(page.locator("#panel-0-width")).toHaveAttribute("aria-invalid", "true");
+});
+
+test("the draft survives a reload", async ({ page }) => {
+  await enterJob(page, [{ name: "Side", length: "720", width: "560" }], { length: "2440", width: "1220" });
+  await page.locator("#job-name").fill("Wardrobe");
+  await page.reload();
+  await expect(page.locator("#job-name")).toHaveValue("Wardrobe");
+  await expect(page.locator("#part-0-length")).toHaveValue("720");
+});

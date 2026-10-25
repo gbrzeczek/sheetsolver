@@ -347,7 +347,16 @@ Exit criteria:
 - Integration tests: submit, stream, cancel, invalid instance → 422.
 - Solutions served by the API pass the checker.
 
-## Stage 7 — Web UI
+## Stage 7 — Web UI ✅ done 2026-10-25
+
+Result: `web/` (Vite + Svelte 5 + TypeScript), served by the API
+(`--web-dir`) and built in the Docker image. Every exit criterion is
+covered by `npm run e2e` (Playwright, desktop and tablet, against the real
+API): enter a job → solve → a plan the checker passed, followed cut by
+cut; every field of `FIELDS.md` has its help button with the exact text.
+Unit tests check the cut order and per-panel figures against all golden
+plans. Open follow-ups are in `web/DESIGN.md` §9 and API request #21
+(job name on the server).
 
 Design (screens, flows, visual language, front-end stack, and what the UI
 needs from the API): `web/DESIGN.md`, with static mockups in

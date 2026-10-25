@@ -14,7 +14,8 @@ instance it gives exactly upstream's cutting plan for the same settings,
 and it runs in 0.61–0.69× upstream's time on the benchmark instances
 ([details](docs/STAGES.md)). Unlimited stages (Stage 5) are ported and
 match upstream; their timing is still to be measured. The web API
-(Stage 6, [docs/API.md](docs/API.md)) is done. Next: the web UI.
+(Stage 6, [docs/API.md](docs/API.md)) and the web UI (Stage 7,
+[web/](web/README.md)) are done.
 
 ## Web API
 
@@ -29,14 +30,23 @@ cargo run -p api -- --print-openapi > openapi.json
 Submit a job with `POST /jobs`, follow it with `GET /jobs/{id}/events`,
 stop it with `DELETE /jobs/{id}`; see [docs/API.md](docs/API.md).
 
+## Web UI
+
+The UI in [`web/`](web/README.md) is a Svelte app the API serves itself.
+Design: [web/DESIGN.md](web/DESIGN.md).
+
+```bash
+cd web && npm ci && npm run build          # builds web/dist
+cargo run --release -p api -- --web-dir web/dist   # then open http://127.0.0.1:8080
+```
+
 ## Docker image
 
 One image holds the API and the web UI it serves (see
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#deployment)). Until the UI
-in `web/` builds, the image serves the API alone.
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#deployment)).
 
 ```bash
-# Build and run it locally; then open http://localhost:8080/openapi.json.
+# Build and run it locally; then open http://localhost:8080.
 docker build -t sheetsolver .
 docker run --rm -p 8080:8080 sheetsolver
 

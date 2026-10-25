@@ -1,0 +1,7 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+# Generated from openapi.json by `npm run gen`.
+src/lib/api/schema.d.ts
+src/lib/api/fields.generated.ts

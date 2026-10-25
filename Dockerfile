@@ -35,22 +35,17 @@ RUN cargo build --release --locked -p api \
 
 # --- Web UI ---
 #
-# Stage 7 has no buildable `web/` yet, so this placeholder gives an empty
-# UI directory and the image serves the API alone. Once `web/` builds,
-# delete the placeholder and uncomment the Node stage below; it must leave
-# the built UI in /web/dist (index.html and its assets). It gets
-# openapi.json from the Rust stage, to generate the typed client.
+# Builds web/ into /web/dist (index.html and its assets), with the typed
+# client generated from the openapi.json of the Rust stage, so the UI always
+# matches the API it ships with.
 
-FROM debian:${DEBIAN_RELEASE}-slim AS web
-RUN mkdir -p /web/dist
-
-# FROM node:22-bookworm-slim AS web
-# WORKDIR /web
-# COPY web/package.json web/package-lock.json ./
-# RUN npm ci
-# COPY web/ ./
-# COPY --from=builder /openapi.json ./openapi.json
-# RUN npm run build
+FROM node:22-bookworm-slim AS web
+WORKDIR /web
+COPY web/package.json web/package-lock.json web/.npmrc ./
+RUN npm ci --no-audit --no-fund
+COPY web/ ./
+COPY --from=builder /openapi.json ./openapi.json
+RUN npm run build
 
 # --- Runtime: a small image, a non-root user ---
 

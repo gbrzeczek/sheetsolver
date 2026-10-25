@@ -540,7 +540,7 @@ hover.
 | API types | **openapi-typescript** generates `src/api/schema.d.ts` from `openapi.json` | One source of truth: Rust types → utoipa → OpenAPI → TS. A Rust change that breaks the UI fails `npm run check` in the same change. |
 | API calls | **openapi-fetch** (a tiny typed `fetch`) | Paths, bodies and responses typed from the schema. |
 | Events | A ~40-line typed wrapper around `EventSource` | Uses the generated `PlanReport` and `StateEvent` schemas; closes on final states. |
-| Labels and help | `scripts/gen-fields.ts` reads `openapi.json` and writes `src/api/fields.generated.ts`: `{ "instance.parts[].length": { label, help, default, minimum, multipleOf, options, … } }` from `title`, `description`, `default`, bounds and `oneOf` titles | Types carry descriptions only as comments; the UI needs them at run time. Inputs take a `field` key typed as a union of the generated keys, so **an input without help text does not compile**. |
+| Labels and help | `scripts/gen-fields.mjs` reads `openapi.json` and writes `src/api/fields.generated.ts`: `{ "instance.parts[].length": { label, help, default, minimum, multipleOf, options, … } }` from `title`, `description`, `default`, bounds and `oneOf` titles | Types carry descriptions only as comments; the UI needs them at run time. Inputs take a `field` key typed as a union of the generated keys, so **an input without help text does not compile**. |
 | State | Svelte runes; the draft job in `localStorage` (wrapped in try/catch) | No server persistence (Open in `SCOPE.md`). |
 | Plan geometry | Pure TS module `src/plan/` (cut order, direction inference, label fitting, per-panel figures) with unit tests against golden plans | Mirrors the mockup generator; per-panel figures and cut directions are computed here because #8 and #13 are deferred. |
 | Tests | **Vitest** (logic), **Playwright** (end-to-end against `cargo run -p api`) | The Stage 7 exit criterion "enter instance → solve → see a valid plan" is one Playwright test; another opens every (?) and compares its text with FIELDS.md. |
@@ -553,7 +553,7 @@ web/
   DESIGN.md
   mockups/              # this design (static)
   package.json  vite.config.ts  tsconfig.json  openapi.json (generated, checked in)
-  scripts/gen-fields.ts
+  scripts/gen-fields.mjs
   src/
     api/                # schema.d.ts, fields.generated.ts (generated), client.ts, events.ts
     plan/               # cut order, directions, label fitting, figures (+ tests)
@@ -562,6 +562,20 @@ web/
     styles/tokens.css   # from mockups/build/styles.css
   e2e/                  # Playwright
 ```
+
+**As implemented (2026-10-25)**, see `web/README.md`:
+
+- The stack is as proposed: Vite 8, Svelte 5, Vitest 5 and Playwright,
+  with versions pinned exactly and released at least two weeks before
+  adoption.
+- TypeScript is 5.9, because openapi-typescript and svelte-check do not
+  accept 7 yet.
+- `.npmrc` sets `legacy-peer-deps`, because npm 10 crashes resolving
+  Vitest's optional peers; every dependency is listed explicitly.
+- Field keys are `Schema.property` (`Saw.kerf`, `Part.length`,
+  `JobRequest.time_limit`), and the UI-only job name is `Ui.job_name`.
+- The end-to-end tests start the API with a large `--queue-size`, so a
+  search runs until its time limit or until it is stopped.
 
 `web/openapi.json` is written by `cargo run -p api -- --print-openapi`
 (done on the API branch) and checked in, so the UI builds without a
