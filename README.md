@@ -12,8 +12,45 @@ Status: the solver library and a developer CLI work for 2 and 3 cutting
 stages (Stages 0–4 of [docs/STAGES.md](docs/STAGES.md)). On every test
 instance it gives exactly upstream's cutting plan for the same settings,
 and it runs in 0.61–0.69× upstream's time on the benchmark instances
-([details](docs/STAGES.md)). Next: unlimited stages, then the web API
-and the web UI.
+([details](docs/STAGES.md)). Unlimited stages (Stage 5) are ported and
+match upstream; their timing is still to be measured. The web API
+(Stage 6, [docs/API.md](docs/API.md)) is done. Next: the web UI.
+
+## Web API
+
+```bash
+# Serve the API on http://127.0.0.1:8080 (--help lists the limits).
+cargo run --release -p api
+
+# Or print its OpenAPI description, e.g. to generate a client.
+cargo run -p api -- --print-openapi > openapi.json
+```
+
+Submit a job with `POST /jobs`, follow it with `GET /jobs/{id}/events`,
+stop it with `DELETE /jobs/{id}`; see [docs/API.md](docs/API.md).
+
+## Docker image
+
+One image holds the API and the web UI it serves (see
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#deployment)). Until the UI
+in `web/` builds, the image serves the API alone.
+
+```bash
+# Build and run it locally; then open http://localhost:8080/openapi.json.
+docker build -t sheetsolver .
+docker run --rm -p 8080:8080 sheetsolver
+
+# Settings are SHEETSOLVER_* variables named after the api options:
+docker run --rm -p 9000:9000 -e SHEETSOLVER_LISTEN=0.0.0.0:9000 \
+  -e SHEETSOLVER_MAX_RUNNING_JOBS=2 sheetsolver
+```
+
+Pushes to `main` and `v*` tags build the image and publish it as
+`ghcr.io/<owner>/sheetsolver` (`.github/workflows/docker.yml`). On the
+server, `deploy/docker-compose.yml` runs it on the external `web`
+Docker network, behind your reverse proxy (`http://sheetsolver:8080`, no
+host port), deployed over SSH through Tailscale after each build once
+configured: see [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Developer CLI
 

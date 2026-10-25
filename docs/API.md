@@ -13,11 +13,13 @@ property in `openapi.json`.
 
 ## Conventions
 
-- JSON in and out, UTF-8. Field names are `snake_case` and use the
+- JSON in and out, UTF-8. The request body is read as JSON whatever
+  its `Content-Type`. Field names are `snake_case` and use the
   woodworking terms: panel, part, kerf, grain, offcut, leftover, plan.
 - Lengths are millimetres with at most one decimal (`720`, `3.2`); more
   decimals are rejected, never rounded. Areas are mm². Durations are
-  seconds (`time_limit` whole seconds, measured times with decimals).
+  seconds (`time_limit` whole seconds, measured times with decimals,
+  to the millisecond).
 - Optional fields are left out when empty, except where this page says
   they are `null`.
 - No authentication, no persistence: jobs live in the server's memory
@@ -32,6 +34,10 @@ property in `openapi.json`.
 | `GET /jobs/{id}/events` | Live stream of better plans and state changes (Server-Sent Events) | `200 OK`, `text/event-stream` |
 | `DELETE /jobs/{id}` | Stop the search; the best plan so far is kept | `202 Accepted`, body: job status |
 | `GET /openapi.json` | The OpenAPI 3.1 description of this API | `200 OK` |
+
+Any other path answers `404 not_found`, unless the server also serves
+the UI (`--web-dir`, see [Serving the UI](#serving-the-ui)). In `openapi.json` the operations
+are `submit_job`, `get_job`, `cancel_job`, `job_events` and `get_openapi`.
 
 ### `POST /jobs`
 
@@ -49,7 +55,10 @@ Request body:
 }
 ```
 
-- `instance`: the instance, exactly as in `ARCHITECTURE.md`.
+- `instance`: the instance, exactly as in `ARCHITECTURE.md`. Fields with
+  a default in `FIELDS.md` may be left out: `objective`, `saw.kerf`,
+  `saw.stages`, `saw.cut_type`, `saw.first_cuts`, a part's `quantity`
+  and `grain` (the `saw` object itself is required).
 - `time_limit` (optional, default 10): how long the solver may search,
   in whole seconds, 1–600 (`FIELDS.md`, *Time limit*). The clock starts
   when the job starts running, not while it waits.
@@ -66,6 +75,8 @@ The response is the job status (below), usually in state `queued` or
 {
   "id": "0f8b3c8e-5a43-4d4e-9d8b-3f7c2a1e6b90",
   "state": "running",
+  "ended_by": null,
+  "queue_position": null,
   "time_limit": 10,
   "elapsed": 1.284,
   "plans_found": 3,
@@ -80,7 +91,8 @@ The response is the job status (below), usually in state `queued` or
     },
     "plan": { "patterns": [ "…as in ARCHITECTURE.md…" ] }
   },
-  "message": null
+  "message": null,
+  "instance": { "…the instance as submitted…": "" }
 }
 ```
 
@@ -88,11 +100,14 @@ The response is the job status (below), usually in state `queued` or
 |---|---|
 | `id` | The job's id (a UUID), used in the other URLs. |
 | `state` | See [Job states](#job-states). |
+| `ended_by` | Why the job ended: `complete`, `time_limit` or `cancelled` (see [Job states](#job-states)); `null` until it ends, and for a failed job. |
+| `queue_position` | For a `queued` job, its place in the queue: 1 runs next. `null` once the job has left the queue. Not sent as an event: poll `GET` to follow it. |
 | `time_limit` | The time limit the job runs with, in seconds. |
 | `elapsed` | Seconds spent searching: 0 while queued, growing while running, final once the job has ended. |
 | `plans_found` | How many better plans have been found so far. |
-| `best` | The best plan so far, or `null` if none yet (or none exists: see below). |
+| `best` | The best plan so far, or `null` if none yet (or none exists: see below). A plan always cuts at least one part. |
 | `message` | Why the job failed, for state `failed`; otherwise `null`. |
+| `instance` | The instance as submitted, with left-out fields filled with their defaults and unknown fields dropped, so that a job link opened elsewhere can show and edit the job. |
 
 `best` (also the payload of the `plan` event):
 
@@ -120,13 +135,16 @@ whole plan, counting repeated patterns):
 
 Every plan the API serves has passed the checker. Should the solver ever
 produce a plan that breaks a cutting rule, that plan is not served: the
-job stops in state `failed` with the violations in `message`, and `best`
-stays the last valid plan.
+search is stopped, the job ends in state `failed` with the violations in
+`message`, and `best` stays the last valid plan. A job also fails if the
+solver stops unexpectedly (`message`: "the solver stopped
+unexpectedly").
 
 A job can end with `best: null`: no plan cuts every part (for example, a
 part larger than every panel, or too few panels), or the job was stopped
 before the first plan. With the goal "Best use of the panels I have",
-any plan counts, so a plan is found unless the search was stopped first.
+any plan that cuts at least one part counts, so a plan is found unless
+no part fits on any panel or the search was stopped first.
 
 ### Job states
 
@@ -142,9 +160,24 @@ queued ──► running ──► done
 |---|---|---|
 | `queued` | Waiting for a free solver (see [Limits](#limits)). | no |
 | `running` | Searching. `best` improves over time. | no |
-| `done` | The search finished: it was complete, or the time limit was reached. `best` is the result. | yes |
-| `cancelled` | Stopped by `DELETE /jobs/{id}`. `best` is the best plan found before the stop, if any. | yes |
+| `done` | The search finished: it was complete (`ended_by: "complete"`), or the time limit was reached (`ended_by: "time_limit"`). `best` is the result. | yes |
+| `cancelled` | Stopped by `DELETE /jobs/{id}` (`ended_by: "cancelled"`). `best` is the best plan found before the stop, if any. | yes |
 | `failed` | Stopped by an internal error; `message` says why. | yes |
+
+`ended_by` tells the woodworker what a longer search could do:
+
+- `complete`: the search ran all its steps within the time limit. The
+  search is deterministic, so a longer time limit gives the same plan:
+  this is the best this search can do (not a proof that no better plan
+  exists).
+- `time_limit`: the time limit stopped the search; a longer one may find
+  a plan with less waste.
+- `cancelled`: stopped by `DELETE`.
+
+The server knows which from the solver's stop conditions, not from a
+guess: the solver stops early only when the cancellation flag is set or
+the deadline has passed, so if neither holds when it returns, it ran to
+its end.
 
 ### `DELETE /jobs/{id}`
 
@@ -164,15 +197,16 @@ names:
 
 | Event | `data` (JSON) | Sent when |
 |---|---|---|
-| `plan` | A plan report: the same object as `best` in the job status (`number`, `found_after`, `metrics`, `plan`). | A better plan is found. |
-| `state` | `{ "state": "running", "elapsed": 0.003, "plans_found": 0, "message": null }`, fields as in the job status. | The state changes. |
+| `plan` | A plan report: the same object as `best` in the job status (`number`, `found_after`, `metrics`, `plan`; `PlanReport` in `openapi.json`). | A better plan is found. |
+| `state` | `{ "state": "running", "ended_by": null, "elapsed": 0.003, "plans_found": 0, "message": null }`, fields as in the job status (`StateEvent` in `openapi.json`). | The state changes. |
 
 Order:
 
 1. On connecting, the client gets the current best plan as a `plan`
    event (if there is one), then the current state as a `state` event.
    A client that connects late, or reconnects, so starts from the
-   current status without a separate `GET`.
+   current status without a separate `GET`; it does not see the states
+   it missed (a job that is already running sends no `queued`).
 2. Then one event per change. A `plan` event always comes before the
    `state` event of the state change that follows it.
 3. After a `state` event with a final state (`done`, `cancelled`,
@@ -191,9 +225,34 @@ sent every 15 seconds to keep idle connections open.
 ### `GET /openapi.json`
 
 OpenAPI 3.1, generated from the Rust types with `utoipa`. Every property
-has a `description`: for instance fields, the help text from `FIELDS.md`
-(markdown: `**bold**` marks the name of an option). The UI shows these
-next to its inputs and generates its TypeScript client from this file.
+has a `description`: for instance fields and `time_limit`, exactly the
+help text from `FIELDS.md` (one paragraph; the only markup is
+`**bold**` for the name of an option and `*italic*` for the name of
+another field; a test compares them). For these input fields,
+`openapi.json` also gives:
+
+- `title`: the field's UI label from `FIELDS.md` ("Saw blade thickness
+  (kerf)").
+- `default`: the value the server uses when the field is left out (kerf
+  3.2, stages 3, cut type `non_exact`, first cuts `either`, objective
+  `bin_packing`, part quantity 1, grain `false`, time limit 10).
+- `minimum` / `maximum`: the bounds the server accepts (lengths ≥ 0.1,
+  kerf ≥ 0, quantities ≥ 1, cost and value ≥ 0, time limit 1–600).
+  Lengths are also `multipleOf: 0.1` (the `Length` schema).
+- For `objective`, `stages`, `cut_type` and `first_cuts`: the type's
+  schema lists each value as a `oneOf` branch `{ "const": …, "title": … }`,
+  the title being the option's name from `FIELDS.md` ("Allowed", "Not
+  allowed", …). `stages` is the union `2 | 3 | "unlimited"`: two integer
+  constants and one string constant.
+
+A test holds every `default` and bound to what the server does: left
+out, a field takes its default; at a bound it is accepted; one step
+beyond, it is refused with a problem for that field. The UI shows these next to its
+inputs and generates its TypeScript client from this file. The event
+payloads are the components `PlanReport` and `StateEvent`.
+
+`cargo run -p api -- --print-openapi` prints the same document without
+starting the server, for generating the client.
 
 ## Errors
 
@@ -211,30 +270,57 @@ Every error response has this body:
 
 - `error`: a stable code for programs (below).
 - `message`: one sentence for people.
-- `problems`: for `invalid_instance`, every problem found (all of them,
-  not just the first, when the JSON itself could be read); empty
-  otherwise. `field` is the path of the field at fault in the request
+- `problems`: for `invalid_instance`, every problem found; empty
+  otherwise. Problems are found in two rounds: first every field that is
+  missing or has the wrong type (a length with more than one decimal, a
+  word where a number belongs, an unknown option), all at once; once
+  every field reads, the checks of `Instance::validate` (no parts,
+  duplicate names, quantity 0, …), again all at once. So a body with
+  both kinds lists only the first kind until those are fixed. `field` is the path of the field at fault in the request
   body (`instance.saw.kerf`, `instance.parts[2].quantity`, `time_limit`),
   with 0-based list positions. A problem with a whole list points at the
   list ("add at least one part": `instance.parts`); `field` is `null`
-  only when no part of the body is at fault. `message` is written
-  for the woodworker and can be shown next to the field as is.
+  only when the body is not a JSON object. Positions are those of the
+  submitted lists (`instance.parts[3]` is the fourth part as sent) and
+  names are exactly the JSON property names. `message` is written
+  for the woodworker and can be shown next to the field as is, e.g.
+  "this field is required", "must be one of: non_exact, exact,
+  homogenous", "quantity of part \"Side left\" must be at least 1".
 
 | Status | `error` | When |
 |---|---|---|
-| 400 | `invalid_json` | The body is not JSON at all (syntax error). |
-| 404 | `not_found` | No job with this id, or it has expired. |
+| 400 | `invalid_json` | The body is not JSON at all (syntax error, or empty). `message` says where. |
+| 404 | `not_found` | No job with this id (or the id is not a UUID), it has expired, or no such path. |
 | 413 | `too_large` | The body is larger than 2 MB. |
 | 422 | `invalid_instance` | The body is JSON but not a valid job: a missing or mistyped field, a length with more than one decimal, a time limit outside 1–600, or anything `Instance::validate` rejects (no parts, duplicate names, quantity 0, …). |
-| 503 | `busy` | Too many jobs are already waiting; try again later. |
+| 503 | `busy` | Every solver is busy and `--max-queued-jobs` jobs are already waiting. The `Retry-After` header (and `message`) gives the seconds until the first running job reaches its time limit, at the latest; a solver then takes the first queued job and a place in the queue frees up. Jobs often end sooner. |
 
 A JSON field the server does not know is ignored, as is a missing
 optional field.
 
+## Serving the UI
+
+With `--web-dir <path>` (or `SHEETSOLVER_WEB_DIR`), the server also
+serves the built UI from that directory, as the Docker image does
+(`docs/ARCHITECTURE.md`, *Deployment*):
+
+- The API's routes always win: a file in the directory named like an
+  API path is never served.
+- An unknown path under the API (`/jobs…`, `/openapi.json`) is still
+  `404 not_found` JSON.
+- Any other path is a file from the directory (`/` is its
+  `index.html`). A `GET` or `HEAD` that accepts `text/html` and names no
+  file gets `index.html`, so a client-side route can be reloaded; any
+  other missing file is `404 not_found` JSON.
+
+Without `--web-dir`, nothing of this applies: only the API is served.
+
 ## CORS
 
-The UI is served separately in development (e.g. the Vite dev server on
-`http://localhost:5173`), so the API answers cross-origin requests: by
+Only needed when the UI is served from another origin than the API,
+i.e. its development server (e.g. Vite on `http://localhost:5173`); in
+production the server serves the UI itself (above), on the same origin.
+The API answers cross-origin requests: by
 default from any origin (`Access-Control-Allow-Origin: *`; there are no
 cookies or credentials to protect). `--cors-origin` restricts it to the
 given origins. Allowed methods: `GET`, `POST`, `DELETE`; allowed request
@@ -242,16 +328,23 @@ header: `Content-Type`; exposed response header: `Location`.
 
 ## Limits
 
-Command-line options of `cargo run -p api -- …` (`--help` lists them):
+Command-line options of `cargo run -p api -- …` (`--help` lists them).
+Each can also be set by an environment variable named after it:
+`SHEETSOLVER_LISTEN`, `SHEETSOLVER_WEB_DIR`,
+`SHEETSOLVER_MAX_RUNNING_JOBS`, `SHEETSOLVER_MAX_QUEUED_JOBS`,
+`SHEETSOLVER_KEEP_JOBS_FOR`, `SHEETSOLVER_QUEUE_SIZE`,
+`SHEETSOLVER_CORS_ORIGINS` (comma-separated).
 
 | Option | Default | What it limits |
 |---|---|---|
 | `--listen` | `127.0.0.1:8080` | Address and port to listen on. |
-| `--max-running-jobs` | number of CPU cores | Jobs solved at the same time, each on its own thread of a bounded blocking pool. Further jobs wait in state `queued`, first come first served. |
+| `--max-running-jobs` | number of CPU cores | Jobs solved at the same time, each on its own thread of a blocking pool of that size. Further jobs wait in state `queued`, first come first served. |
 | `--max-queued-jobs` | 32 | Jobs that may wait; beyond that `POST /jobs` answers `503 busy`. |
-| `--keep-jobs-for` | 3600 | Seconds a job stays readable after it ends; then `GET` answers `404`. |
+| `--keep-jobs-for` | 3600 | Seconds a job stays readable after it ends; then `GET` answers `404`. A queued or running job never expires. |
 | `--queue-size` | 2048 | The solver's beam width (not user-facing; larger finds better plans, slower). |
-| `--cors-origin` | any | Allowed browser origin; repeat for several. |
+| `--web-dir` | none | Directory of the built UI to serve at `/` (see [Serving the UI](#serving-the-ui)). |
+| `--cors-origin` | any | Allowed browser origin; repeat for several. Only for a UI on another origin. |
+| `--print-openapi` | | Print `openapi.json` and exit. |
 
 Fixed limits: `time_limit` 1–600 seconds (default 10), request body
 2 MB.
@@ -259,3 +352,52 @@ Fixed limits: `time_limit` 1–600 seconds (default 10), request body
 The solver runs upstream's deterministic search: the same instance and
 time limit give the same plans, unless the time limit cuts the search
 short on a slower or busier machine.
+
+## Changes
+
+Changes to this contract since it was first written (commit 8531aa3),
+for reconciling the UI. None changes a field name or a JSON shape.
+
+- 2026-10-25, Stage 6 implementation:
+  - `best` (and every `plan` event) always cuts at least one part: an
+    empty plan is never served. With "Best use of the panels I have",
+    `best` stays `null` when no part fits on any panel.
+  - `problems` are reported in two rounds (wrong types first, then
+    `Instance::validate`), not all in one; see [Errors](#errors).
+    `field` is `null` only when the body is not a JSON object.
+  - `404 not_found` also for an id that is not a UUID and for unknown
+    paths. The body is read as JSON whatever its `Content-Type`.
+  - `503 busy` precisely: every solver busy and `--max-queued-jobs`
+    jobs waiting.
+  - Measured times (`elapsed`, `found_after`) are rounded to the
+    millisecond.
+  - A job also fails if the solver stops unexpectedly.
+  - `openapi.json`: descriptions are single paragraphs, equal to the
+    help text in `FIELDS.md`; operation ids `submit_job`, `get_job`,
+    `cancel_job`, `job_events`, `get_openapi`; the event payloads are
+    the components `PlanReport` and `StateEvent`. New option
+    `--print-openapi`.
+- 2026-10-25, the UI's requests (`web/DESIGN.md` §8, as triaged):
+  - #1 `title` = the `FIELDS.md` UI label on every input property.
+  - #2 `oneOf` `{const, title}` per value of `objective`, `stages`,
+    `cut_type`, `first_cuts`, with names from the new "Option names"
+    table in `FIELDS.md`.
+  - #3 `default`, `minimum`, `maximum` on the input properties.
+    `objective`, `saw.kerf`, `saw.stages`, `saw.cut_type` and a part's
+    `quantity` may now be left out and take their `FIELDS.md` defaults
+    (before, they were required). Bodies that were valid stay valid.
+  - #9 `ended_by` (`complete`, `time_limit`, `cancelled`, or `null`) in
+    the job status and every `state` event.
+  - #10 `queue_position` in the job status.
+  - #11 `Retry-After` on `503 busy`; `message` gives the same seconds.
+  - #18 `instance` in the job status (all three endpoints that return it).
+  - #5, #6, #20 documented here; #12, #14, #15, #16 in
+    `ARCHITECTURE.md` (*Solution*). The checker already rejects children
+    out of position order; a test now covers it.
+- 2026-10-25, single-container deployment (owner's decision):
+  - `--web-dir` / `SHEETSOLVER_WEB_DIR`: the server serves the built UI
+    at `/`, with `index.html` for page loads that name no file. API
+    paths keep priority and their JSON `404`; without `--web-dir`
+    nothing changes. See [Serving the UI](#serving-the-ui).
+  - Every option can be set by a `SHEETSOLVER_*` environment variable.
+  - CORS is documented as needed only for the UI's development server.

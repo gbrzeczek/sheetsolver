@@ -35,13 +35,16 @@ struct Positions {
 }
 
 fn floors(positions: &[i64], length: i64) -> Vec<usize> {
-    let mut floor = Vec::with_capacity(length as usize + 1);
-    let mut index = 0;
-    for x in 0..=length {
-        while index + 1 < positions.len() && positions[index + 1] <= x {
-            index += 1;
+    // Every length from one position up to the next has the same floor:
+    // fill each such run at once (upstream assigns them one by one).
+    let mut floor = vec![0; length as usize + 1];
+    for (index, &start) in positions.iter().enumerate() {
+        let end = positions
+            .get(index + 1)
+            .map_or(length + 1, |&next| next.min(length + 1));
+        if start <= length {
+            floor[start as usize..end as usize].fill(index);
         }
-        floor.push(index);
     }
     floor
 }
@@ -171,6 +174,14 @@ fn compute_table(problem: &Problem, used: &[bool], stop: &Stop) -> Option<Table>
     let mut breakpoints_y: Vec<Vec<usize>> = vec![Vec::new(); nx];
     // The splits along y read the table by columns: a transposed copy.
     let mut transposed = vec![0.0f64; nx * ny];
+    // Only the part types in use, gathered once rather than at every cell.
+    let items: Vec<_> = problem
+        .item_types
+        .iter()
+        .zip(used)
+        .filter(|(_, used)| **used)
+        .map(|(item, _)| item)
+        .collect();
 
     for iy in 1..ny {
         if stop.requested() {
@@ -179,19 +190,14 @@ fn compute_table(problem: &Problem, used: &[bool], stop: &Stop) -> Option<Table>
         let height = y.positions[iy];
         for ix in 1..nx {
             let width = x.positions[ix];
-            let mut value = values[ix - 1 + nx * iy].max(values[ix + nx * (iy - 1)]);
+            let mut value = cpp_max(values[ix - 1 + nx * iy], values[ix + nx * (iy - 1)]);
 
-            for (item, _) in problem
-                .item_types
-                .iter()
-                .zip(used)
-                .filter(|(_, used)| **used)
-            {
+            for item in &items {
                 if item.size.w <= width && item.size.h <= height {
-                    value = value.max(item.profit);
+                    value = cpp_max(value, item.profit);
                 }
                 if !item.oriented && item.size.h <= width && item.size.w <= height {
-                    value = value.max(item.profit);
+                    value = cpp_max(value, item.profit);
                 }
             }
 
@@ -201,7 +207,7 @@ fn compute_table(problem: &Problem, used: &[bool], stop: &Stop) -> Option<Table>
                     break;
                 }
                 let rest = x.floor[(width - cut - cut_thickness) as usize];
-                value = value.max(values[ic + nx * iy] + values[rest + nx * iy]);
+                value = cpp_max(value, values[ic + nx * iy] + values[rest + nx * iy]);
             }
 
             let column = &transposed[ny * ix..ny * (ix + 1)];
@@ -211,7 +217,7 @@ fn compute_table(problem: &Problem, used: &[bool], stop: &Stop) -> Option<Table>
                     break;
                 }
                 let rest = y.floor[(height - cut - cut_thickness) as usize];
-                value = value.max(column[ic] + column[rest]);
+                value = cpp_max(value, column[ic] + column[rest]);
             }
             let below = column[iy - 1];
             transposed[iy + ny * ix] = value;
@@ -226,6 +232,12 @@ fn compute_table(problem: &Problem, used: &[bool], stop: &Stop) -> Option<Table>
         }
     }
     Some(Table { x, y, values })
+}
+
+/// `std::max(a, b)` on values that are never NaN: `f64::max` gives the
+/// same result but pays for NaN handling in the innermost loop.
+fn cpp_max(a: f64, b: f64) -> f64 {
+    if a < b { b } else { a }
 }
 
 /// Reads a rectangle's plan back from the table: one part in its corner,
