@@ -24,6 +24,7 @@ Read these before starting any task:
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Repository layout, crates, data flow, API shape |
 | [docs/TESTING.md](docs/TESTING.md) | Feasibility checker, differential testing against upstream |
 | [docs/UPSTREAM.md](docs/UPSTREAM.md) | Pinned upstream commit and the map of upstream files to port |
+| [docs/API.md](docs/API.md) | The web API contract: endpoints, job states, events, errors, limits |
 
 ## Ground rules
 
