@@ -45,6 +45,7 @@ Request body:
 
 ```json
 {
+  "name": "Kitchen units",
   "instance": {
     "objective": "bin_packing",
     "saw": { "kerf": 3.2, "stages": 3, "cut_type": "non_exact", "first_cuts": "either" },
@@ -59,6 +60,11 @@ Request body:
   a default in `FIELDS.md` may be left out: `objective`, `saw.kerf`,
   `saw.stages`, `saw.cut_type`, `saw.first_cuts`, a part's `quantity`
   and `grain` (the `saw` object itself is required).
+- `name` (optional): the job's name for people (`FIELDS.md`, *Job
+  name*). Spaces at either end are removed; a missing, `null` or blank
+  name means no name. At most 100 characters (Unicode code points, after
+  trimming) and one line: a longer name, or one with a tab, line break
+  or other control character, is a `422` problem for `name`.
 - `time_limit` (optional, default 10): how long the solver may search,
   in whole seconds, 1–600 (`FIELDS.md`, *Time limit*). The clock starts
   when the job starts running, not while it waits.
@@ -74,6 +80,7 @@ The response is the job status (below), usually in state `queued` or
 ```json
 {
   "id": "0f8b3c8e-5a43-4d4e-9d8b-3f7c2a1e6b90",
+  "name": "Kitchen units",
   "state": "running",
   "ended_by": null,
   "queue_position": null,
@@ -99,6 +106,7 @@ The response is the job status (below), usually in state `queued` or
 | Field | Meaning |
 |---|---|
 | `id` | The job's id (a UUID), used in the other URLs. |
+| `name` | The job's name as submitted, trimmed; `null` if it has none. |
 | `state` | See [Job states](#job-states). |
 | `ended_by` | Why the job ended: `complete`, `time_limit` or `cancelled` (see [Job states](#job-states)); `null` until it ends, and for a failed job. |
 | `queue_position` | For a `queued` job, its place in the queue: 1 runs next. `null` once the job has left the queue. Not sent as an event: poll `GET` to follow it. |
@@ -401,3 +409,10 @@ for reconciling the UI. None changes a field name or a JSON shape.
     nothing changes. See [Serving the UI](#serving-the-ui).
   - Every option can be set by a `SHEETSOLVER_*` environment variable.
   - CORS is documented as needed only for the UI's development server.
+- 2026-10-25, UI request #21 (owner's decision): an optional job `name`
+  on `POST /jobs`, echoed as `name` in the job status (`null` if none).
+  Trimmed; at most 100 characters and one line, else a `422` problem for
+  `name`. Its label and help text are a new row under *Job* in
+  `FIELDS.md` (`title`, `description` and `maxLength: 100` in
+  `openapi.json`); the "UI-only fields" row for `job_name` on the UI
+  branch is replaced by it and should be dropped there.

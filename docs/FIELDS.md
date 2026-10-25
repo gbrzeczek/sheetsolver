@@ -43,6 +43,7 @@ Rules:
 
 | Field | UI label | Help text | Unit / values | Default | Upstream |
 |---|---|---|---|---|---|
+| `name` | Job name | Your name for this job, shown at the top of the job and its cutting plan (e.g. "Kitchen units"). Optional. | text, one line, at most 100 characters; spaces at either end are removed | empty: shown as "Untitled job" | — |
 | `objective` | Goal | What the plan should optimise. **Use as few panels as possible**: cut every part, using the fewest panels; panels are used in the order listed. **Best use of the panels I have**: the panels can't fit every part, so choose which parts to cut to get the most out of them (by part value — see *Value*). **Shortest length from one panel**: you have one panel of fixed width and any length you need (e.g. a long board or a roll); cut every part using the shortest possible length. **Shortest width from one panel**: the same, but the length is fixed and the width is minimised. | `bin_packing`, `knapsack`, `open_dimension_x`, `open_dimension_y` | `bin_packing` | `objective` |
 | `time_limit` | Time limit | How long the solver may search for a better plan. The first plan usually appears within a second; longer searches find plans with less waste. You can stop the search at any time and keep the best plan so far. | seconds, 1–600 | 10 | `timer.set_time_limit` |
 

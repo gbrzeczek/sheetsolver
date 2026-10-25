@@ -13,6 +13,9 @@ pub const DEFAULT_TIME_LIMIT: u32 = 10;
 pub const MIN_TIME_LIMIT: u32 = 1;
 /// The longest time limit a job may ask for, in seconds.
 pub const MAX_TIME_LIMIT: u32 = 600;
+/// The most characters (Unicode code points) a job name may have, after
+/// trimming.
+pub const MAX_NAME_CHARS: usize = 100;
 
 /// The body of `POST /jobs`: what to solve, and for how long.
 ///
@@ -20,6 +23,10 @@ pub const MAX_TIME_LIMIT: u32 = 600;
 /// by field, to report every problem at once (see `request.rs`).
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct JobRequest {
+    /// Your name for this job, shown at the top of the job and its cutting
+    /// plan (e.g. "Kitchen units"). Optional.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
     /// The parts to cut, the panels to cut them from and how the saw cuts.
     pub instance: Instance,
     /// How long the solver may search for a better plan. The first plan
@@ -93,6 +100,9 @@ pub struct PlanReport {
 pub struct JobStatus {
     /// The job's id, used in the other URLs.
     pub id: Uuid,
+    /// The job's name as submitted, without spaces at either end; `null`
+    /// if it has none.
+    pub name: Option<String>,
     /// Where the job is in its life.
     pub state: JobState,
     /// Why the job ended: `complete` (the search ran to its end; a longer
