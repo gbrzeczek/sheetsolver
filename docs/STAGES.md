@@ -208,6 +208,13 @@ Exit criteria:
 
 ## Stage 5 — Unlimited stages
 
+Status (2026-10-25): every ported algorithm matches upstream on every
+golden file and passes the checker; what is left is timing against the
+oracle and measuring the two decisions below, which need the oracle
+built (see `HANDOVER-STAGE5.md`). The owner approved starting Stage 6
+(API) and the design of Stage 7 (UI) in parallel meanwhile, since
+neither changes the solver.
+
 **Goal:** real unlimited-stage plans, solved the way upstream solves them.
 
 Plan (sub-steps, each ends with `diff-oracle` clean):

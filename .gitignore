@@ -6,3 +6,4 @@
 /web/dist
 /tools/oracle/*.log
 __pycache__/
+.claude/worktrees/
