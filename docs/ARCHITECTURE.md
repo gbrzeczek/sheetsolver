@@ -156,11 +156,15 @@ definitions match upstream's, and the golden tests compare them.
 ```rust
 pub fn solve(
     instance: &Instance,
-    params: &SolveParams,          // time limit, queue sizes, deterministic, …
-    cancel: &CancellationToken,
-    on_solution: impl FnMut(&Solution),
-) -> SolveOutput;                   // best solution, bound, stats
+    params: &SolveParams,           // queue size; stop: deadline, cancellation flag
+    on_solution: impl FnMut(&Solution),  // each strictly better plan
+) -> Result<SolveOutput, SolveError>;    // best plan, nodes expanded
 ```
+
+`SolveError` is an invalid instance or, until Stage 5, unlimited stages.
+`solve` runs upstream's deterministic mode: one beam search per guide and
+first-cut direction, one after the other, each with queue size 1 and then
+`queue_size` (see `crates/guillotine/src/lib.rs`).
 
 Single-threaded first. Parallelism (several searches with different
 settings, as upstream's anytime mode does) is added later behind the same

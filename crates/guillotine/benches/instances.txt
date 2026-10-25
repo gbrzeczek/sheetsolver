@@ -1,0 +1,9 @@
+# Instances benchmarked by solve.rs and tools/bench_oracle.py, one file stem
+# of data/instances/ per line: the slowest of each objective at queue size
+# 2048, plus bin packing with a kerf.
+generated__knapsack_3_non_exact_kerf0
+generated__knapsack_2_non_exact_kerf0
+generated__open_dimension_y_3_non_exact_kerf0
+generated__open_dimension_x_2_homogenous_kerf3_2
+generated__bin_packing_3_exact_kerf0
+generated__bin_packing_3_non_exact_kerf3_2

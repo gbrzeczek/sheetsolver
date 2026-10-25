@@ -5,13 +5,19 @@
  *
  * Usage:
  *
- *     sheetsolver_oracle INSTANCE.json OUTPUT.json [--queue-size N]
+ *     sheetsolver_oracle INSTANCE.json OUTPUT.json [--queue-size N] [--benchmark R]
  *
  * The search runs in upstream's deterministic single-threaded mode
  * (not-anytime-sequential) with a fixed queue size, with only the tree
  * search enabled and instance reduction disabled, so that the output is
  * reproducible and depends only on the algorithm being ported (see
  * docs/TESTING.md).
+ *
+ * With --benchmark R, the oracle instead runs upstream's tree search alone
+ * (`tree_search()`, without the bounds `optimize()` computes first) R times,
+ * prints the fastest run's time in seconds on stdout, and writes the last
+ * run's solution. This is the work `guillotine::solve` does, so the two
+ * times compare directly (crates/guillotine/benches/).
  *
  * Field mapping (see docs/FIELDS.md): a panel's or part's length is
  * upstream's width (x), its width is upstream's height (y). Lengths are
@@ -21,6 +27,11 @@
 
 #include "packingsolver/rectangleguillotine/instance_builder.hpp"
 #include "packingsolver/rectangleguillotine/optimize.hpp"
+// Internal header, for --benchmark.
+#include "rectangleguillotine/tree_search.hpp"
+
+#include <chrono>
+#include <limits>
 
 #include <cmath>
 #include <fstream>
@@ -276,16 +287,19 @@ int main(int argc, char* argv[])
     try {
         if (argc < 3) {
             std::cerr << "usage: sheetsolver_oracle INSTANCE.json OUTPUT.json"
-                " [--queue-size N]" << std::endl;
+                " [--queue-size N] [--benchmark R]" << std::endl;
             return 2;
         }
         std::string instance_path = argv[1];
         std::string output_path = argv[2];
         NodeId queue_size = default_queue_size;
+        int benchmark_repeats = 0;
         for (int i = 3; i < argc; ++i) {
             std::string arg = argv[i];
             if (arg == "--queue-size" && i + 1 < argc) {
                 queue_size = std::stoll(argv[++i]);
+            } else if (arg == "--benchmark" && i + 1 < argc) {
+                benchmark_repeats = std::stoi(argv[++i]);
             } else {
                 fail("unknown argument \"" + arg + "\"");
             }
@@ -299,6 +313,30 @@ int main(int argc, char* argv[])
         std::vector<std::string> panel_ids;
         std::vector<std::string> part_ids;
         Instance instance = read_instance(instance_json, panel_ids, part_ids);
+
+        if (benchmark_repeats > 0) {
+            TreeSearchParameters ts_parameters;
+            ts_parameters.verbosity_level = 0;
+            ts_parameters.optimization_mode = OptimizationMode::NotAnytimeSequential;
+            ts_parameters.not_anytime_tree_search_queue_size = queue_size;
+            double fastest = std::numeric_limits<double>::infinity();
+            Solution solution(instance);
+            for (int repeat = 0; repeat < benchmark_repeats; ++repeat) {
+                auto start = std::chrono::steady_clock::now();
+                const TreeSearchOutput ts_output = tree_search(instance, ts_parameters);
+                std::chrono::duration<double> elapsed
+                    = std::chrono::steady_clock::now() - start;
+                fastest = std::min(fastest, elapsed.count());
+                solution = ts_output.solution_pool.best();
+            }
+            std::cout << fastest << std::endl;
+            std::ofstream output_file(output_path);
+            if (!output_file.good())
+                fail("unable to open \"" + output_path + "\"");
+            output_file << write_solution(solution, queue_size, panel_ids, part_ids).dump(2)
+                << std::endl;
+            return 0;
+        }
 
         OptimizeParameters parameters;
         parameters.verbosity_level = 0;

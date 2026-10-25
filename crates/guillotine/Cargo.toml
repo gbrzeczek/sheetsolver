@@ -13,3 +13,14 @@ workspace = true
 [dependencies]
 model = { path = "../model" }
 treesearch = { path = "../treesearch" }
+thiserror = "2.0.21"
+
+[dev-dependencies]
+checker = { path = "../checker" }
+criterion = "0.7.0"
+serde = "1.0.229"
+serde_json = "1.0.154"
+
+[[bench]]
+name = "solve"
+harness = false

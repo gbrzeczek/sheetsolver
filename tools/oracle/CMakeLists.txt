@@ -32,6 +32,9 @@ target_compile_definitions(sheetsolver_oracle PRIVATE
     PACKINGSOLVER_COMMIT="${PACKINGSOLVER_COMMIT}")
 target_link_libraries(sheetsolver_oracle PRIVATE
     PackingSolver::rectangleguillotine)
+# For --benchmark, which calls upstream's internal tree_search() directly.
+target_include_directories(sheetsolver_oracle PRIVATE
+    ${packingsolver_SOURCE_DIR}/src)
 
 # Reference for the treesearch crate (Stage 2): upstream's beam search on a
 # toy knapsack scheme.

@@ -118,7 +118,40 @@ Exit criteria:
   or by matching traced node counts).
 - Cancellation and time limit tested.
 
-## Stage 3 — Guillotine branching scheme
+## Stage 3 — Guillotine branching scheme ✅ done 2026-10-25
+
+Result:
+- `guillotine` crate: `problem` (model → upstream terms, flipped sizes
+  for horizontal first cuts), `scheme` (upstream `BranchingScheme`: one
+  part per child at depths 2/1/0/new panel, strip growth, the dominance
+  rules between children and between fronts, guides 0/1/4/5, bounds and
+  `better` for the four objectives), `plan` (upstream `SolutionBuilder`
+  and `to_solution`, and `Solution::operator<` to pick between searches),
+  and `solve()` (upstream `tree_search()` in not-anytime-sequential mode).
+- With trims, defects, minimum waste, cut distances, cut counts, costs,
+  resources and roadef2018 all out of scope, most of upstream's
+  `update()` reduces to three rules; `scheme.rs` says which.
+- Differential test (`crates/guillotine/tests/golden.rs`): all 84
+  instances with 2 or 3 stages give exactly the golden plan at queue
+  sizes 64 and 2048 (168 plans, the empty ones included), and every
+  plan passes the checker. Reversing the node-id tie-break or the
+  rotation order makes 19 to 48 of them differ.
+- Bounds: as `TESTING.md` assumed, upstream's early stop on bounds never
+  changes the plan (verified, see there). The port keeps only upstream's
+  in-search stop after an exhaustive search.
+- Benchmarks (`cargo bench -p guillotine` against
+  `tools/bench_oracle.py`, which times upstream's `tree_search()` alone):
+  the port takes 0.61–0.69× upstream's time on all 6 instances at both
+  queue sizes (e.g. 566 ms against 869 ms for the slowest at 2048), with
+  `Rc` nodes and the standard hasher; no arena needed.
+- Found: with first cuts "either" and one panel size (every instance so
+  far), upstream runs one search per direction, so every panel of a plan
+  is cut the same way; only with several panel sizes may each panel pick
+  its direction. The `first_cuts` help text said otherwise and is fixed.
+  Ties between the searches go to the earliest, in the order guide 0
+  across, guide 0 along, guide 1 across, guide 1 along.
+- Found: upstream (and the oracle) rejects an open-dimension panel with no
+  quantity; `model` accepts it and the port treats it as one panel.
 
 **Goal:** the actual solver, behaviour-identical to upstream.
 

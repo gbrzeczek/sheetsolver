@@ -87,9 +87,10 @@ pub struct Saw {
     /// the simplest plans to cut, the most waste.
     pub cut_type: CutType,
     /// Which way the first, full-panel cuts run. **Either** (recommended):
-    /// the solver tries both and keeps the plan that wastes less; each
-    /// panel may be cut differently. The search time is shared between the
-    /// two directions. **Along the length**: rip the panel into long
+    /// the solver tries both and keeps the better plan. With one panel
+    /// size, every panel in the plan is cut the same way; with several
+    /// sizes, each panel may be cut differently. The search time is shared
+    /// between the two directions. **Along the length**: rip the panel into long
     /// strips first, then cut the strips across — for saws or workflows
     /// that always rip first. **Across the length**: cut the panel across
     /// into shorter strips first. Parts with grain keep their direction
@@ -103,7 +104,7 @@ pub struct Saw {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FirstCuts {
-    /// Whichever wastes less, per panel (upstream `Any`).
+    /// Whichever gives the better plan (upstream `Any`).
     #[default]
     Either,
     /// Only along the panel's length (upstream `Horizontal`).

@@ -43,12 +43,17 @@ Upstream packingsolver at the pinned commit is the reference.
   checker's metrics are compared against them in Stage 1.
 - A golden file with no patterns means upstream found no solution; the
   Rust port must also find none.
-- **Assumption to verify in Stage 3:** upstream computes bounds before the
-  tree search and stops the search early once a solution reaches the
-  bound. The Rust port does not compute these bounds. This should not
-  change the best solution, because a later solution only replaces the
-  best one if it is strictly better. If a differential test fails only on
-  such an instance, check this first.
+- **Bounds (verified in Stage 3):** upstream computes bounds before the
+  tree search and stops the search once a solution reaches one. The Rust
+  port does not compute them. This cannot change the best solution: a
+  later solution only replaces the best one if it is strictly better, and
+  none can be better than a valid bound. Stage 3 confirmed it on every
+  2- and 3-stage instance: the port, which never stops early, gives the
+  golden plans, and so does upstream's `tree_search()` run alone
+  (`sheetsolver_oracle --benchmark`) on the benchmark instances. The one
+  early stop the port keeps is upstream's own inside `tree_search()`: once
+  a search with a fixed first-cut direction proves its result optimal,
+  the remaining searches are skipped.
 - When the Rust port intentionally deviates (a bug fix, a scope
   difference), the test for that instance is marked with the reason and
   checked against the checker plus a quality bound instead.
@@ -64,7 +69,12 @@ Upstream packingsolver at the pinned commit is the reference.
 
 ## Benchmarks
 
-- `criterion` benchmarks in `crates/guillotine/benches/` on a few fixed
-  instances and queue sizes; compare nodes/second with the oracle.
+- `criterion` benchmarks in `crates/guillotine/benches/` run
+  `guillotine::solve` on the instances listed in `instances.txt`, at the
+  golden queue sizes (`cargo bench -p guillotine`).
+- `tools/bench_oracle.py` times upstream's `tree_search()` on the same
+  instances (the oracle's `--benchmark` mode: no bounds, no JSON parsing
+  in the timing) and checks each plan against the golden file, so both
+  sides time the same work.
 - Do not merge a hot-path change that regresses benchmarks by >5% without
   a reason in the commit message.
