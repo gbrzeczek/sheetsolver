@@ -55,6 +55,18 @@ Objective read_objective(const std::string& name)
     fail("unsupported objective \"" + name + "\"");
 }
 
+/** Our first-cut directions; upstream "vertical" cuts run across the length. */
+CutOrientation read_first_cuts(const std::string& name)
+{
+    if (name == "either")
+        return CutOrientation::Any;
+    if (name == "along_length")
+        return CutOrientation::Horizontal;
+    if (name == "across_length")
+        return CutOrientation::Vertical;
+    fail("unsupported first_cuts \"" + name + "\"");
+}
+
 CutType read_cut_type(const std::string& name)
 {
     if (name == "non_exact")
@@ -118,6 +130,9 @@ Instance read_instance(
         builder.set_number_of_stages(saw.at("stages").get<Counter>());
     }
     builder.set_cut_type(read_cut_type(saw.at("cut_type")));
+    // Our default is "either"; upstream's is vertical.
+    builder.set_first_stage_orientation(
+            read_first_cuts(saw.value("first_cuts", std::string("either"))));
 
     for (const json& panel: j.at("panels")) {
         Length length = read_length(panel.at("length"));

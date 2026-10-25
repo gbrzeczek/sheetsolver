@@ -2,7 +2,7 @@
 //! breaks one thing, and checks the checker reports exactly that.
 
 use checker::{Problem, check};
-use model::{Instance, Length, Solution};
+use model::{CutDirection, FirstCuts, Instance, Length, Solution};
 use serde_json::{Value, json};
 
 /// A 100 × 50 mm panel, 2 mm kerf, 3 stages with trimming.
@@ -320,6 +320,30 @@ fn one_part_per_strip() {
     let mut s = solution();
     strip(&mut s)["children"][2] = json!({ "kind": "part", "part_id": "C", "rotated": false, "x": 0, "y": 44, "length": 40, "width": 6, "stage": 2 });
     assert_only(&i, &s, Problem::MixedStrip("A, C".into()));
+}
+
+#[test]
+fn first_cuts_must_follow_the_saw_setting() {
+    let mut i = instance();
+    // The base plan's first cuts run across the length.
+    i["saw"]["first_cuts"] = json!("across_length");
+    assert_eq!(problems(&i, &solution()), vec![]);
+    i["saw"]["first_cuts"] = json!("either");
+    assert_eq!(problems(&i, &solution()), vec![]);
+
+    i["saw"]["first_cuts"] = json!("along_length");
+    assert_only(
+        &i,
+        &solution(),
+        Problem::WrongFirstCutDirection {
+            allowed: FirstCuts::AlongLength,
+            found: CutDirection::AcrossLength,
+        },
+    );
+
+    // Unlimited stages: any direction.
+    i["saw"]["stages"] = json!("unlimited");
+    assert_eq!(problems(&i, &solution()), vec![]);
 }
 
 #[test]

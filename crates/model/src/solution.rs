@@ -38,6 +38,15 @@ pub enum CutDirection {
     AlongLength,
 }
 
+impl std::fmt::Display for CutDirection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            CutDirection::AcrossLength => "across the length",
+            CutDirection::AlongLength => "along the length",
+        })
+    }
+}
+
 impl CutDirection {
     /// The direction of the next stage's cuts: each stage turns the piece.
     pub fn turned(self) -> CutDirection {

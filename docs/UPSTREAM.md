@@ -20,6 +20,7 @@ copyright notice in this repository's `LICENSE`/`NOTICE` alongside ours.
 | `include/packingsolver/rectangleguillotine/solution.hpp`, `src/rectangleguillotine/solution.cpp`, `solution_builder.cpp` | Solution tree and metrics | `model` (structure), `guillotine` (building) |
 | `src/rectangleguillotine/tree_search.hpp`, `tree_search.cpp` | Branching scheme: the core of the solver | `guillotine` |
 | `src/rectangleguillotine/optimize.cpp` | Algorithm selection and parameters (port only the tree-search path) | `guillotine` |
+| `src/rectangleguillotine/instance_flipper.hpp`, `instance_flipper.cpp` | Swaps length and width, for first cuts along the length | `guillotine` |
 | `treesearchsolver` (separate repo): `iterative_beam_search_2` | Generic beam search | `treesearch` |
 | `include/packingsolver/algorithms/common.hpp` | `Objective`, `OptimizationMode`, shared types | `model` |
 

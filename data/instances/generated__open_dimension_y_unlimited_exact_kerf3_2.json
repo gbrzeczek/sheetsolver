@@ -3,7 +3,8 @@
   "saw": {
     "kerf": 3.2,
     "stages": "unlimited",
-    "cut_type": "exact"
+    "cut_type": "exact",
+    "first_cuts": "either"
   },
   "panels": [
     {

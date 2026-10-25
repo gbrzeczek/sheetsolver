@@ -13,7 +13,8 @@ reason every other instance was skipped.
 
 Field mapping (docs/FIELDS.md): upstream width -> length (x), upstream
 height -> width (y), bin -> panel, item -> part, copies -> quantity,
-oriented -> grain, profit -> value, cut_thickness -> kerf.
+oriented -> grain, profit -> value, cut_thickness -> kerf,
+first_stage_orientation -> first_cuts.
 """
 
 import csv
@@ -36,6 +37,14 @@ CUT_TYPES = {
     "nonexact": "non_exact",
     "exact": "exact",
     "homogenous": "homogenous",
+}
+
+# Upstream first_stage_orientation -> our first_cuts. Upstream "vertical"
+# cuts are at a fixed x: they run across the panel's length.
+FIRST_CUTS = {
+    "vertical": "across_length",
+    "horizontal": "along_length",
+    "any": "either",
 }
 
 # Upstream parameters we do not support, with the value that means "not
@@ -88,7 +97,7 @@ def convert_parameters(params):
         raise Skip(f"cut_type {params['cut_type']}")
 
     orientation = str(params.get("first_stage_orientation", "vertical")).lower()
-    if orientation != "vertical":
+    if orientation not in FIRST_CUTS:
         raise Skip(f"first_stage_orientation {orientation}")
 
     known = {"objective", "number_of_stages", "cut_type",
@@ -108,6 +117,8 @@ def convert_parameters(params):
         "kerf": int(number(params.get("cut_thickness", 0))),
         "stages": stages,
         "cut_type": CUT_TYPES[cut_type_key],
+        # Always explicit: our default ("either") differs from upstream's.
+        "first_cuts": FIRST_CUTS[orientation],
     }
 
 

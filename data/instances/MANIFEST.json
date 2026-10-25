@@ -82,6 +82,14 @@
       "source": "data/rectangleguillotine/tests/knapsack_2hvr_cut_thickness"
     },
     {
+      "file": "tests__knapsack_2nho.json",
+      "source": "data/rectangleguillotine/tests/knapsack_2nho"
+    },
+    {
+      "file": "tests__knapsack_2nho_2.json",
+      "source": "data/rectangleguillotine/tests/knapsack_2nho_2"
+    },
+    {
       "file": "tests__knapsack_2nvo.json",
       "source": "data/rectangleguillotine/tests/knapsack_2nvo"
     },
@@ -254,14 +262,6 @@
     {
       "source": "data/rectangleguillotine/tests/knapsack_2hvr_min1cut",
       "reason": "parameter minimum_distance_1_cuts=12"
-    },
-    {
-      "source": "data/rectangleguillotine/tests/knapsack_2nho",
-      "reason": "first_stage_orientation horizontal"
-    },
-    {
-      "source": "data/rectangleguillotine/tests/knapsack_2nho_2",
-      "reason": "first_stage_orientation horizontal"
     },
     {
       "source": "data/rectangleguillotine/tests/knapsack_2nvo_defects_2",
@@ -493,7 +493,7 @@
     },
     {
       "source": "data/rectangleguillotine/tests/soft_trims_horizontal",
-      "reason": "first_stage_orientation horizontal"
+      "reason": "trims"
     },
     {
       "source": "data/rectangleguillotine/tests/soft_trims_two_stages",

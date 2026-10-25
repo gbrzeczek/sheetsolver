@@ -9,7 +9,7 @@ Upstream's guillotine test instances leave gaps in the combinations we
 support (no open-dimension-y, few bin-packing instances with exact or
 homogenous cuts, few with a kerf). This script fills them: one instance for
 every combination of objective, number of stages, cut type and kerf (0 and
-3.2 mm), with cabinet-like parts on standard board sizes, some of them
+3.2 mm), cycling through the first-cut directions, with cabinet-like parts on standard board sizes, some of them
 with half-millimetre dimensions.
 
 Output is deterministic (fixed seed), so regenerating never changes
@@ -27,6 +27,8 @@ OBJECTIVES = ["bin_packing", "knapsack", "open_dimension_x", "open_dimension_y"]
 STAGES = [2, 3, "unlimited"]
 CUT_TYPES = ["non_exact", "exact", "homogenous"]
 KERFS = [0, 3.2]
+# Cycled over the instances, so every objective and stage count sees each.
+FIRST_CUTS = ["either", "along_length", "across_length"]
 
 # Common board sizes in mm (length x width).
 BOARDS = [(2800, 2070), (2500, 1250), (2440, 1220), (3050, 1830)]
@@ -50,7 +52,7 @@ def parts(rng, count):
     return result
 
 
-def instance(rng, objective, stages, cut_type, kerf):
+def instance(rng, objective, stages, cut_type, kerf, first_cuts):
     length, width = rng.choice(BOARDS)
     items = parts(rng, rng.randint(6, 14))
     if objective == "bin_packing":
@@ -70,7 +72,8 @@ def instance(rng, objective, stages, cut_type, kerf):
                    "quantity": 1}]
     return {
         "objective": objective,
-        "saw": {"kerf": kerf, "stages": stages, "cut_type": cut_type},
+        "saw": {"kerf": kerf, "stages": stages, "cut_type": cut_type,
+                "first_cuts": first_cuts},
         "panels": panels,
         "parts": items,
     }
@@ -89,7 +92,8 @@ def main():
                 for kerf in KERFS:
                     kerf_name = str(kerf).replace(".", "_")
                     name = f"generated__{objective}_{stages}_{cut_type}_kerf{kerf_name}.json"
-                    data = instance(rng, objective, stages, cut_type, kerf)
+                    first_cuts = FIRST_CUTS[count % len(FIRST_CUTS)]
+                    data = instance(rng, objective, stages, cut_type, kerf, first_cuts)
                     (out / name).write_text(json.dumps(data, indent=2) + "\n")
                     count += 1
     print(f"generated {count}")

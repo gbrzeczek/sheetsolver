@@ -16,7 +16,7 @@ mod violation;
 
 use std::collections::HashMap;
 
-use model::{Area, Instance, Length, Metrics, NodeKind, Solution};
+use model::{Area, Instance, Length, Metrics, NodeKind, Solution, Stages};
 
 pub use violation::{Problem, Violation};
 
@@ -51,6 +51,14 @@ pub fn check(instance: &Instance, solution: &Solution) -> Report {
         };
         if instance.panel(&pattern.panel_id).is_none() {
             violations.push(report(Problem::UnknownPanel(pattern.panel_id.clone())));
+        }
+        // With unlimited stages, upstream lets cuts go either way.
+        let first_cuts_fixed = instance.saw.stages != Stages::Unlimited;
+        if first_cuts_fixed && !instance.saw.first_cuts.allows(pattern.first_cuts) {
+            violations.push(report(Problem::WrongFirstCutDirection {
+                allowed: instance.saw.first_cuts,
+                found: pattern.first_cuts,
+            }));
         }
         if pattern.repeat == 0 {
             violations.push(report(Problem::ZeroRepeat));

@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use model::Length;
+use model::{CutDirection, FirstCuts, Length};
 
 /// A rule a cutting plan breaks, and where.
 #[derive(Debug, Clone, PartialEq)]
@@ -106,6 +106,14 @@ pub enum Problem {
     /// unrepeated pattern.
     #[error("a leftover may only be the last first-stage piece of the last panel, cut once")]
     MisplacedLeftover,
+    /// A pattern's first cuts run in a direction the saw settings forbid.
+    #[error("first cuts run {found}, but the saw settings allow {allowed}")]
+    WrongFirstCutDirection {
+        /// The saw setting.
+        allowed: FirstCuts,
+        /// The pattern's direction.
+        found: CutDirection,
+    },
     /// A pattern uses more stages than allowed.
     #[error("uses {used} cutting stages, at most {allowed} allowed")]
     TooManyStages {

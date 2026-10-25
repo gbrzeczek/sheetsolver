@@ -9,6 +9,7 @@ use std::collections::HashSet;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::length::Length;
+use crate::solution::CutDirection;
 
 /// A cutting job: everything the solver needs to produce a cutting plan.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -85,6 +86,51 @@ pub struct Saw {
     /// per strip**: every part in a last-stage strip is the same part —
     /// the simplest plans to cut, the most waste.
     pub cut_type: CutType,
+    /// Which way the first, full-panel cuts run. **Either** (recommended):
+    /// the solver tries both and keeps the plan that wastes less; each
+    /// panel may be cut differently. The search time is shared between the
+    /// two directions. **Along the length**: rip the panel into long
+    /// strips first, then cut the strips across — for saws or workflows
+    /// that always rip first. **Across the length**: cut the panel across
+    /// into shorter strips first. Parts with grain keep their direction
+    /// whichever you choose. With unlimited stages, cuts may always go
+    /// either way.
+    #[serde(default)]
+    pub first_cuts: FirstCuts,
+}
+
+/// Which way the first cuts may run. See [`Saw::first_cuts`].
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FirstCuts {
+    /// Whichever wastes less, per panel (upstream `Any`).
+    #[default]
+    Either,
+    /// Only along the panel's length (upstream `Horizontal`).
+    AlongLength,
+    /// Only across the panel's length (upstream `Vertical`).
+    AcrossLength,
+}
+
+impl std::fmt::Display for FirstCuts {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            FirstCuts::Either => "either direction",
+            FirstCuts::AlongLength => "only along the length",
+            FirstCuts::AcrossLength => "only across the length",
+        })
+    }
+}
+
+impl FirstCuts {
+    /// Whether a pattern whose first cuts go in `direction` is allowed.
+    pub fn allows(self, direction: CutDirection) -> bool {
+        match self {
+            FirstCuts::Either => true,
+            FirstCuts::AlongLength => direction == CutDirection::AlongLength,
+            FirstCuts::AcrossLength => direction == CutDirection::AcrossLength,
+        }
+    }
 }
 
 /// The maximum number of cutting stages. JSON: `2`, `3` or `"unlimited"`.
@@ -397,6 +443,8 @@ mod tests {
         let instance = example();
         assert_eq!(instance.saw.kerf, Length::from_tenths(32));
         assert_eq!(instance.saw.stages, Stages::Limited(3));
+        // Not given: the default.
+        assert_eq!(instance.saw.first_cuts, FirstCuts::Either);
         assert!(instance.parts[0].grain);
         assert_eq!(instance.panels[0].quantity, Some(10));
         assert_eq!(instance.validate(), Ok(()));

@@ -59,7 +59,7 @@ Upstream names are given so the port can be traced back.
 | Unlimited stages | `number_of_stages` = unlimited | **In** (Stage 5). Upstream makes unlimited mean exact cuts in any direction at every stage, and solves it with the maximal-spaces and hypergraph searches, not the 3-level tree search. |
 | Cut type (exact, non-exact, homogenous) | `CutType` | **In** |
 | Cut type roadef2018 | `CutType::Roadef2018` | Out |
-| First stage orientation | `first_stage_orientation` | Open — needed to express "first cuts along the grain"; decide before Stage 3 |
+| First cuts direction: either (default), along the length, across the length | `first_stage_orientation` (`any`, `horizontal`, `vertical`) | **In** |
 | Trims (left/right/bottom/top, soft/hard) | `*_trim`, `TrimType` | Later — first after v1; damaged factory edges are common in wood |
 | Minimum waste length | `minimum_waste_length` | Later |
 | Defects | `defects` | Later |
@@ -102,6 +102,11 @@ Record every scope decision here with a date, so agents can see why.
   hypergraph search with infinite copies, the sequential multi-panel
   heuristics and upstream's automatic algorithm selection. The general
   hypergraph search stays Open.
+- 2026-10-25 — First cuts direction is In: either (default), along or
+  across the panel's length. "Either" shares the search time between the
+  two directions (or uses twice the CPU once searches run in parallel);
+  the default can change to a fixed direction later if server load
+  needs it.
 - 2026-10-25 — Lengths have 0.1 mm precision (decimal millimetres in
   JSON, integer tenths inside), so kerfs like 3.2 mm can be entered
   exactly. A part's default value is its area in mm².

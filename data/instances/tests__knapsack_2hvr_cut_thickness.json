@@ -3,7 +3,8 @@
   "saw": {
     "kerf": 1,
     "stages": 2,
-    "cut_type": "homogenous"
+    "cut_type": "homogenous",
+    "first_cuts": "across_length"
   },
   "panels": [
     {
