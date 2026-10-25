@@ -28,6 +28,18 @@ cmake -S tools/oracle -B tools/oracle/build -DCMAKE_BUILD_TYPE=Release \
   -DFETCHCONTENT_SOURCE_DIR_HIGHS=/home/user/ergo-code/highs
 ```
 
+Build with **libc++**: upstream's ties depend on `std::sort`, and the port
+reproduces libc++'s (`crates/guillotine/src/cpp_sort.rs`). On macOS the
+default clang uses it. On Linux, GCC's libstdc++ orders ties differently
+(10 of the 35 sequential single knapsack golden files differ); use clang
+with libc++ (Ubuntu: `apt-get install libc++-dev libc++abi-dev`), which
+reproduces the golden files with libc++ 18:
+
+```bash
+CXX=clang++ CC=clang cmake -S tools/oracle -B tools/oracle/build -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS="-stdlib=libc++ -lc++abi"
+```
+
 ```bash
 git clone https://github.com/fontanf/packingsolver /tmp/packingsolver
 git -C /tmp/packingsolver checkout 9b656a0dcafd1e9019bf39a5910d4307af65579a
