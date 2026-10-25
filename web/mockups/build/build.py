@@ -865,11 +865,13 @@ def plan_header(view: str) -> str:
     return f"""
   <div class="page-head">
     <div>
-      <span class="status-pill status-done"><span class="pulse"></span>Search finished</span>
+      <span class="status-pill status-done"><span class="pulse"></span>Search finished · time limit reached</span>
       <h1 style="margin-top:12px">Cutting plan</h1>
-      <p class="sub num">Plan 2, found after {FOUND_AFTER[2]:.1f} s of a 10 s search · 3 stages · kerf {fmt(KERF)} mm</p>
+      <p class="sub num">Plan 2, found after {FOUND_AFTER[2]:.1f} s of a 10 s search · 3 stages · kerf {fmt(KERF)} mm.
+        A longer search may save material.</p>
     </div>
-    <div style="display:flex;gap:8px"><a class="btn" href="#">{icon("edit", 14)}Edit job</a></div>
+    <div style="display:flex;gap:8px"><a class="btn" href="#">{icon("edit", 14)}Edit job</a>
+      <a class="btn btn-tinted" href="#">{icon("play", 14)}Search longer</a></div>
   </div>
   <div class="metrics" style="margin-bottom:var(--s-6)">
     <div class="card metric"><div class="label">Panels</div><div class="value">{M2["panels_used"]}</div><div class="note">Birch ply 18 mm, 2440 × 1220</div></div>
@@ -1051,7 +1053,7 @@ def states_page() -> str:
                    f'<button class="btn btn-primary">{icon("plus")}Add part</button>'),
         state_card("Job state: queued", '<span class="status-pill status-running"><span class="pulse"></span>Waiting</span>',
                    "Waiting for a free solver",
-                   "Other jobs are being solved right now. Yours starts automatically; the time limit only counts once it does.",
+                   "<b>2 jobs ahead of yours.</b> Yours starts automatically; the time limit only counts once it does.",
                    f'<button class="btn">{icon("stop", 14)}Cancel</button>'),
         state_card("Job state: done · no plan", ART_NOPLAN, "No plan cuts every part",
                    "The search finished without finding a way to cut every part from the panels listed. Common causes:",
@@ -1060,6 +1062,12 @@ def states_page() -> str:
                    f'“Worktop”, 2600 × 600 mm, is longer than every panel (2440 × 1220 mm).</span></li>'
                    f'<li>{icon("alert", 14)}<span><b>Too few panels.</b> Leave a panel’s Quantity empty for “as many as needed”.</span></li>'
                    f'<li>{icon("alert", 14)}<span><b>Settings too strict.</b> “Not allowed” trimming with 2 stages can leave no way to place every part.</span></li></ul>'),
+        state_card("Job state: done · no plan · goal “Best use”", ART_NOPLAN, "No part fits on any panel",
+                   "With the goal “Best use of the panels I have”, the search cuts as many parts as fit — but none of them fits on the panels listed. Common causes:",
+                   f'<a class="btn btn-primary" href="#">{icon("edit", 14)}Edit job</a>',
+                   f'<ul class="hint-list"><li>{icon("alert", 14)}<span><b>Every part is larger than the panels.</b> '
+                   f'Check that the panel sizes are in millimetres (2440, not 244).</span></li>'
+                   f'<li>{icon("alert", 14)}<span><b>Grain keeps parts from turning.</b> Untick “Keep grain direction” where the look allows it.</span></li></ul>'),
         state_card("Job state: cancelled · no plan", ART_NOPLAN, "Stopped before the first plan",
                    "The search was stopped before it found any plan. Search again and let it run a little longer — the first plan usually appears within a second.",
                    f'<button class="btn btn-primary">{icon("play")}Search again</button><a class="btn" href="#">Edit job</a>'),
@@ -1072,8 +1080,8 @@ def states_page() -> str:
                    "Plans are kept for an hour after the search ends. Your job is still saved in this browser, so you can search again.",
                    f'<button class="btn btn-primary">{icon("play")}Search again</button>'),
         state_card("HTTP 503 · busy", f'<span style="color:var(--text-3)">{icon("clock", 44)}</span>', "The solver is busy",
-                   "Too many jobs are waiting. Nothing was lost — try again in a minute.",
-                   f'<button class="btn btn-primary">Try again</button>'),
+                   "Too many jobs are waiting. Nothing was lost — your job is still here.",
+                   f'<button class="btn" disabled aria-disabled="true">Try again in 24 s</button>'),
         state_card("Event stream lost", '<span class="status-pill" style="background:var(--fill);color:var(--text-2)"><span class="pulse" style="background:var(--text-3);box-shadow:none"></span>Reconnecting…</span>',
                    "Connection lost",
                    "The search keeps running on the server. The best plan so far reappears as soon as the connection is back.",

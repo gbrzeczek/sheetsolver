@@ -124,7 +124,8 @@ to the workshop tablet resumes it:
   to it.
 
 **Search** (`solving.html`)
-- A status pill ("Searching", or "Waiting" when queued), a title, and
+- A status pill ("Searching", or "Waiting" with "*n* jobs ahead of
+  yours" from `queue_position` when queued), a title, and
   one line explaining that the best plan so far is shown and replaced.
 - A time bar: `elapsed` of `time_limit`, animated client-side between
   events.
@@ -145,7 +146,10 @@ to the workshop tablet resumes it:
 
 **Plan: overview** (`plan-overview.html`)
 - A header with a status pill (Search finished / Stopped), "Plan *n*,
-  found after *t* s of a *T* s search", stages and kerf.
+  found after *t* s of a *T* s search", stages and kerf. With
+  `ended_by: "complete"`, it says "The best plan this search can find".
+  With `"time_limit"`, it says "Time limit reached — a longer search may
+  save material" and offers *Search again with more time*.
 - Four figures: Panels, Parts cut, Waste (% and m²), and Leftover
   (size, if any) or, for the "Shortest length/width" goals, the used
   length or width.
@@ -229,11 +233,13 @@ The empty Parts card says how to start (`states.html`, "New job").
 2. *On submit*, the server is the authority. A `422` comes back with
    `problems[]`. Each `field` path (`instance.parts[1].width`) is mapped
    to its row and column: the cell gets the error style, the message
-   appears under the row, and a summary banner at the top lists every
+   appears under the row, and a summary banner at the top lists each
    problem as a link that scrolls to and focuses the field
    (`editor-errors.html`). A problem about a whole list
    (`instance.parts`) attaches to the card heading. One with
-   `field: null` stays in the banner only.
+   `field: null` stays in the banner only. The server reports problems
+   in two rounds (wrong types, then validation), so fixing the first
+   batch can reveal more; the banner never claims the list is complete.
 3. Problems clear as soon as their field is edited. No resubmission is
    needed to see the error disappear.
 
@@ -258,9 +264,15 @@ sent as is, so positions in `problems` always match row numbers.
    `cancelled` state arrives.
 
 **Opening a link later.** `GET /jobs/{id}`:
-- `404` means expired: offer *Search again* from the draft saved in
-  this browser (see the open question in §9).
-- `best: null` in a final state shows the no-plan states.
+- The status includes the job's `instance` (§8, #18), so the plan,
+  the parts summary and *Edit job* work on any device, not only on the
+  one that submitted.
+- `404` means expired (or a mistyped link): offer *Search again* from
+  the draft saved in this browser, if there is one (see the open
+  question in §9).
+- `best: null` in a final state shows the no-plan states, including
+  "No part fits on any panel" for the goal "Best use of the panels I
+  have" (the API never serves an empty plan).
 
 **At the saw.** Open *Panel by panel* → panel 1, cut 1 → step with › or
 by tapping. Finished panels can be ticked off in the thumbnail strip
@@ -434,7 +446,8 @@ a workshop.
   limit) show the **full `FIELDS.md` help text directly under the
   control**, always.
 - **Option fields** (Goal, Last-stage trimming, First cuts): the option
-  names are the **bold** words of the help text. The sentence about the
+  names come from the schema's `oneOf` titles (§8, #2); they are the
+  same words as the **bold** names in the help text. The sentence about the
   selected option (from its bold name to the next one) is shown in the
   primary colour, with the name in the accent; the rest stays
   secondary. The words never change: this only directs the eye.
@@ -451,8 +464,8 @@ a workshop.
 - **Source.** Help text comes from the `description` of each property
   in `openapi.json` (§7). Its markup is rendered: `**bold**` becomes
   `<strong>` and `*italic*` becomes `<em>` (FIELDS.md uses `*Value*`).
-  Nothing else is interpreted. Labels must come from the same place
-  (see §8, missing `title`).
+  Nothing else is interpreted (API: bold and italic only). Labels come
+  from each property's `title`, also generated from FIELDS.md (§8, #1).
 
 ---
 
@@ -499,7 +512,7 @@ a workshop.
 | API types | **openapi-typescript** generates `src/api/schema.d.ts` from `openapi.json` | One source of truth: Rust types → utoipa → OpenAPI → TS. A Rust type change that breaks the UI fails `npm run check` in the same change (`ARCHITECTURE.md`). |
 | API calls | **openapi-fetch** (a tiny typed `fetch`) for `POST/GET/DELETE /jobs` | Paths, bodies and responses typed from the schema, no hand-written client. |
 | Events | A ~40-line typed wrapper around the browser's `EventSource` | OpenAPI cannot describe SSE well; the wrapper uses the generated `PlanReport` and `StateEvent` schemas (see §8.1) and closes on final states. |
-| Help text and labels | `scripts/gen-fields.ts` reads `openapi.json` and writes `src/api/fields.generated.ts`: `{ "instance.parts[].length": { label, help, default, minimum, … } }` | Types carry descriptions only as comments; the UI needs them at run time. Every input component takes a `field` key typed as a union of the generated keys, so **an input without help text does not compile**. |
+| Help text and labels | `scripts/gen-fields.ts` reads `openapi.json` and writes `src/api/fields.generated.ts`: `{ "instance.parts[].length": { label, help, default, minimum, multipleOf, options, … } }` from `title`, `description`, `default`, bounds and `oneOf` titles | Types carry descriptions only as comments; the UI needs them at run time. Every input component takes a `field` key typed as a union of the generated keys, so **an input without help text does not compile**. |
 | State | Svelte runes; the draft job is kept in `localStorage` (wrapped in try/catch) | No server persistence (Open in `SCOPE.md`); losing the draft on reload would hurt. |
 | Plan geometry | Pure TS module `src/plan/` (cut order, label fitting, statistics) with unit tests | Mirrors the mockup generator's logic; easy to test against golden files. |
 | Tests | **Vitest** (logic), **Playwright** (end-to-end against `cargo run -p api`) | The Stage 7 exit criterion "enter instance → solve → see a valid plan" is one Playwright test; another fails if any input lacks visible help text. |
@@ -531,35 +544,62 @@ shows contract changes.
 
 ## 8. API requirements from the UI
 
-What the UI uses from `docs/API.md`, and what is missing or awkward.
-`docs/API.md` is being implemented in parallel and may change, so these
-are requests, not changes made here.
+What the UI needs from `docs/API.md`, and what was missing or awkward
+in the first version of the contract. The orchestrating session triaged
+these requests on 2026-10-25. The API is on branch `claude/stage6-api`;
+its `docs/API.md` lists what changed in its *Changes* section. The
+detailed items below keep the original reasoning. This table is the
+current status.
 
-### Summary of requests (for triage)
+### Status of the requests
 
-Numbers refer to the detailed items below. **Priority:** *High* means
-cheap now and awkward to retrofit; *Medium* means clearly better UX;
-*Low* is nice to have. None changes scope, except where marked.
+**Status:** ✅ *done* means already in `docs/API.md` on
+`claude/stage6-api`; 🔨 *accepted* means being implemented there;
+⏸ *deferred* means not for now, and the UI uses its fallback.
 
-| # | Request | Screen / interaction that needs it | Fallback without it | Priority |
+| # | Request | Status | Screen / interaction | What the UI does |
 |---|---|---|---|---|
-| 1 | `title` = FIELDS.md UI label on every property in `openapi.json` | Every input's label (editor) | Labels hard-coded in the UI; can drift from FIELDS.md | High |
-| 2 | Per-value option names for `objective`, `cut_type`, `first_cuts`, `stages` (`oneOf` + `const` + `title`) | Goal options, segmented controls (editor) | Parsed from the bold words of the help text (fragile) or hard-coded | High |
-| 3 | `default`, `minimum`/`maximum`, `multipleOf: 0.1` in the schema | New job defaults; validation as you type (editor) | Defaults and bounds copied by hand into the UI | High |
-| 4 | Named `PlanReport` and `StateEvent` schemas | Typed SSE handling (search progress) | Hand-written TS types for the events | High |
-| 7 | `--print-openapi` (or a build-time file) | UI build and CI without a running server | CI starts the API to fetch `/openapi.json` | Medium |
-| 9 | `ended_by: "complete" \| "time_limit"` on the status and the final `state` event | Plan header advice: "best this search can do" vs "a longer search may save material" | Neutral wording: "Search finished" | Medium |
-| 13 | `cuts: "along_length" \| "across_length"` on every `piece` with children | Cut order list and badges (panel view), above all for unlimited stages | Direction inferred from the children's geometry (works, implicit) | Medium |
-| 18 | The instance in `GET /jobs/{id}` (or `GET /jobs/{id}/instance`) | Plan opened from a link on another device: parts summary, parts not cut, *Edit job* | Shows only what the plan tree holds; *Edit job* works only in the browser that submitted | Medium |
-| 8 | Per-pattern `metrics` | Panel header and overview cards (waste, parts per panel) | Computed from the tree in the UI (done in the mockups) | Low |
-| 10 | `queue_position` for `queued` jobs | "Waiting for a free solver" state | "Waiting…" without a count | Low |
-| 11 | `Retry-After` on `503 busy` | Busy state, retry button | Fixed retry hint ("try again in a minute") | Low |
-| 19 | `POST /instances/validate` (dry run, same `problems`) | Server-side problems shown before submitting (editor) | Client checks + 422 on submit (enough for v1) | Low |
-| 12, 14, 15, 16, 20 | Documentation only: children in position order; trimming appears as stage `stages + 1`; wrapper pieces; sub-kerf offcuts; `problems[].field` positions = submitted arrays | Cut order derivation, error mapping | The UI relies on today's behaviour | High (it's only docs) |
-| 5, 6 | `stages` type (`2 \| 3 \| "unlimited"`); help-text markup (`*italic*` used in FIELDS.md) | Generated types; help rendering | Works as is; the UI renders bold and italic | Low |
+| 1 | `title` = FIELDS.md UI label on every property | 🔨 accepted | Every input's label (editor) | Labels come from `title` via `fields.generated.ts` (§7) |
+| 2 | Option names per enum value (`oneOf` + `const` + `title`) | 🔨 accepted | Goal options, segmented controls (editor) | Option names come from `oneOf` titles, not from the bold words |
+| 3 | `default`, `minimum`/`maximum`, `multipleOf: 0.1` | 🔨 accepted | New job defaults; validation as you type | Defaults and client checks are generated from the schema |
+| 4 | Named `PlanReport` and `StateEvent` schemas | ✅ done | Typed SSE handling (search) | The `EventSource` wrapper uses the generated types |
+| 5 | `stages` type | 🔨 accepted (documented): stays `2 \| 3 \| "unlimited"` | Stages segmented control | Maps the union to "2", "3", "Unlimited" |
+| 6 | Help-text markup | 🔨 accepted: bold and italic only | All help text | Renders `**bold**` and `*italic*`, nothing else |
+| 7 | `cargo run -p api -- --print-openapi` | ✅ done | UI build and CI | `npm run gen` writes `web/openapi.json` from it |
+| 8 | Per-pattern `metrics` | ⏸ deferred | Panel header, overview cards | **Computed from the tree** in `src/plan/` (as the mockups do), with unit tests against golden plans |
+| 9 | `ended_by: "complete" \| "time_limit"` | 🔨 accepted | Plan header and search end | "Best plan this search can find" vs "Time limit reached; a longer search may save material" |
+| 10 | `queue_position` for `queued` jobs | 🔨 accepted | Waiting state | "2 jobs ahead of yours" |
+| 11 | `Retry-After` on `503 busy` | 🔨 accepted | Busy state | Counts down, then enables *Try again* |
+| 12 | Children listed in position order | 🔨 accepted (docs) | Cut order | Relied on |
+| 13 | `cuts` direction on every `piece` | ⏸ deferred | Cut order, badges (above all for unlimited stages) | **Inferred from geometry**: children with the same `y` are cut across, otherwise along. One child: across if it is shorter in length. Unit-tested on unlimited-stage golden plans |
+| 14 | Trimming appears as stage `stages + 1` | 🔨 accepted (docs) | Cut order ("trim") | Relied on |
+| 15 | Wrapper pieces (single child of the same size) | 🔨 accepted (docs) | Cut order | Skipped: no cut |
+| 16 | Sub-kerf offcuts | 🔨 accepted (docs) | Drawing, offcut list | Shown as saw dust, unlabelled |
+| 18 | The instance in `GET /jobs/{id}` | 🔨 accepted | A plan opened from a link on another device; *Edit job* | Parts summary, parts not cut, and *Edit job* work on any device; the local draft is only a convenience |
+| 19 | `POST /instances/validate` | ⏸ deferred | Server-side problems before submitting | Client checks while typing, plus the 422 on submit |
+| 20 | `problems[].field` positions = submitted arrays | 🔨 accepted (docs) | 422 mapping to rows | Relied on; rows are sent in display order and never dropped |
 
-No request needs server-side persistence. The local draft (§9.1) is
-browser-only.
+No request needed server-side persistence.
+
+### Behaviour the UI adapts to (from the API implementation)
+
+- **An empty plan is never served.** `best` always cuts at least one
+  part. With "Best use of the panels I have", `best` stays `null` when
+  no part fits on any panel. The UI shows a no-plan state for that
+  goal too ("No part fits on any panel", see `states.html`), with the
+  same causes as for "Use as few panels as possible" (a part larger than
+  every panel, settings too strict) but without "too few panels".
+- **422 problems come in two rounds**: wrong types first, then
+  `Instance::validate`. The banner says "Fix the highlighted fields,
+  then find the plan again" and never promises the list is complete. In
+  practice the first round rarely reaches the user, because the
+  client-side checks (§3, generated from the schema per #3) catch
+  missing and mistyped fields before submitting. `field: null` now
+  means only that the body was not a JSON object, which the UI never
+  sends; it would be shown in the banner only.
+- `404` also for a malformed id, so the "no longer on the server" state
+  covers links that were mistyped or truncated.
+- Times are rounded to the millisecond; the UI shows them to 0.1 s.
 
 ### What the UI uses
 
