@@ -310,6 +310,10 @@ def text_w(s: str, size: float, bold: bool = False) -> float:
     return len(s) * size * (0.6 if bold else 0.56)
 
 
+# A double arrow along the length: the part keeps the panel's grain direction.
+GRAIN_ICON = ('<path d="M1 4h12M3.5 1.5 1 4l2.5 2.5M10.5 1.5 13 4l-2.5 2.5" fill="none" '
+              'stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>')
+
 ROTATE_ICON = ('<path d="M9.6 4.3A4 4 0 1 0 10 6" fill="none" stroke-width="1.3" '
                'stroke-linecap="round"/><path d="M10.4 1.8v2.8H7.6" fill="none" '
                'stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>')
@@ -341,9 +345,7 @@ def render_panel(pattern: dict, *, width: float, uid: str, labels: str = "full",
     out.append(
         f'<defs><pattern id="{uid}-hatch" width="6" height="6" patternUnits="userSpaceOnUse" '
         f'patternTransform="rotate(45)"><rect width="6" height="6" class="p-offcut-bg"/>'
-        f'<line x1="0" y1="0" x2="0" y2="6" class="p-hatch"/></pattern>'
-        f'<pattern id="{uid}-grain" width="40" height="5" patternUnits="userSpaceOnUse">'
-        f'<path d="M0 2.5 Q10 1.6 20 2.5 T40 2.5" class="p-grain"/></pattern></defs>')
+        f'<line x1="0" y1="0" x2="0" y2="6" class="p-hatch"/></pattern></defs>')
     # The panel itself shows through wherever the saw removes material.
     out.append(f'<rect x="{ml}" y="{mt}" width="{L * s:.2f}" height="{W * s:.2f}" class="p-kerf"/>')
 
@@ -353,11 +355,10 @@ def render_panel(pattern: dict, *, width: float, uid: str, labels: str = "full",
         if kind == "part":
             part = PARTS[leaf["part_id"]]
             out.append(f'<rect x="{x:.2f}" y="{y:.2f}" width="{w:.2f}" height="{h:.2f}" class="p-part"/>')
-            if part.get("grain"):
-                out.append(f'<rect x="{x:.2f}" y="{y:.2f}" width="{w:.2f}" height="{h:.2f}" '
-                           f'fill="url(#{uid}-grain)" class="p-nostroke"/>')
+            if part.get("grain") and labels != "none" and w > 70 and h > 48:
+                out.append(f'<g transform="translate({x + w - 19:.2f} {y + h - 12:.2f})" class="p-glyph">{GRAIN_ICON}</g>')
             if leaf.get("rotated") and labels != "none" and w > 30 and h > 24:
-                out.append(f'<g transform="translate({x + w - 16:.2f} {y + h - 16:.2f})" class="p-rot">{ROTATE_ICON}</g>')
+                out.append(f'<g transform="translate({x + w - 16:.2f} {y + h - 16:.2f})" class="p-glyph">{ROTATE_ICON}</g>')
             out.append(part_label(leaf, x, y, w, h, labels, name_size, dim_size))
         elif kind == "offcut":
             out.append(f'<rect x="{x:.2f}" y="{y:.2f}" width="{w:.2f}" height="{h:.2f}" '
@@ -368,10 +369,10 @@ def render_panel(pattern: dict, *, width: float, uid: str, labels: str = "full",
             out.append(f'<rect x="{x + 0.75:.2f}" y="{y + 0.75:.2f}" width="{w - 1.5:.2f}" '
                        f'height="{h - 1.5:.2f}" class="p-leftover"/>')
             if labels != "none":
-                out.append(stacked_label("Leftover", f'{fmt(leaf["length"])} × {fmt(leaf["width"])}',
+                out.append(stacked_label("Keep · leftover", f'{fmt(leaf["length"])} × {fmt(leaf["width"])}',
                                          x, y, w, h, name_size, dim_size, "p-leftover-text")
                            if labels == "full" else
-                           stacked_label("Leftover", None, x, y, w, h, name_size, dim_size, "p-leftover-text"))
+                           stacked_label("Keep", None, x, y, w, h, name_size, dim_size, "p-leftover-text"))
 
     out.append(f'<rect x="{ml}" y="{mt}" width="{L * s:.2f}" height="{W * s:.2f}" class="p-edge"/>')
 
@@ -523,33 +524,32 @@ def render_rulers(pattern, ml, mt, s) -> str:
 # Plan colours and text, appended to the stylesheet.
 PLAN_CSS = """
 .plan-svg { font-family: var(--font); font-variant-numeric: tabular-nums; }
-.p-kerf { fill: var(--plan-kerf); }
-.p-edge { fill: none; stroke: var(--text); stroke-opacity: .55; stroke-width: 1; }
-.p-part { fill: var(--plan-part); stroke: var(--plan-part-stroke); stroke-width: .75; }
-.p-nostroke { stroke: none; }
-.p-grain { fill: none; stroke: var(--plan-grain); stroke-width: 1; }
-.p-offcut-bg { fill: var(--plan-offcut); }
-.p-hatch { stroke: var(--plan-hatch); stroke-width: 1.4; }
+.p-kerf { fill: var(--kerf); }
+.p-edge { fill: none; stroke: var(--part-line); stroke-width: 1; }
+.p-part { fill: var(--part); stroke: var(--part-line); stroke-width: .75; }
+.p-offcut-bg { fill: var(--offcut); }
+.p-hatch { stroke: var(--hatch); stroke-width: 1.2; }
 .p-offcut { stroke: none; }
-.p-leftover { fill: var(--plan-leftover); stroke: var(--plan-leftover-stroke); stroke-width: 1.5; stroke-dasharray: 5 4; }
-.p-part-text { fill: var(--plan-part-text); }
-.p-name { font-weight: 600; }
-.p-dim { font-weight: 450; }
-.p-part-text .p-dim { fill-opacity: .78; }
-.p-offcut-text { fill: var(--plan-offcut-text); }
-.p-leftover-text { fill: var(--text-2); }
-.p-rot { stroke: var(--plan-part-stroke); }
-.p-ruler line { stroke: var(--plan-ruler); stroke-width: 1; }
-.p-ruler text { fill: var(--text-2); font-size: 11px; font-weight: 500; }
-.p-ruler .p-ruler-weak { fill: var(--text-3); }
+.p-leftover { fill: var(--leftover); stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 3; }
+.p-part-text { fill: var(--ink); }
+.p-name { font-weight: 500; }
+.p-dim { font-weight: 400; }
+.p-part-text .p-dim { fill: var(--muted); }
+.p-offcut-text { fill: var(--muted); }
+.p-leftover-text { fill: var(--ink); }
+.p-leftover-text .p-dim { fill: var(--muted); }
+.p-glyph { stroke: var(--ink); opacity: .7; }
+.p-ruler line { stroke: var(--faint); stroke-width: 1; }
+.p-ruler text { fill: var(--muted); font-size: 11px; }
+.p-ruler .p-ruler-weak { fill: var(--faint); }
 .p-ruler-bg { fill: var(--surface); }
-.p-badge circle { fill: var(--plan-badge); stroke: var(--surface); stroke-width: 1.5; }
-.p-badge text { fill: var(--plan-badge-text); font-size: 10px; font-weight: 700; }
-.p-badge.on circle { fill: var(--accent); }
+.p-badge circle { fill: var(--surface); stroke: var(--ink); stroke-width: 1; }
+.p-badge text { fill: var(--ink); font-size: 10px; font-weight: 600; }
+.p-badge.on circle { fill: var(--accent); stroke: var(--accent); }
 .p-badge.on text { fill: var(--on-accent); }
-.p-badge.done { opacity: .35; }
+.p-badge.done { opacity: .4; }
 .p-cutline { fill: var(--accent); }
-.p-result { fill: var(--accent-tint); stroke: var(--accent); stroke-width: 2; }
+.p-result { fill: var(--accent); fill-opacity: .18; stroke: var(--accent); stroke-width: 2; }
 """
 
 
@@ -559,35 +559,32 @@ PLAN_CSS = """
 
 CSS = (Path(__file__).parent / "styles.css").read_text() + PLAN_CSS
 
-LOGO = ('<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">'
-        '<rect x="1" y="1" width="24" height="24" rx="6.5" fill="var(--accent)"/>'
-        '<path d="M5.5 14.5h15M12 14.5v6M15.5 5.5v9" stroke="#fff" stroke-width="1.8" '
-        'stroke-linecap="round"/></svg>')
+
+# --------------------------------------------------------------------------
+# Page shell and shared pieces
+# --------------------------------------------------------------------------
+
+LOGO = ('<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" '
+        'stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="1.5" width="15" height="15" rx="1.5"/>'
+        '<path d="M1.5 9.5h15M8 1.5v8M11.5 9.5v7"/></svg>')
+
+CONTEXT = f'{sum(p.get("quantity", 1) for p in INST["parts"])} parts · {esc(INST["panels"][0]["id"])}'
 
 
-def icon(name: str, size: int = 16) -> str:
+def icon(name: str, size: int = 14) -> str:
     paths = {
-        "plus": '<path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
-        "trash": '<path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M4.8 4.5l.6 8.5h5.2l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
-        "alert": '<path d="M8 1.8 15 14H1z" fill="currentColor"/><path d="M8 6v4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="12" r=".9" fill="#fff"/>',
-        "chev": '<path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
-        "back": '<path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
-        "stop": '<rect x="4" y="4" width="8" height="8" rx="1.5" fill="currentColor"/>',
-        "play": '<path d="M5 3.2v9.6L13 8z" fill="currentColor"/>',
-        "check": '<path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
-        "clock": '<circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 4.6V8l2.4 1.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>',
-        "edit": '<path d="M10.5 2.5 13.5 5.5 6 13H3v-3z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>',
+        "plus": '<path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+        "close": '<path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
     }
     return (f'<svg width="{size}" height="{size}" viewBox="0 0 16 16" aria-hidden="true">'
             f'{paths[name]}</svg>')
 
 
-def shell(title: str, step: int, body: str, actions: str = "") -> str:
-    def st(n, label):
-        cur = ' aria-current="step"' if n == step else ""
-        cls = ' class="done"' if n < step else ""
-        mark = icon("check", 11) if n < step else str(n)
-        return f'<a href="#"{cur}{cls}><span class="dot">{mark}</span>{label}</a>'
+def shell(title: str, tab: str, body: str, live: bool = False) -> str:
+    def t(key, text):
+        cur = ' aria-current="page"' if key == tab else ""
+        dot = '<span class="live" aria-hidden="true"></span>' if live and key == "plan" else ""
+        return f'<a href="#"{cur}>{text}{dot}</a>'
 
     return f"""<!doctype html>
 <html lang="en">
@@ -598,325 +595,327 @@ def shell(title: str, step: int, body: str, actions: str = "") -> str:
 <style>{CSS}</style>
 </head>
 <body>
-<header class="topbar">
-  <div class="brand">{LOGO}<span>Sheetsolver</span></div>
-  <nav class="steps" aria-label="Progress">{st(1, "Job")}{st(2, "Search")}{st(3, "Plan")}</nav>
-  <div class="topbar-actions">{actions}</div>
-</header>
+<header class="chrome"><span class="brand">{LOGO}Sheetsolver</span><span class="context">{CONTEXT}</span></header>
+<nav class="topnav" aria-label="Job views">{t("setup", "Job setup")}{t("plan", "Cutting plan")}</nav>
 {body}
 </body>
 </html>
 """
 
 
+def pct(f: float) -> str:
+    return f"{f * 100:.1f}%"
+
+
 # --------------------------------------------------------------------------
-# Instance editor
+# Help on demand
 # --------------------------------------------------------------------------
 
-def text_input(value, *, cls="", placeholder="", suffix=None, label_text=None) -> str:
+def help_btn(hid: str, section: str, field: str, open_: bool = False) -> str:
+    return (f'<button class="help-btn" type="button" aria-expanded="{"true" if open_ else "false"}" '
+            f'aria-controls="{hid}" aria-label="About {esc(label(section, field))}">?</button>')
+
+
+def help_pop(hid: str, section: str, field: str, side: str) -> str:
+    return (f'<div class="pop {side}" id="{hid}" role="dialog" aria-label="{esc(label(section, field))}">'
+            f'<div class="pop-title"><span>{esc(label(section, field))}</span>'
+            f'<button class="icon-btn" style="width:18px;height:18px" aria-label="Close">{icon("close", 12)}</button></div>'
+            f'{help_html(section, field)}</div>')
+
+
+# --------------------------------------------------------------------------
+# Job setup
+# --------------------------------------------------------------------------
+
+def cell(value, *, cls="", placeholder="", label_text="", text=False) -> str:
     v = f' value="{esc(str(value))}"' if value not in (None, "") else ""
     ph = f' placeholder="{esc(placeholder)}"' if placeholder else ""
-    aria = f' aria-label="{esc(label_text)}"' if label_text else ""
-    inp = f'<input class="input {cls}"{v}{ph}{aria} readonly>'
-    if suffix:
-        return f'<div class="input-wrap">{inp}<span class="suffix">{suffix}</span></div>'
-    return inp
+    t = " text" if text else ""
+    inv = ' aria-invalid="true"' if "invalid" in cls else ""
+    return f'<input class="cell{t} {cls}"{v}{ph} aria-label="{esc(label_text)}"{inv} readonly>'
 
 
-def parts_table(errors: dict, focus: tuple[int, str] | None, show_value: bool) -> str:
-    cols = [("id", "w-name", None), ("length", "w-len", "mm"), ("width", "w-len", "mm"),
-            ("quantity", "w-qty", None), ("grain", "w-chk c", None)]
-    if show_value:
-        cols.append(("value", "w-qty", None))
-    head = ['<th></th>']
-    for f, cls, unit in cols:
-        u = f' <span class="unit">{unit}</span>' if unit else ""
-        fc = " focus-col" if focus and focus[1] == f else ""
-        head.append(f'<th class="{cls}{fc}">{esc(label("parts", f))}{u}</th>')
-    head.append('<th class="w-del"></th>')
+def th(section, field, cls, unit=None, focus=False, pop=None) -> str:
+    hid = f"help-{section}-{field}"
+    u = f' <span class="unit">{unit}</span>' if unit else ""
+    lab = label(section, field)
+    if field == "grain":
+        lab = "Keep grain ↔"
+    fc = " focus-col" if focus else ""
+    popover = help_pop(hid, section, field, pop) if pop else ""
+    return (f'<th class="{cls}{fc}" scope="col">{esc(lab)}{u}{help_btn(hid, section, field, bool(pop))}{popover}</th>')
+
+
+def parts_table(errors: dict, focus: tuple[int, str] | None, pop_field: str | None) -> str:
+    cols = [("id", "w-name", None), ("length", "w-len num", "mm"), ("width", "w-len num", "mm"),
+            ("quantity", "w-qty num", None), ("grain", "w-chk c", None)]
+    head = '<th></th>' + "".join(
+        th("parts", f, cls, unit, focus=bool(focus and focus[1] == f),
+           pop=("right" if f in ("grain", "quantity") else "left") if f == pop_field else None)
+        for f, cls, unit in cols) + '<th class="w-del"></th>'
     rows = []
     for i, p in enumerate(INST["parts"]):
+        has_err = any((i, f) in errors for f, _, _ in cols)
         cells = [f'<td class="idx">{i + 1}</td>']
-        for f, cls, unit in cols:
+        for f, cls, _ in cols:
             key = (i, f)
             state = "invalid" if key in errors else ("focus" if focus == key else "")
             lab = f'{label("parts", f)}, row {i + 1}'
             if f == "grain":
-                on = " on" if p.get("grain") else ""
-                cells.append(f'<td class="c"><div class="check-cell"><span class="check{on}" role="checkbox" '
-                             f'aria-checked="{"true" if on else "false"}" aria-label="{esc(lab)}"></span></div></td>')
-            elif f == "value":
-                cells.append(f'<td>{text_input(p.get("value"), placeholder="Area", cls=state, label_text=lab)}</td>')
+                chk = " checked" if p.get("grain") else ""
+                cells.append(f'<td class="c"><input type="checkbox"{chk} aria-label="{esc(lab)}"></td>')
             else:
                 val = errors.get(key, (None, None))[0] or (fmt(p[f]) if f in ("length", "width") else p.get(f, ""))
-                cells.append(f'<td>{text_input(val, cls=state, label_text=lab)}</td>')
-        cells.append(f'<td><button class="icon-btn" aria-label="Remove row {i + 1}">{icon("trash")}</button></td>')
-        rows.append(f'<tr class="row">{"".join(cells)}</tr>')
-        row_errs = [(f, errors[(i, f)][1]) for f, _, _ in cols if (i, f) in errors]
-        for f, msg in row_errs:
-            rows.append(f'<tr class="err-row"><td></td><td colspan="{len(cols) + 1}"><div class="cell-error" id="err-{i}-{f}">'
-                        f'{icon("alert", 14)}<span><strong>{esc(label("parts", f))}:</strong> {esc(msg)}</span></div></td></tr>')
-    return (f'<div class="table-wrap"><table class="edit"><thead><tr>{"".join(head)}</tr></thead>'
+                cells.append(f'<td>{cell(val, cls=state, label_text=lab, text=(f == "id"))}</td>')
+        cells.append(f'<td><button class="icon-btn" aria-label="Remove row {i + 1}">{icon("close", 12)}</button></td>')
+        rows.append(f'<tr class="{"has-err" if has_err else ""}">{"".join(cells)}</tr>')
+        for f, _, _ in cols:
+            if (i, f) in errors:
+                rows.append(f'<tr class="err-row"><td></td><td colspan="{len(cols) + 1}"><div class="cell-error" id="err-{i}-{f}">'
+                            f'<strong>{esc(label("parts", f))}:</strong> {esc(errors[(i, f)][1])}</div></td></tr>')
+    return (f'<div class="table-wrap" style="overflow:visible"><table><thead><tr>{head}</tr></thead>'
             f'<tbody>{"".join(rows)}</tbody></table></div>')
-
-
-def guide(section: str, fields: list[str], active: str | None = None,
-          muted: dict[str, str] | None = None, title: str = "About these fields") -> str:
-    muted = muted or {}
-    items = []
-    for f in fields:
-        cls = "item" + (" active" if f == active else "") + (" muted" if f in muted else "")
-        note = f' <span class="chip">{esc(muted[f])}</span>' if f in muted else ""
-        wide = " wide" if len(FIELDS[(section, f)]["help"]) > 330 else ""
-        items.append(f'<div class="{cls}{wide}"><dt>{esc(label(section, f))}{note}</dt>'
-                     f'<dd>{help_html(section, f)}</dd></div>')
-    return f'<div class="guide"><h3>{esc(title)}</h3><dl>{"".join(items)}</dl></div>'
 
 
 def panels_table() -> str:
-    head = ('<th></th><th class="w-name">Name</th><th class="w-len">Length <span class="unit">mm</span></th>'
-            '<th class="w-len">Width <span class="unit">mm</span></th><th class="w-qty">Quantity</th>'
-            '<th class="w-qty">Cost</th><th class="w-del"></th>')
+    cols = [("id", "w-name", None), ("length", "w-len num", "mm"), ("width", "w-len num", "mm"),
+            ("quantity", "w-qty num", None), ("cost", "w-qty num", None)]
+    head = '<th></th>' + "".join(th("panels", f, cls, unit) for f, cls, unit in cols) + '<th class="w-del"></th>'
     rows = []
     for i, p in enumerate(INST["panels"]):
         rows.append(
-            f'<tr class="row"><td class="idx">{i + 1}</td><td>{text_input(p["id"], label_text="Name")}</td>'
-            f'<td>{text_input(fmt(p["length"]), label_text="Length")}</td><td>{text_input(fmt(p["width"]), label_text="Width")}</td>'
-            f'<td>{text_input(p.get("quantity"), placeholder="Unlimited", label_text="Quantity")}</td>'
-            f'<td>{text_input(p.get("cost"), placeholder="Panel area", label_text="Cost")}</td>'
-            f'<td><button class="icon-btn" aria-label="Remove panel">{icon("trash")}</button></td></tr>')
-    return (f'<div class="table-wrap"><table class="edit"><thead><tr>{head}</tr></thead>'
+            f'<tr><td class="idx">{i + 1}</td><td>{cell(p["id"], label_text="Name", text=True)}</td>'
+            f'<td>{cell(fmt(p["length"]), label_text="Length")}</td><td>{cell(fmt(p["width"]), label_text="Width")}</td>'
+            f'<td>{cell(p.get("quantity"), placeholder="Unlimited", label_text="Quantity")}</td>'
+            f'<td>{cell(p.get("cost"), placeholder="Area", label_text="Cost")}</td>'
+            f'<td><button class="icon-btn" aria-label="Remove panel">{icon("close", 12)}</button></td></tr>')
+    return (f'<div class="table-wrap" style="overflow:visible"><table><thead><tr>{head}</tr></thead>'
             f'<tbody>{"".join(rows)}</tbody></table></div>')
 
 
-def choice_list(section: str, field: str, current: str) -> str:
-    out = []
-    for o in options(section, field):
-        on = " on" if o == current else ""
-        out.append(f'<label class="choice{on}"><span class="radio"></span><span>{esc(o)}</span></label>')
-    return f'<div class="choices" role="radiogroup" aria-label="{esc(label(section, field))}">{"".join(out)}</div>'
-
-
-def segmented(opts: list[str], current: str, aria: str) -> str:
-    items = "".join(f'<label class="{"on" if o == current else ""}">{esc(o)}</label>' for o in opts)
-    return f'<div class="segmented" role="radiogroup" aria-label="{esc(aria)}">{items}</div>'
-
-
-def field_block(section: str, field: str, control: str, current: str | None = None,
-                unit: str | None = None, show_label: bool = True) -> str:
+def setting(section: str, field: str, control: str, *, open_: bool = False,
+            current: str | None = None, unit: str | None = None) -> str:
+    hid = f"help-{section}-{field}"
     u = f' <span class="unit">{unit}</span>' if unit else ""
-    lab = f'<span class="field-label">{esc(label(section, field))}{u}</span>' if show_label else ""
-    return (f'<div class="field">{lab}'
-            f'{control}<p class="help">{help_html(section, field, current)}</p></div>')
+    box = (f'<div class="help-box" id="{hid}">{help_html(section, field, current)}</div>' if open_
+           else f'<div class="help-box" id="{hid}" hidden></div>')
+    return (f'<div class="field"><div class="label-row"><span class="field-label">{esc(label(section, field))}{u}</span>'
+            f'{help_btn(hid, section, field, open_)}</div>{control}{box}</div>')
 
 
-def settings_column() -> str:
+def radio_row(opts: list[str], current: str, aria: str) -> str:
+    items = "".join(f'<label class="{"on" if o == current else ""}">{esc(o)}</label>' for o in opts)
+    return f'<div class="radio-row" role="radiogroup" aria-label="{esc(aria)}">{items}</div>'
+
+
+def select(value: str, aria: str) -> str:
+    return f'<select class="select" aria-label="{esc(aria)}"><option>{esc(value)}</option></select>'
+
+
+def plan_settings(advanced_open: bool, open_help: str | None) -> str:
     goal_opts = options("job", "objective")
-    goal = field_block("job", "objective", choice_list("job", "objective", goal_opts[0]), goal_opts[0],
-                       show_label=False)
-    kerf = field_block("saw", "kerf", f'<div class="input-short">{text_input(fmt(KERF), suffix="mm", label_text="Kerf")}</div>')
-    stages = field_block("saw", "stages", segmented(["2", "3", "Unlimited"], "3", label("saw", "stages")))
-    ct_opts = options("saw", "cut_type")
-    cut_type = field_block("saw", "cut_type", segmented(ct_opts, ct_opts[0], label("saw", "cut_type")), ct_opts[0])
-    fc_opts = options("saw", "first_cuts")
-    first = field_block("saw", "first_cuts", segmented(fc_opts, fc_opts[1], label("saw", "first_cuts")), fc_opts[1])
-    tl = field_block("job", "time_limit", f'<div class="input-short">{text_input("10", suffix="s", label_text="Time limit")}</div>')
+    ct = options("saw", "cut_type")
+    fc = options("saw", "first_cuts")
+    goal = setting("job", "objective", select(goal_opts[0], label("job", "objective")),
+                   open_=open_help == "objective", current=goal_opts[0])
+    kerf = setting("saw", "kerf", f'<div class="input-wrap input-short"><input class="input" value="{fmt(KERF)}" '
+                   f'inputmode="decimal" aria-label="Kerf" readonly><span class="suffix">mm</span></div>',
+                   open_=open_help == "kerf")
+    adv = "".join([
+        setting("saw", "stages", radio_row(["2", "3", "Unlimited"], "3", label("saw", "stages")), open_=open_help == "stages"),
+        setting("saw", "cut_type", radio_row(ct, ct[0], label("saw", "cut_type")), open_=open_help == "cut_type", current=ct[0]),
+        setting("saw", "first_cuts", radio_row(fc, fc[1], label("saw", "first_cuts")), open_=open_help == "first_cuts", current=fc[1]),
+        setting("job", "time_limit", '<div class="input-wrap input-short"><input class="input" value="10" '
+                'inputmode="numeric" aria-label="Time limit" readonly><span class="suffix">s</span></div>',
+                open_=open_help == "time_limit"),
+    ])
+    op = " open" if advanced_open else ""
     return f"""
-<div class="stack">
-  <section class="card"><div class="card-head"><h2>{esc(label("job", "objective"))}</h2></div><div class="card-body">{goal}</div></section>
-  <section class="card"><div class="card-head"><h2>Saw and cutting</h2></div><div class="card-body">{kerf}{stages}{cut_type}{first}</div></section>
-  <section class="card"><div class="card-head"><h2>Search</h2></div><div class="card-body">{tl}</div></section>
-  <section class="card cta hide-tablet">
-    <a class="btn btn-primary btn-lg btn-block" href="#">{icon("play")}Find cutting plan</a>
-    <div class="summary"><span>{PARTS_TOTAL} parts · {len(INST["parts"])} sizes</span><span>1 panel size</span></div>
-  </section>
-</div>"""
+<h2 style="margin-bottom:16px">Plan settings</h2>
+{goal}
+{kerf}
+<details class="advanced"{op}><summary><span class="sum">More cutting settings
+  <small>3 stages · trimming allowed · {esc(fc[1].lower())} first · 10 s</small></span></summary>
+  <div class="inner">{adv}</div></details>"""
 
 
 def editor_page(errors: dict | None = None) -> str:
     errors = errors or {}
     focus = None if errors else (2, "length")
-    goal_note = "Shown with the goal " + options("job", "objective")[1]
-    banner = ""
+    alert = ""
     if errors:
-        items = []
-        for (i, f), (_, msg) in errors.items():
-            items.append(f'<li><a href="#err-{i}-{f}">Part {i + 1} · {esc(label("parts", f))}</a> — {esc(msg)}</li>')
-        banner = (f'<div class="banner banner-error" role="alert"><span class="icon">{icon("alert", 22)}</span>'
-                  f'<div><h3>The job cannot be solved as entered.</h3>'
-                  f'<p>{len(errors)} problems. Fix the highlighted fields, then find the plan again.</p>'
-                  f'<ul>{"".join(items)}</ul></div></div>')
-    parts_meta = f'{PARTS_TOTAL} parts in {len(INST["parts"])} sizes'
+        items = "".join(f'<li><a href="#err-{i}-{f}">Row {i + 1}, {esc(label("parts", f))}</a>: {esc(msg)}</li>'
+                        for (i, f), (_, msg) in errors.items())
+        alert = (f'<div class="alert" role="alert"><h3>The job cannot be solved as entered.</h3>'
+                 f'<p>Fix the highlighted fields, then find the plan again.</p><ul>{items}</ul></div>')
+    note = (f'<p class="hint" style="margin-top:12px;color:var(--bad)">{len(errors)} problems need attention.</p>' if errors
+            else '<p class="hint" style="margin-top:12px">All required sizes are entered.</p>')
     body = f"""
-<main class="page">
-  <div class="page-head">
-    <div><h1>Cutting job</h1><p class="sub">List the parts you need and the panels you have. Every field explains itself below it.</p></div>
-  </div>
-  {banner}
-  <div class="layout-editor">
-    <div class="stack">
-      <section class="card" aria-labelledby="parts-h">
-        <div class="card-head"><h2 id="parts-h">Parts</h2><span class="meta">{parts_meta}</span></div>
-        <div class="card-body">
-          {parts_table(errors, focus, show_value=False)}
-          <div class="table-foot"><button class="btn btn-tinted">{icon("plus")}Add part</button>
-            <span class="meta">Lengths in millimetres, at most one decimal (e.g. 720, 3.2, 18.5).</span></div>
-          {guide("parts", ["id", "length", "width", "quantity", "grain", "value"], active=focus[1] if focus else None,
-                 muted={"value": goal_note})}
-        </div>
-      </section>
-      <section class="card" aria-labelledby="panels-h">
-        <div class="card-head"><h2 id="panels-h">Panels</h2><span class="meta">The sheets you cut from</span></div>
-        <div class="card-body">
-          {panels_table()}
-          <div class="table-foot"><button class="btn btn-tinted">{icon("plus")}Add panel size</button></div>
-          {guide("panels", ["id", "length", "width", "quantity", "cost"])}
-        </div>
-      </section>
-    </div>
-    <aside class="sticky-col">{settings_column()}</aside>
-  </div>
-</main>
-<div class="cta-bar show-tablet"><span class="meta">{PARTS_TOTAL} parts · 1 panel size</span>
-  <a class="btn btn-primary btn-lg" href="#">{icon("play")}Find cutting plan</a></div>
-"""
-    return shell("Cutting job", 1, body)
-
-
-# --------------------------------------------------------------------------
-# Solving in progress
-# --------------------------------------------------------------------------
-
-def pct(f: float) -> str:
-    return f"{f * 100:.1f}%"
-
-
-def solving_page() -> str:
-    elapsed, limit = 3.4, 10
-    thumbs = []
-    for k, p in enumerate(PLAN2["patterns"]):
-        st = pattern_stats(p)
-        thumbs.append(
-            f'<figure class="card figure" style="margin:0"><div class="figure-head" style="margin-bottom:10px">'
-            f'<div><h2 style="font:var(--t-headline)">Panel {k + 1}</h2><p class="sub">{st["parts"]} parts · waste {pct(st["waste_fraction"])}</p></div></div>'
-            f'{render_panel(p, width=340, uid=f"s{k}", labels="names", name_size=11, title=f"Panel {k + 1} of the best plan so far")}</figure>')
-    delta = (M1["waste_fraction"] - M2["waste_fraction"]) * 100
-    body = f"""
-<main class="page">
-  <div class="page-head">
+<main class="narrow">
+  <div class="heading"><div><div class="eyebrow">Job setup</div><h1>What are you cutting?</h1>
+    <p class="muted">Sizes in millimetres, at most one decimal (720, 3.2, 18.5). Tap <span class="help-btn" aria-hidden="true" style="display:inline-grid">?</span> for what a field means.</p></div></div>
+  {alert}
+  <div class="setup-grid">
     <div>
-      <span class="status-pill status-running"><span class="pulse"></span>Searching</span>
-      <h1 style="margin-top:12px">Looking for a better plan</h1>
-      <p class="sub">The best plan so far is shown below and is replaced as soon as a better one is found.
-      Stop at any time to keep it.</p>
+      <section class="form-block" aria-labelledby="parts-h">
+        <div class="section-title"><h2 id="parts-h">Parts to make</h2><small>{PARTS_TOTAL} parts · {len(INST["parts"])} sizes</small></div>
+        {parts_table(errors, focus, None if errors else "grain")}
+        <div class="table-foot"><button class="link">{icon("plus")}Add part</button>
+          <small>↔ The part keeps the panel’s grain direction.</small></div>
+      </section>
+      <section class="form-block" aria-labelledby="panels-h">
+        <div class="section-title"><h2 id="panels-h">Panels you have</h2><small>{len(INST["panels"])} size</small></div>
+        {panels_table()}
+        <div class="table-foot"><button class="link">{icon("plus")}Add panel size</button>
+          <small>Leave Quantity empty for as many as needed.</small></div>
+      </section>
     </div>
-    <div style="display:flex;gap:8px"><button class="btn">{icon("stop", 14)}Stop and keep this plan</button>
-      <a class="btn btn-primary" href="#">Open plan{icon("chev", 14)}</a></div>
-  </div>
-
-  <section class="card card-body" style="margin-bottom:var(--s-5)">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
-      <span style="font:var(--t-headline)" class="num">{elapsed:.1f} s <span style="color:var(--text-2);font-weight:400">of {limit} s</span></span>
-      <span style="color:var(--text-2);font:var(--t-help)" class="num">Time limit {limit} s · about {limit - elapsed:.0f} s left</span>
-    </div>
-    <div class="progress" role="progressbar" aria-valuenow="{elapsed}" aria-valuemin="0" aria-valuemax="{limit}" aria-label="Search time"><span style="width:{elapsed / limit * 100:.0f}%"></span></div>
-  </section>
-
-  <div class="metrics" style="margin-bottom:var(--s-5)">
-    <div class="card metric"><div class="label">Panels used</div><div class="value">{M2["panels_used"]}</div><div class="note">2440 × 1220 Birch ply 18 mm</div></div>
-    <div class="card metric"><div class="label">Waste</div><div class="value">{pct(M2["waste_fraction"])}</div><div class="note good">↓ {delta:.1f} points since plan 1</div></div>
-    <div class="card metric"><div class="label">Parts cut</div><div class="value">{M2["parts_cut"]} <small>of {PARTS_TOTAL}</small></div><div class="note">Every part fits</div></div>
-    <div class="card metric"><div class="label">Plans found</div><div class="value">2</div><div class="note">Latest after {FOUND_AFTER[2]:.1f} s</div></div>
-  </div>
-
-  <div class="layout-editor">
-    <section>
-      <div class="card-head" style="padding:0 0 var(--s-3)"><h2>Best plan so far</h2><span class="meta">Plan 2</span></div>
-      <div class="thumb-grid">{"".join(thumbs)}</div>
-    </section>
-    <aside class="card">
-      <div class="card-head"><h2>Plans found</h2></div>
-      <div class="card-body">
-        <ul class="timeline">
-          <li class="best"><span class="n">2</span><div><div class="t1">{M2["panels_used"]} panels · {pct(M2["waste_fraction"])} waste</div>
-            <div class="t2 num">Found after {FOUND_AFTER[2]:.2f} s</div></div><span class="delta">Best</span></li>
-          <li><span class="n">1</span><div><div class="t1">{M1["panels_used"]} panels · {pct(M1["waste_fraction"])} waste</div>
-            <div class="t2 num">Found after {FOUND_AFTER[1]:.2f} s</div></div><span></span></li>
-        </ul>
-        <p class="help" style="margin-top:var(--s-4)">{help_html("job", "time_limit")}</p>
-      </div>
+    <aside class="setup-aside">
+      {plan_settings(advanced_open=bool(errors), open_help=None if errors else "kerf")}
+      <div class="summary-row" style="margin-top:6px"><span>Parts</span><strong>{PARTS_TOTAL} in {len(INST["parts"])} sizes</strong></div>
+      <div class="summary-row"><span>Panels</span><strong>2440 × 1220, as many as needed</strong></div>
+      <div class="aside-cta hide-tablet"><a class="button primary big block" href="#">Find cutting plan →</a>{note}</div>
     </aside>
   </div>
 </main>
+<div class="cta-bar show-tablet"><small>{PARTS_TOTAL} parts · 1 panel size</small><a class="button primary big" href="#">Find cutting plan →</a></div>
 """
-    return shell("Searching", 2, body)
+    return shell("Job setup", "setup", body)
 
 
 # --------------------------------------------------------------------------
-# Plan viewer
+# Cutting plan: shared header
 # --------------------------------------------------------------------------
 
-def plan_header(view: str) -> str:
+def plan_stats(m: dict, live: bool = False) -> str:
     left = PLAN2["patterns"][-1]
     lo = pattern_stats(left)["leftovers"][0]
-    seg = (f'<div class="segmented" style="max-width:320px" role="tablist">'
-           f'<label class="{"on" if view == "overview" else ""}">Overview</label>'
-           f'<label class="{"on" if view == "panel" else ""}">Panel by panel</label></div>')
     return f"""
-  <div class="page-head">
-    <div>
-      <span class="status-pill status-done"><span class="pulse"></span>Search finished · time limit reached</span>
-      <h1 style="margin-top:12px">Cutting plan</h1>
-      <p class="sub num">Plan 2, found after {FOUND_AFTER[2]:.1f} s of a 10 s search · 3 stages · kerf {fmt(KERF)} mm.
-        A longer search may save material.</p>
-    </div>
-    <div style="display:flex;gap:8px"><a class="btn" href="#">{icon("edit", 14)}Edit job</a>
-      <a class="btn btn-tinted" href="#">{icon("play", 14)}Search longer</a></div>
+  <div class="stats">
+    <div class="stat"><strong>{m["panels_used"]}</strong>panels<small>2440 × 1220 mm each</small></div>
+    <div class="stat"><strong>{m["parts_cut"]} / {PARTS_TOTAL}</strong>parts<small class="ok">✓ No missing parts</small></div>
+    <div class="stat"><strong>{pct(m["waste_fraction"])}</strong>waste<small>{fmt_area_m2(m["waste_area"])} offcuts and saw dust</small></div>
+    <div class="stat"><strong>1</strong>leftover to keep<small>{fmt(lo["length"])} × {fmt(lo["width"])} mm · panel 3</small></div>
+  </div>"""
+
+
+def plan_heading() -> str:
+    return f"""
+  <div class="heading">
+    <div><div class="eyebrow">Cutting plan · plan 2</div><h1>All {PARTS_TOTAL} parts fit</h1>
+      <p class="muted">{M2["panels_used"]} panels of Birch ply 18 mm, 2440 × 1220 mm</p></div>
+    <div class="actions"><a class="button" href="#">Edit job</a></div>
   </div>
-  <div class="metrics" style="margin-bottom:var(--s-6)">
-    <div class="card metric"><div class="label">Panels</div><div class="value">{M2["panels_used"]}</div><div class="note">Birch ply 18 mm, 2440 × 1220</div></div>
-    <div class="card metric"><div class="label">Parts cut</div><div class="value">{M2["parts_cut"]} <small>of {PARTS_TOTAL}</small></div><div class="note">Every part is in the plan</div></div>
-    <div class="card metric"><div class="label">Waste</div><div class="value">{pct(M2["waste_fraction"])}</div><div class="note num">{fmt_area_m2(M2["waste_area"])} of offcuts and saw dust</div></div>
-    <div class="card metric"><div class="label">Leftover</div><div class="value num" style="font-size:24px">{fmt(lo["length"])} × {fmt(lo["width"])}</div><div class="note">Reusable strip on panel 3</div></div>
-  </div>
-  <div style="margin-bottom:var(--s-5)">{seg}</div>"""
+  {plan_stats(M2)}"""
+
+
+def plan_status() -> str:
+    return (f'<p class="statusline" style="margin:-8px 0 20px"><span class="ok">✓ Complete plan</span> · time limit reached '
+            f'after 10 s, so a longer search may still save material. <a class="link" href="#">Search for 60 s</a></p>')
+
+
+def sheet_nav(current: int | None) -> str:
+    """current: None = all panels, else the pattern index."""
+    items = []
+    cur = ' aria-current="page"' if current is None else ""
+    items.append(f'<a class="sheet-choice" href="#"{cur}><div class="all" aria-hidden="true"><span></span><span></span><span></span></div>'
+                 f'<strong>All panels</strong><small>Overview and parts</small></a>')
+    for j, p in enumerate(PLAN2["patterns"]):
+        st = pattern_stats(p)
+        cur = ' aria-current="page"' if current == j else ""
+        keep = "<small>1 strip to keep</small>" if st["leftovers"] else ""
+        items.append(f'<a class="sheet-choice" href="#"{cur}>'
+                     f'{render_panel(p, width=144, uid=f"n{j}", labels="none", title=f"Panel {j + 1}")}'
+                     f'<strong>Panel {j + 1}</strong><small>{st["parts"]} parts · {pct(st["waste_fraction"])} waste</small>{keep}</a>')
+    return f'<nav class="sheet-nav" aria-label="Panels">{"".join(items)}</nav>'
 
 
 def legend() -> str:
-    def sw(cls, extra=""):
-        return (f'<svg width="18" height="12" aria-hidden="true" class="plan-svg"><rect x=".5" y=".5" width="17" height="11" rx="2" class="{cls}" {extra}/></svg>')
+    def sw(cls):
+        return f'<svg width="16" height="11" aria-hidden="true" class="plan-svg"><rect x=".5" y=".5" width="15" height="10" class="{cls}"/></svg>'
     return (f'<div class="legend">'
             f'<span>{sw("p-part")}Part</span>'
-            f'<span><svg width="18" height="12" class="plan-svg" aria-hidden="true"><rect x=".5" y=".5" width="17" height="11" rx="2" class="p-part"/><path d="M1 6 Q5 4.8 9 6 T17 6" class="p-grain" style="stroke:var(--plan-part-stroke)"/></svg>Keeps grain direction</span>'
-            f'<span><svg width="14" height="14" viewBox="0 0 12 12" class="plan-svg p-rot" aria-hidden="true">{ROTATE_ICON}</svg>Turned 90°</span>'
-            f'<span><svg width="18" height="12" class="plan-svg" aria-hidden="true"><defs><pattern id="lg-h" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" class="p-offcut-bg"/><line x1="0" y1="0" x2="0" y2="4" class="p-hatch"/></pattern></defs><rect x=".5" y=".5" width="17" height="11" rx="2" fill="url(#lg-h)"/></svg>Offcut</span>'
-            f'<span>{sw("p-leftover")}Leftover (reusable)</span>'
-            f'<span><svg width="18" height="12" class="plan-svg" aria-hidden="true"><rect x="8" y="0" width="2" height="12" class="p-kerf"/></svg>Saw cut ({fmt(KERF)} mm kerf)</span>'
+            f'<span><svg width="14" height="9" viewBox="0 0 14 8" class="plan-svg p-glyph" aria-hidden="true">{GRAIN_ICON}</svg>Keeps grain direction</span>'
+            f'<span><svg width="12" height="12" viewBox="0 0 12 12" class="plan-svg p-glyph" aria-hidden="true">{ROTATE_ICON}</svg>Turned 90°</span>'
+            f'<span><svg width="16" height="11" class="plan-svg" aria-hidden="true"><defs><pattern id="lg-h" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" class="p-offcut-bg"/><line x1="0" y1="0" x2="0" y2="4" class="p-hatch"/></pattern></defs><rect x=".5" y=".5" width="15" height="10" fill="url(#lg-h)"/></svg>Offcut</span>'
+            f'<span>{sw("p-leftover")}Leftover to keep</span>'
+            f'<span><svg width="16" height="11" class="plan-svg" aria-hidden="true"><rect x="7" y="0" width="2" height="11" class="p-kerf"/></svg>Saw cut, {fmt(KERF)} mm</span>'
             f'</div>')
 
 
-def cut_list(pattern: dict, highlight: int, done_before: int) -> str:
+def search_details() -> str:
+    return (f'<details class="more"><summary>Cutting settings and search details</summary>'
+            f'<p>Kerf {fmt(KERF)} mm · 3 cutting stages · first cuts along the length · last-stage trimming allowed.</p>'
+            f'<p>The search stopped at its 10-second limit; this plan was found after {FOUND_AFTER[2]:.1f} s. '
+            f'Reaching the time limit does not prove that fewer panels or less waste is impossible.</p></details>')
+
+
+# --------------------------------------------------------------------------
+# Cutting plan: searching
+# --------------------------------------------------------------------------
+
+def solving_page() -> str:
+    elapsed, limit = 3.4, 10
+    cards = []
+    for k, p in enumerate(PLAN2["patterns"]):
+        st = pattern_stats(p)
+        cards.append(
+            f'<section class="viewer"><div class="viewer-head"><div><h3>Panel {k + 1} <small>/ 3</small></h3>'
+            f'<small>{st["parts"]} parts · {pct(st["waste_fraction"])} waste</small></div></div>'
+            f'{render_panel(p, width=470, uid=f"s{k}", labels="names", name_size=11, title=f"Panel {k + 1} of the best plan so far")}</section>')
+    delta = (M1["waste_fraction"] - M2["waste_fraction"]) * 100
+    body = f"""
+<main>
+  <div class="heading">
+    <div><div class="eyebrow">Cutting plan · searching</div><h1>All {PARTS_TOTAL} parts fit so far</h1>
+      <p class="muted">Looking for a plan with less waste. The best plan so far is shown and replaced as soon as a better one is found.</p></div>
+    <div class="actions"><button class="button">Stop and keep this plan</button></div>
+  </div>
+  <div class="statusline num"><span style="color:var(--ink);font-weight:600">{elapsed:.1f} s</span> of {limit} s · about {limit - elapsed:.0f} s left</div>
+  <div class="progress" role="progressbar" aria-label="Search time" aria-valuenow="{elapsed}" aria-valuemin="0" aria-valuemax="{limit}"><span style="width:{elapsed / limit * 100:.0f}%"></span></div>
+  {plan_stats(M2, live=True)}
+  <div class="live-grid">
+    <div class="overview">{"".join(cards)}</div>
+    <aside class="side">
+      <div class="side-head"><h3>Plans found</h3><small>2</small></div>
+      <ul class="plans" style="padding:0 16px 8px">
+        <li><span><b>Plan 2</b> · {M2["panels_used"]} panels · {pct(M2["waste_fraction"])} waste</span><span class="ok">−{delta:.1f} pt</span></li>
+        <li><span><b>Plan 1</b> · {M1["panels_used"]} panels · {pct(M1["waste_fraction"])} waste</span><span class="muted num">{FOUND_AFTER[1]:.2f} s</span></li>
+      </ul>
+      <p class="help" style="border-top:1px solid var(--line);padding-top:10px">Plan 2 was found after {FOUND_AFTER[2]:.2f} s. You can open it now; it updates itself while the search runs.</p>
+      <div style="padding:0 16px 16px"><a class="button primary block" href="#">Open plan</a></div>
+    </aside>
+  </div>
+</main>"""
+    return shell("Searching", "plan", body, live=True)
+
+
+# --------------------------------------------------------------------------
+# Cutting plan: panel by panel and overview
+# --------------------------------------------------------------------------
+
+def cut_list(pattern: dict, highlight: int) -> tuple[str, int, dict]:
     steps = cut_steps(pattern)
-    out, group = [], None
+    out, group, current = [], None, None
     for st in steps:
         if st["group"] != group:
             group = st["group"]
             if group == "panel":
-                title, meta = "Panel into strips", "first cuts, along the length"
+                title, meta = "Panel into strips", "along the length"
             else:
                 node = next(n for n in iter_nodes(pattern["root"]) if st["names"].get(id(n)) == group)
                 title, meta = group, f'{fmt(node["length"])} × {fmt(node["width"])}'
             out.append(f'<li class="group"><span>{esc(title)}</span><span class="num">{meta}</span></li>')
-        cls = "cut" + (" on" if st["n"] == highlight else "") + (" done" if st["n"] < done_before else "")
-        dirw = "along the length" if st["direction"] == "along" else "across the length"
-        if st["trim"]:
-            dirw = "trim, " + dirw
+        cls = "cut" + (" on" if st["n"] == highlight else "") + (" done" if st["n"] < highlight else "")
+        dirw = ("trim, " if st["trim"] else "") + ("along the length" if st["direction"] == "along" else "across the length")
         rest = f'<div class="r">leaves {st["rest"]}</div>' if st["rest"] else ""
         cur = ' aria-current="step"' if st["n"] == highlight else ""
+        if st["n"] == highlight:
+            current = st
         out.append(f'<li class="{cls}"{cur}><span class="n">{st["n"]}</span><div>'
                    f'<div class="m">{fmt(st["measure"])} mm<em>{dirw}</em></div>'
                    f'<div class="r">→ {st["result"]}</div>{rest}</div></li>')
-    return f'<ol class="cutlist">{"".join(out)}</ol>', len(steps)
+    return f'<ol class="cutlist">{"".join(out)}</ol>', len(steps), current
 
 
 def iter_nodes(n):
@@ -930,78 +929,69 @@ def plan_panel_page() -> str:
     pat = PLAN2["patterns"][k]
     st = pattern_stats(pat)
     highlight = 7
-    rail = []
-    for j, p in enumerate(PLAN2["patterns"]):
-        s2 = pattern_stats(p)
-        on = " on" if j == k else ""
-        cur = ' aria-current="page"' if on else ""
-        rail.append(f'<a class="thumb{on}" href="#"{cur}>'
-                    f'{render_panel(p, width=150, uid=f"r{j}", labels="none", title=f"Panel {j + 1}")}'
-                    f'<div class="tt"><span>Panel {j + 1}</span><span>{s2["parts"]} parts</span></div></a>')
-    figure = render_panel(pat, width=830, uid="main", labels="full", badges=True, rulers=True,
-                          highlight=highlight, done_before=highlight, name_size=12,
+    figure = render_panel(pat, width=700, uid="main", labels="full", badges=True, rulers=True,
+                          highlight=highlight, done_before=highlight, name_size=11.5,
                           title="Panel 1 of 3: Birch ply 18 mm, 2440 by 1220 mm")
-    cl, ncuts = cut_list(pat, highlight, highlight)
+    cl, ncuts, cur = cut_list(pat, highlight)
+    dirw = "along the length" if cur["direction"] == "along" else "across the length"
 
-    parts_rows = {}
+    counts: dict[str, int] = {}
     for l in st["part_leaves"]:
-        r = parts_rows.setdefault(l["part_id"], {"n": 0, "leaf": l})
-        r["n"] += 1
-    prow = "".join(
-        f'<tr><td>{esc(pid)}</td><td class="num">{fmt(PARTS[pid]["length"])} × {fmt(PARTS[pid]["width"])}</td>'
-        f'<td class="r num">{r["n"]}</td></tr>' for pid, r in parts_rows.items())
+        counts[l["part_id"]] = counts.get(l["part_id"], 0) + 1
+    on_panel = "".join(
+        f'<div class="manifest-row"><div>{esc(pid)} <span>{fmt(PARTS[pid]["length"])} × {fmt(PARTS[pid]["width"])}</span></div><strong>× {n}</strong></div>'
+        for pid, n in counts.items())
     offs = sorted((o for o in st["offcuts"] if min(o["length"], o["width"]) >= KERF), key=area, reverse=True)
-    orow = "".join(
-        f'<tr><td class="num">{fmt(o["length"])} × {fmt(o["width"])}</td><td class="r num muted">{area(o) / 1e6:.3f} m²</td></tr>'
-        for o in offs[:6])
-    more = len(offs) - 6
+    off_rows = "".join(
+        f'<div class="manifest-row"><div>{fmt(o["length"])} × {fmt(o["width"])}</div><span>{area(o) / 1e6:.3f} m²</span></div>'
+        for o in offs[:5])
     body = f"""
-<main class="page page-wide">
-  {plan_header("panel")}
-  <div class="plan-layout">
-    <div class="stack pl-main" style="gap:var(--s-5)">
-      <nav class="rail" aria-label="Panels">{"".join(rail)}</nav>
-      <section class="card figure">
-        <div class="figure-head">
-          <div><h2>Panel 1 <span style="color:var(--text-2);font-weight:400">of 3</span></h2>
-            <p class="sub num">Birch ply 18 mm · 2440 × 1220 · {st["parts"]} parts · waste {pct(st["waste_fraction"])} · first cuts along the length</p></div>
-          <div class="toggles"><span class="toggle on">{icon("check", 12)}Sizes</span><span class="toggle on">{icon("check", 12)}Cut order</span></div>
-        </div>
+<main>
+  {plan_heading()}
+  {plan_status()}
+  <div class="workbench">
+    <div class="wb-nav">{sheet_nav(k)}</div>
+    <div class="wb-main">
+      <section class="viewer">
+        <div class="viewer-head"><div><h2>Panel 1 <small>/ 3</small></h2>
+          <small>Birch ply 18 mm · 2440 × 1220 · {st["parts"]} parts · {pct(st["waste_fraction"])} waste</small></div>
+          <small>Grain →</small></div>
         {figure}
         {legend()}
+        <div class="detail" aria-live="polite">
+          <div><small>Cut {cur["n"]} of {ncuts}</small><div class="now">{fmt(cur["measure"])} mm <em>{dirw} → {cur["result"]}</em></div></div>
+          <div class="stepper"><button class="button" aria-label="Previous cut">‹</button><button class="button primary" aria-label="Next cut">›</button></div>
+        </div>
       </section>
     </div>
-    <aside class="card scroll-card pl-cuts" aria-label="Cut order">
-      <div class="card-head"><h2>Cut order</h2><span class="meta num">{ncuts} cuts</span></div>
-      <p class="help" style="padding:0 20px">Each size is the piece to cut off, measured from the edge you cut from: set your fence or stop to it. Tap a cut to find it on the drawing.</p>
+    <div class="wb-below">
+      <div class="below" style="margin-top:0">
+        <section class="manifest"><h3>On this panel</h3>{on_panel}</section>
+        <section class="manifest"><h3>Offcuts <small>· largest first</small></h3>{off_rows}
+          <p class="help" style="margin-top:8px">{len(offs) - 5} smaller offcuts not listed. Slivers thinner than the kerf count as saw dust.</p></section>
+      </div>
+      {search_details()}
+    </div>
+    <aside class="side scroll wb-cuts" aria-label="Cut order">
+      <div class="side-head"><h3>Cut order</h3><small>{ncuts} cuts</small></div>
+      <p class="help">Each size is the piece to cut off, measured from the edge you cut from: set the fence or stop to it.</p>
       {cl}
     </aside>
-    <div class="pl-tables">
-      <div class="overview-grid">
-        <section class="card"><div class="card-head"><h2 style="font:var(--t-headline)">Parts on this panel</h2></div>
-          <div class="card-body"><table class="data"><thead><tr><th>Part</th><th>Size</th><th class="r">Qty</th></tr></thead><tbody>{prow}</tbody></table></div></section>
-        <section class="card"><div class="card-head"><h2 style="font:var(--t-headline)">Offcuts</h2><span class="meta">largest first</span></div>
-          <div class="card-body"><table class="data"><thead><tr><th>Size</th><th class="r">Area</th></tr></thead><tbody>{orow}</tbody></table>
-          <p class="help">{more} smaller offcuts not listed. Slivers thinner than the kerf are counted as saw dust.</p></div></section>
-      </div>
-    </div>
   </div>
 </main>"""
-    return shell("Cutting plan", 3, body)
+    return shell("Cutting plan", "plan", body)
 
 
 def plan_overview_page() -> str:
     cards = []
     for k, p in enumerate(PLAN2["patterns"]):
         st = pattern_stats(p)
-        rep = f' <span class="chip">× {p["repeat"]}</span>' if p["repeat"] > 1 else ""
+        rep = f' <small>× {p["repeat"]}</small>' if p["repeat"] > 1 else ""
         cards.append(
-            f'<a class="card figure" href="#" style="text-decoration:none;color:inherit;display:block">'
-            f'<div class="figure-head" style="margin-bottom:12px"><div><h2 style="font:var(--t-headline)">Panel {k + 1}{rep}</h2>'
-            f'<p class="sub num">{st["parts"]} parts · waste {pct(st["waste_fraction"])}</p></div>'
-            f'<span class="btn btn-plain" style="height:auto">Cut order{icon("chev", 14)}</span></div>'
-            f'{render_panel(p, width=560, uid=f"o{k}", labels="full", name_size=10.5, title=f"Panel {k + 1}")}</a>')
-    # Parts summary: needed vs cut and where.
+            f'<section class="viewer"><div class="viewer-head"><div><h3>Panel {k + 1}{rep}</h3>'
+            f'<small>{st["parts"]} parts · {pct(st["waste_fraction"])} waste</small></div>'
+            f'<a class="link" href="#">Cut order →</a></div>'
+            f'{render_panel(p, width=540, uid=f"o{k}", labels="full", name_size=10.5, title=f"Panel {k + 1}")}</section>')
     where: dict[str, list[int]] = {}
     for k, p in enumerate(PLAN2["patterns"]):
         for l in pattern_stats(p)["part_leaves"]:
@@ -1009,99 +999,90 @@ def plan_overview_page() -> str:
     rows = []
     for part in INST["parts"]:
         pid = part["id"]
-        panels = sorted(set(where.get(pid, [])))
         cut = len(where.get(pid, []))
-        rows.append(f'<tr><td>{esc(pid)}</td><td class="num">{fmt(part["length"])} × {fmt(part["width"])}</td>'
-                    f'<td class="muted">{"Yes" if part.get("grain") else "—"}</td>'
-                    f'<td class="r num">{part.get("quantity", 1)}</td><td class="r num">{cut}</td>'
-                    f'<td class="num muted">{", ".join(map(str, panels))}</td></tr>')
+        rows.append(f'<tr><td>{esc(pid)}</td><td class="num">{fmt(part["length"])}</td><td class="num">{fmt(part["width"])}</td>'
+                    f'<td class="c">{"↔" if part.get("grain") else "—"}</td><td class="num">{part.get("quantity", 1)}</td>'
+                    f'<td class="num"><span class="ok">✓</span> {cut}</td><td>{", ".join(map(str, sorted(set(where.get(pid, [])))))}</td></tr>')
     body = f"""
-<main class="page page-wide">
-  {plan_header("overview")}
-  <div class="overview-grid" style="margin-bottom:var(--s-6)">{"".join(cards)}
-    <section class="card"><div class="card-head"><h2 style="font:var(--t-headline)">Parts</h2><span class="meta">{PARTS_TOTAL} of {PARTS_TOTAL} cut</span></div>
-      <div class="card-body"><table class="data"><thead><tr><th>Part</th><th>Size</th><th>Grain</th><th class="r">Needed</th><th class="r">Cut</th><th>Panels</th></tr></thead>
-      <tbody>{"".join(rows)}</tbody></table></div></section>
+<main>
+  {plan_heading()}
+  {plan_status()}
+  <div class="workbench two">
+    {sheet_nav(None)}
+    <div style="min-width:0">
+      <div class="overview">{"".join(cards)}
+        <section class="viewer"><div class="viewer-head"><div><h3>Parts checklist</h3><small>{PARTS_TOTAL} of {PARTS_TOTAL} included</small></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Part</th><th class="num">Length, mm</th><th class="num">Width, mm</th>
+          <th class="c">Grain</th><th class="num">Needed</th><th class="num">Cut</th><th>Panels</th></tr></thead>
+          <tbody>{"".join(rows)}</tbody></table></div></section>
+      </div>
+      {legend()}
+      {search_details()}
+    </div>
   </div>
-  <section class="card card-body">{legend()}</section>
 </main>"""
-    return shell("Cutting plan overview", 3, body)
+    return shell("Cutting plan overview", "plan", body)
 
 
 # --------------------------------------------------------------------------
 # Empty, waiting and problem states
 # --------------------------------------------------------------------------
 
-ART_EMPTY = ('<svg width="96" height="72" viewBox="0 0 96 72" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6">'
-             '<rect x="4" y="8" width="88" height="56" rx="6"/><path d="M4 36h88M40 8v28M64 36v28" stroke-dasharray="4 4"/></svg>')
-ART_NOPLAN = ('<svg width="96" height="72" viewBox="0 0 96 72" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6">'
-              '<rect x="4" y="16" width="60" height="44" rx="6"/><rect x="40" y="6" width="52" height="34" rx="4" stroke-dasharray="4 4"/></svg>')
-
-
-def state_card(tag: str, art: str, title: str, text: str, actions: str, extra: str = "") -> str:
-    return (f'<section class="card"><div class="state-tag">{esc(tag)}</div><div class="state">'
-            f'<div class="art">{art}</div><h2>{title}</h2><p>{text}</p>{extra}'
-            f'<div class="actions">{actions}</div></div></section>')
+def state(tag: str, title: str, text: str, actions: str = "", items: list[str] | None = None) -> str:
+    ul = f'<ul>{"".join(f"<li>{i}</li>" for i in items)}</ul>' if items else ""
+    act = f'<div class="actions">{actions}</div>' if actions else ""
+    return f'<section class="state"><div class="eyebrow">{esc(tag)}</div><h2>{title}</h2><p>{text}</p>{ul}{act}</section>'
 
 
 def states_page() -> str:
-    big = max(INST["parts"], key=lambda p: p["length"])
+    edit = '<a class="button primary" href="#">Edit job</a>'
+    again = '<a class="button primary" href="#">Search again</a>'
     cards = [
-        state_card("New job · no parts yet", ART_EMPTY, "Start with the parts you need",
-                   "Add each part with its finished size and how many you need. Then add the panels you have, "
-                   "check the saw settings, and find a cutting plan.",
-                   f'<button class="btn btn-primary">{icon("plus")}Add part</button>'),
-        state_card("Job state: queued", '<span class="status-pill status-running"><span class="pulse"></span>Waiting</span>',
-                   "Waiting for a free solver",
-                   "<b>2 jobs ahead of yours.</b> Yours starts automatically; the time limit only counts once it does.",
-                   f'<button class="btn">{icon("stop", 14)}Cancel</button>'),
-        state_card("Job state: done · no plan", ART_NOPLAN, "No plan cuts every part",
-                   "The search finished without finding a way to cut every part from the panels listed. Common causes:",
-                   f'<a class="btn btn-primary" href="#">{icon("edit", 14)}Edit job</a>',
-                   f'<ul class="hint-list"><li>{icon("alert", 14)}<span><b>A part is larger than every panel.</b> '
-                   f'“Worktop”, 2600 × 600 mm, is longer than every panel (2440 × 1220 mm).</span></li>'
-                   f'<li>{icon("alert", 14)}<span><b>Too few panels.</b> Leave a panel’s Quantity empty for “as many as needed”.</span></li>'
-                   f'<li>{icon("alert", 14)}<span><b>Settings too strict.</b> “Not allowed” trimming with 2 stages can leave no way to place every part.</span></li></ul>'),
-        state_card("Job state: done · no plan · goal “Best use”", ART_NOPLAN, "No part fits on any panel",
-                   "With the goal “Best use of the panels I have”, the search cuts as many parts as fit — but none of them fits on the panels listed. Common causes:",
-                   f'<a class="btn btn-primary" href="#">{icon("edit", 14)}Edit job</a>',
-                   f'<ul class="hint-list"><li>{icon("alert", 14)}<span><b>Every part is larger than the panels.</b> '
-                   f'Check that the panel sizes are in millimetres (2440, not 244).</span></li>'
-                   f'<li>{icon("alert", 14)}<span><b>Grain keeps parts from turning.</b> Untick “Keep grain direction” where the look allows it.</span></li></ul>'),
-        state_card("Job state: cancelled · no plan", ART_NOPLAN, "Stopped before the first plan",
-                   "The search was stopped before it found any plan. Search again and let it run a little longer — the first plan usually appears within a second.",
-                   f'<button class="btn btn-primary">{icon("play")}Search again</button><a class="btn" href="#">Edit job</a>'),
-        state_card("Job state: failed", f'<span style="color:var(--danger)">{icon("alert", 40)}</span>',
-                   "The search stopped with an error",
-                   "This is a fault in Sheetsolver, not in your job. The best plan found before it is kept if there was one. "
-                   "Details for a bug report: <code style=\"font-size:13px\">plan 4: part “Door” overlaps an offcut at x 723.2</code>",
-                   f'<button class="btn btn-primary">{icon("play")}Search again</button><button class="btn">Copy details</button>'),
-        state_card("HTTP 404 · job expired", ART_EMPTY, "This plan is no longer on the server",
-                   "Plans are kept for an hour after the search ends. Your job is still saved in this browser, so you can search again.",
-                   f'<button class="btn btn-primary">{icon("play")}Search again</button>'),
-        state_card("HTTP 503 · busy", f'<span style="color:var(--text-3)">{icon("clock", 44)}</span>', "The solver is busy",
-                   "Too many jobs are waiting. Nothing was lost — your job is still here.",
-                   f'<button class="btn" disabled aria-disabled="true">Try again in 24 s</button>'),
-        state_card("Event stream lost", '<span class="status-pill" style="background:var(--fill);color:var(--text-2)"><span class="pulse" style="background:var(--text-3);box-shadow:none"></span>Reconnecting…</span>',
-                   "Connection lost",
-                   "The search keeps running on the server. The best plan so far reappears as soon as the connection is back.",
-                   ""),
+        state("New job", "What are you cutting?",
+              "Add each part with its finished size and how many you need, then the panels you have.",
+              f'<button class="button primary">{icon("plus")}Add part</button>'),
+        state("Queued", "Waiting for a free solver",
+              "<b>2 jobs ahead of yours.</b> Your search starts automatically; its time limit only counts once it does.",
+              '<button class="button">Cancel</button>'),
+        state("Done · no plan", "Not every part fits",
+              "The search ended without a way to cut every part from the panels listed.",
+              edit, ["<b>A part is larger than every panel:</b> “Worktop”, 2600 × 600 mm, is longer than 2440 × 1220 mm.",
+                     "<b>Too few panels:</b> leave a panel’s Quantity empty for as many as needed.",
+                     "<b>Settings too strict:</b> “Not allowed” trimming with 2 stages can leave no way to place every part."]),
+        state("Done · no plan · goal “Best use”", "No part fits on any panel",
+              "With the goal “Best use of the panels I have”, the search cuts as many parts as fit, but none fits on the panels listed.",
+              edit, ["<b>Check the units:</b> panel sizes are in millimetres (2440, not 244).",
+                     "<b>Grain:</b> untick “Keep grain direction” where the look allows it, so parts can turn."]),
+        state("Cancelled · no plan", "Stopped before the first plan",
+              "The search was stopped before it found a plan. The first plan usually appears within a second.",
+              again + '<a class="button" href="#">Edit job</a>'),
+        state("Failed", "The search stopped with an error",
+              "This is a fault in Sheetsolver, not in your job; the best plan found before it is kept. "
+              "Details for a bug report: <code>plan 4: part “Door” overlaps an offcut at x 723.2</code>",
+              again + '<button class="button">Copy details</button>'),
+        state("Not found", "This plan is no longer on the server",
+              "Plans are kept for an hour after the search ends. Your job is still in this browser, so you can search again.",
+              again),
+        state("Busy", "The solver is busy",
+              "Too many jobs are waiting. Nothing was lost; your job is still here.",
+              '<button class="button" disabled>Try again in 24 s</button>'),
+        state("Connection lost", "Reconnecting…",
+              "The search keeps running on the server. The best plan so far comes back as soon as the connection does."),
     ]
-    _ = big
     body = f"""
-<main class="page">
-  <div class="page-head"><div><h1>Empty, waiting and problem states</h1>
-  <p class="sub">How each job state and error from docs/API.md looks. Field-level 422 errors are shown on the job page itself.</p></div></div>
-  <div class="state-grid">{"".join(cards)}</div>
+<main class="narrow">
+  <div class="heading"><div><div class="eyebrow">Reference</div><h1>Empty, waiting and problem states</h1>
+  <p class="muted">How each job state and error from docs/API.md looks. Field problems from a 422 are shown in the job setup.</p></div></div>
+  <div class="states">{"".join(cards)}</div>
 </main>"""
-    return shell("States", 2, body)
+    return shell("States", "plan", body)
 
 
 # --------------------------------------------------------------------------
 
 def main() -> None:
     errors = {
-        (1, "width"): ("320.55", "length 320.55 mm has more than one decimal; lengths are in steps of 0.1 mm"),
+        (1, "width"): ("320.55", "width 320.55 mm has more than one decimal; lengths are in steps of 0.1 mm"),
         (6, "quantity"): ("0", "quantity must be at least 1"),
         (10, "id"): ("Rail", "the name “Rail” is already used by part 10; give each part its own name"),
     }

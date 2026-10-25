@@ -303,14 +303,16 @@ Deliverables (in `web/`, see `ARCHITECTURE.md`):
 - Instance editor (parts, panels, saw settings), job submission, live
   progress, cutting-plan viewer (SVG, one panel at a time + overview,
   dimensions on every part and offcut).
-- Every input shows its help text from `openapi.json` (i.e. from
-  `FIELDS.md`) next to the field, not only on hover, so it also works on
-  touch screens in the workshop.
+- Every input has its help text from `openapi.json` (i.e. from
+  `FIELDS.md`) one tap away: a help (?) button next to its label opens
+  the full text, by tap or click, never on hover only, so it works on
+  touch screens in the workshop (decided 2026-10-25; see
+  `web/DESIGN.md` §5).
 - TypeScript client generated from `openapi.json`.
 
 Exit criteria:
 - End-to-end test: enter instance → solve → see a valid plan.
-- No input without help text; UI wording matches `FIELDS.md`.
+- No input without a help button and its help text; UI wording matches `FIELDS.md`.
 
 ## Later (only after scope decisions)
 
