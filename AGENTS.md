@@ -85,6 +85,9 @@ cargo bench -p guillotine
 cargo run -p cli -- solve data/instances/tests__bin_packing_3nvo.json --time-limit 5
 cargo run --release -p cli -- diff-oracle
 cargo run -p api
+cd web && npm ci            # the web UI (Stage 7), see web/README.md
+npm run check && npm test   # types, unit tests
+npm run e2e                 # end-to-end against the real API
 ```
 
 ## Definition of done for any change

@@ -1,0 +1,1060 @@
+{
+  "components": {
+    "schemas": {
+      "Area": {
+        "description": "An area in square millimetres.",
+        "type": "number"
+      },
+      "CutDirection": {
+        "description": "The direction of a set of parallel cuts, relative to the panel.",
+        "enum": [
+          "across_length",
+          "along_length"
+        ],
+        "type": "string"
+      },
+      "CutType": {
+        "description": "Whether parts may be trimmed free after the last stage. See [`Saw::cut_type`].",
+        "enum": [
+          "non_exact",
+          "exact",
+          "homogenous"
+        ],
+        "oneOf": [
+          {
+            "const": "non_exact",
+            "title": "Allowed",
+            "type": "string"
+          },
+          {
+            "const": "exact",
+            "title": "Not allowed",
+            "type": "string"
+          },
+          {
+            "const": "homogenous",
+            "title": "One part per strip",
+            "type": "string"
+          }
+        ],
+        "type": "string"
+      },
+      "EndedBy": {
+        "description": "Why a job ended.",
+        "enum": [
+          "complete",
+          "time_limit",
+          "cancelled"
+        ],
+        "type": "string"
+      },
+      "ErrorBody": {
+        "description": "The body of every error response.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "description": "A stable code for programs."
+          },
+          "message": {
+            "description": "One sentence for people.",
+            "type": "string"
+          },
+          "problems": {
+            "description": "For `invalid_instance`, every problem found; empty otherwise.",
+            "items": {
+              "$ref": "#/components/schemas/FieldProblem"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "problems"
+        ],
+        "type": "object"
+      },
+      "ErrorCode": {
+        "description": "A stable error code for programs.",
+        "enum": [
+          "invalid_json",
+          "not_found",
+          "too_large",
+          "invalid_instance",
+          "busy"
+        ],
+        "type": "string"
+      },
+      "FieldProblem": {
+        "description": "One thing wrong with a submitted job.",
+        "properties": {
+          "field": {
+            "description": "The path of the field at fault in the request body, with 0-based list positions (`instance.parts[2].quantity`, `time_limit`), or of a whole list for a problem with the list (`instance.parts`); `null` when no part of the body is at fault.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "description": "What is wrong, written for the woodworker, to show next to the field as is.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "FirstCuts": {
+        "description": "Which way the first cuts may run. See [`Saw::first_cuts`].",
+        "enum": [
+          "either",
+          "along_length",
+          "across_length"
+        ],
+        "oneOf": [
+          {
+            "const": "either",
+            "title": "Either",
+            "type": "string"
+          },
+          {
+            "const": "along_length",
+            "title": "Along the length",
+            "type": "string"
+          },
+          {
+            "const": "across_length",
+            "title": "Across the length",
+            "type": "string"
+          }
+        ],
+        "type": "string"
+      },
+      "Instance": {
+        "description": "A cutting job: everything the solver needs to produce a cutting plan.",
+        "properties": {
+          "objective": {
+            "$ref": "#/components/schemas/Objective",
+            "default": "bin_packing",
+            "description": "What the plan should optimise. **Use as few panels as possible**: cut every part, using the fewest panels; panels are used in the order listed. **Best use of the panels I have**: the panels can't fit every part, so choose which parts to cut to get the most out of them (by part value — see *Value*). **Shortest length from one panel**: you have one panel of fixed width and any length you need (e.g. a long board or a roll); cut every part using the shortest possible length. **Shortest width from one panel**: the same, but the length is fixed and the width is minimised.",
+            "title": "Goal"
+          },
+          "panels": {
+            "description": "The stock panels to cut from, in the order they should be used.",
+            "items": {
+              "$ref": "#/components/schemas/Panel"
+            },
+            "type": "array"
+          },
+          "parts": {
+            "description": "The parts to cut.",
+            "items": {
+              "$ref": "#/components/schemas/Part"
+            },
+            "type": "array"
+          },
+          "saw": {
+            "$ref": "#/components/schemas/Saw",
+            "description": "How the saw cuts."
+          }
+        },
+        "required": [
+          "saw",
+          "panels",
+          "parts"
+        ],
+        "type": "object"
+      },
+      "JobRequest": {
+        "description": "The body of `POST /jobs`: what to solve, and for how long.\n\nOnly used for the OpenAPI description: the server reads the body field by field, to report every problem at once (see `request.rs`).",
+        "properties": {
+          "instance": {
+            "$ref": "#/components/schemas/Instance",
+            "description": "The parts to cut, the panels to cut them from and how the saw cuts."
+          },
+          "name": {
+            "description": "Your name for this job, shown at the top of the job and its cutting plan (e.g. \"Kitchen units\"). Optional.",
+            "maxLength": 100,
+            "title": "Job name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "time_limit": {
+            "default": 10,
+            "description": "How long the solver may search for a better plan. The first plan usually appears within a second; longer searches find plans with less waste. You can stop the search at any time and keep the best plan so far.",
+            "format": "int32",
+            "maximum": 600,
+            "minimum": 1,
+            "title": "Time limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "instance"
+        ],
+        "type": "object"
+      },
+      "JobState": {
+        "description": "Where a job is in its life. `done`, `cancelled` and `failed` are final.",
+        "enum": [
+          "queued",
+          "running",
+          "done",
+          "cancelled",
+          "failed"
+        ],
+        "type": "string"
+      },
+      "JobStatus": {
+        "description": "A job's state and best plan so far.",
+        "properties": {
+          "best": {
+            "description": "The best plan so far; `null` if none has been found (yet).",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PlanReport"
+              }
+            ]
+          },
+          "elapsed": {
+            "description": "Seconds spent searching: 0 while queued, growing while running, final once the job has ended.",
+            "format": "double",
+            "type": "number"
+          },
+          "ended_by": {
+            "description": "Why the job ended: `complete` (the search ran to its end; a longer time limit would give the same plan), `time_limit` (a longer search may find a better plan) or `cancelled`. `null` until the job ends, and for a failed job.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EndedBy"
+              }
+            ]
+          },
+          "id": {
+            "description": "The job's id, used in the other URLs.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "instance": {
+            "$ref": "#/components/schemas/Instance",
+            "description": "The instance as submitted, with left-out fields filled with their defaults (and unknown fields dropped)."
+          },
+          "message": {
+            "description": "Why the job failed, in state `failed`; otherwise `null`.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "description": "The job's name as submitted, without spaces at either end; `null` if it has none.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "plans_found": {
+            "description": "How many better plans have been found so far.",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "queue_position": {
+            "description": "For a queued job, its place in the queue: 1 runs next. `null` once the job has left the queue.",
+            "format": "int32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/JobState",
+            "description": "Where the job is in its life."
+          },
+          "time_limit": {
+            "description": "The time limit the job runs with, in seconds.",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "time_limit",
+          "elapsed",
+          "plans_found",
+          "instance"
+        ],
+        "type": "object"
+      },
+      "Length": {
+        "description": "A length in millimetres, with at most one decimal (720, 3.2). More decimals are rejected, never rounded.",
+        "examples": [
+          720,
+          3.2
+        ],
+        "multipleOf": 0.1,
+        "type": "number"
+      },
+      "Metrics": {
+        "description": "Figures describing a cutting plan. Computed by the checker.",
+        "properties": {
+          "leftover_area": {
+            "$ref": "#/components/schemas/Area",
+            "description": "Area of the reusable leftover of the last panel."
+          },
+          "panel_area": {
+            "$ref": "#/components/schemas/Area",
+            "description": "Total area of the panels used."
+          },
+          "panels_used": {
+            "description": "Panels cut, counting repeats.",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "part_area": {
+            "$ref": "#/components/schemas/Area",
+            "description": "Total area of the parts cut."
+          },
+          "parts_cut": {
+            "description": "Parts cut, counting repeats.",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total_value": {
+            "description": "Total value of the parts cut (see `Part::value`).",
+            "format": "double",
+            "type": "number"
+          },
+          "used_length": {
+            "$ref": "#/components/schemas/Length",
+            "description": "On the last panel, how far along its length the cuts reach (the result for \"Shortest length from one panel\")."
+          },
+          "used_width": {
+            "$ref": "#/components/schemas/Length",
+            "description": "On the last panel, how far along its width the cuts reach (the result for \"Shortest width from one panel\")."
+          },
+          "waste_area": {
+            "$ref": "#/components/schemas/Area",
+            "description": "Panel area that is neither a part nor the leftover: offcuts and material removed by the saw."
+          },
+          "waste_fraction": {
+            "description": "`waste_area` as a fraction of the panel area without the leftover (0 to 1).",
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "panels_used",
+          "parts_cut",
+          "panel_area",
+          "part_area",
+          "leftover_area",
+          "waste_area",
+          "waste_fraction",
+          "total_value",
+          "used_length",
+          "used_width"
+        ],
+        "type": "object"
+      },
+      "Node": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/NodeKind",
+            "description": "What this rectangle is."
+          },
+          {
+            "properties": {
+              "children": {
+                "description": "The rectangles this piece is cut into, side by side in the direction of the next stage's cuts. Empty for everything but pieces.",
+                "items": {
+                  "$ref": "#/components/schemas/Node"
+                },
+                "type": "array"
+              },
+              "length": {
+                "$ref": "#/components/schemas/Length",
+                "description": "Size along the panel's length."
+              },
+              "stage": {
+                "description": "The number of cuts that produced this rectangle: 0 for the panel, 1 for the pieces of the first cuts, and so on.",
+                "format": "int32",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "width": {
+                "$ref": "#/components/schemas/Length",
+                "description": "Size along the panel's width."
+              },
+              "x": {
+                "$ref": "#/components/schemas/Length",
+                "description": "Position along the panel's length."
+              },
+              "y": {
+                "$ref": "#/components/schemas/Length",
+                "description": "Position along the panel's width."
+              }
+            },
+            "required": [
+              "x",
+              "y",
+              "length",
+              "width",
+              "stage"
+            ],
+            "type": "object"
+          }
+        ],
+        "description": "A rectangle in the cutting tree: the panel itself, an intermediate piece, or a final part, offcut or leftover.\n\n`x` runs along the panel's length and `y` along its width, both from the panel's corner at (0, 0)."
+      },
+      "NodeKind": {
+        "description": "The kind of a rectangle in the cutting tree.",
+        "oneOf": [
+          {
+            "description": "The panel or an intermediate piece, cut further into its children.",
+            "properties": {
+              "kind": {
+                "description": "What this rectangle is: `piece` (the panel, or a piece cut further), `part`, `offcut` (waste) or `leftover` (the reusable remainder of the last panel).",
+                "enum": [
+                  "piece"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "description": "A finished part.",
+            "properties": {
+              "kind": {
+                "description": "What this rectangle is: `piece` (the panel, or a piece cut further), `part`, `offcut` (waste) or `leftover` (the reusable remainder of the last panel).",
+                "enum": [
+                  "part"
+                ],
+                "type": "string"
+              },
+              "part_id": {
+                "description": "The name of the part.",
+                "type": "string"
+              },
+              "rotated": {
+                "description": "Whether the part is turned 90°: its length lies along the panel's width.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "kind",
+              "part_id",
+              "rotated"
+            ],
+            "type": "object"
+          },
+          {
+            "description": "Waste.",
+            "properties": {
+              "kind": {
+                "description": "What this rectangle is: `piece` (the panel, or a piece cut further), `part`, `offcut` (waste) or `leftover` (the reusable remainder of the last panel).",
+                "enum": [
+                  "offcut"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "description": "The reusable remainder of the last panel, beyond its last first-stage cut.",
+            "properties": {
+              "kind": {
+                "description": "What this rectangle is: `piece` (the panel, or a piece cut further), `part`, `offcut` (waste) or `leftover` (the reusable remainder of the last panel).",
+                "enum": [
+                  "leftover"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "Objective": {
+        "description": "What the plan optimises. See [`Instance::objective`].",
+        "enum": [
+          "bin_packing",
+          "knapsack",
+          "open_dimension_x",
+          "open_dimension_y"
+        ],
+        "oneOf": [
+          {
+            "const": "bin_packing",
+            "title": "Use as few panels as possible",
+            "type": "string"
+          },
+          {
+            "const": "knapsack",
+            "title": "Best use of the panels I have",
+            "type": "string"
+          },
+          {
+            "const": "open_dimension_x",
+            "title": "Shortest length from one panel",
+            "type": "string"
+          },
+          {
+            "const": "open_dimension_y",
+            "title": "Shortest width from one panel",
+            "type": "string"
+          }
+        ],
+        "type": "string"
+      },
+      "Panel": {
+        "description": "A stock panel size.",
+        "properties": {
+          "cost": {
+            "description": "Used only to compare panel sizes when several are listed: a lower total cost is preferred. Leave empty to use the panel's area.",
+            "format": "double",
+            "minimum": 0,
+            "title": "Cost",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "id": {
+            "description": "Your name for this panel, shown on the cutting plan (e.g. \"Birch ply 18 mm\").",
+            "title": "Name",
+            "type": "string"
+          },
+          "length": {
+            "$ref": "#/components/schemas/Length",
+            "description": "The panel's long side, as delivered, in millimetres. For a panel with grain, the side along the grain. For \"Shortest length from one panel\", this is the maximum length available.",
+            "minimum": 0.1,
+            "title": "Length"
+          },
+          "quantity": {
+            "description": "How many panels of this size you have. Leave empty for \"as many as needed\".",
+            "format": "int32",
+            "minimum": 1,
+            "title": "Quantity",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "width": {
+            "$ref": "#/components/schemas/Length",
+            "description": "The panel's short side, as delivered, in millimetres. For \"Shortest width from one panel\", this is the maximum width available.",
+            "minimum": 0.1,
+            "title": "Width"
+          }
+        },
+        "required": [
+          "id",
+          "length",
+          "width"
+        ],
+        "type": "object"
+      },
+      "Part": {
+        "description": "A part to cut.",
+        "properties": {
+          "grain": {
+            "default": false,
+            "description": "Tick this if the part must keep its grain running the same way as the panel's grain (veneered or solid-wood panels, brushed or wood-look melamine). The part is then never turned 90°. Untick it for plain MDF, chipboard or any part whose look doesn't depend on direction — turning parts usually saves material.",
+            "title": "Keep grain direction",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Your name for this part, shown on the cutting plan and labels (e.g. \"Side left\").",
+            "title": "Name",
+            "type": "string"
+          },
+          "length": {
+            "$ref": "#/components/schemas/Length",
+            "description": "The part's finished length in millimetres, before edge banding. For a part with grain, the side along the grain.",
+            "minimum": 0.1,
+            "title": "Length"
+          },
+          "quantity": {
+            "default": 1,
+            "description": "How many identical parts you need. With \"Best use of the panels I have\", this is the most that will be cut; fewer may be cut if they don't fit.",
+            "format": "int32",
+            "minimum": 1,
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "value": {
+            "description": "Only used with \"Best use of the panels I have\": how much you want this part, compared with the others. The plan maximises the total value of the parts it cuts. Leave empty to value parts by their area in mm² (the plan then uses as much of the panel as possible). Set every part to 1 to cut as many parts as possible.",
+            "format": "double",
+            "minimum": 0,
+            "title": "Value",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "width": {
+            "$ref": "#/components/schemas/Length",
+            "description": "The part's finished width in millimetres, before edge banding.",
+            "minimum": 0.1,
+            "title": "Width"
+          }
+        },
+        "required": [
+          "id",
+          "length",
+          "width"
+        ],
+        "type": "object"
+      },
+      "Pattern": {
+        "description": "One way of cutting a panel, possibly repeated on several identical panels.",
+        "properties": {
+          "first_cuts": {
+            "$ref": "#/components/schemas/CutDirection",
+            "description": "The direction of the first, full-panel cuts."
+          },
+          "panel_id": {
+            "description": "The name of the panel this pattern cuts.",
+            "type": "string"
+          },
+          "repeat": {
+            "description": "How many panels are cut exactly this way.",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "root": {
+            "$ref": "#/components/schemas/Node",
+            "description": "The whole panel: the root of the cutting tree, at stage 0."
+          }
+        },
+        "required": [
+          "panel_id",
+          "repeat",
+          "first_cuts",
+          "root"
+        ],
+        "type": "object"
+      },
+      "PlanReport": {
+        "description": "A plan found by a job, with its figures.",
+        "properties": {
+          "found_after": {
+            "description": "Seconds after the job started running when this plan was found.",
+            "format": "double",
+            "type": "number"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/Metrics",
+            "description": "Figures for this plan, computed by the independent checker."
+          },
+          "number": {
+            "description": "1 for the first plan found, 2 for the next better one, and so on.",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/Solution",
+            "description": "The cutting plan: one cutting tree per distinct way of cutting a panel."
+          }
+        },
+        "required": [
+          "number",
+          "found_after",
+          "metrics",
+          "plan"
+        ],
+        "type": "object"
+      },
+      "Saw": {
+        "description": "Saw and cutting settings.",
+        "properties": {
+          "cut_type": {
+            "$ref": "#/components/schemas/CutType",
+            "default": "non_exact",
+            "description": "Whether a part may be cut free from a small offcut after the last stage. **Allowed** (recommended): a strip may hold parts of different sizes; a final trimming cut separates each part from its offcut. **Not allowed**: at the last stage every part must fill its strip exactly, with no offcut — fewer cuts, more waste. **One part per strip**: every part in a last-stage strip is the same part — the simplest plans to cut, the most waste.",
+            "title": "Last-stage trimming"
+          },
+          "first_cuts": {
+            "$ref": "#/components/schemas/FirstCuts",
+            "default": "either",
+            "description": "Which way the first, full-panel cuts run. **Either** (recommended): the solver tries both and keeps the better plan. With one panel size, every panel in the plan is cut the same way; with several sizes, each panel may be cut differently. The search time is shared between the two directions. **Along the length**: rip the panel into long strips first, then cut the strips across — for saws or workflows that always rip first. **Across the length**: cut the panel across into shorter strips first. Parts with grain keep their direction whichever you choose. With unlimited stages, cuts may always go either way.",
+            "title": "First cuts"
+          },
+          "kerf": {
+            "$ref": "#/components/schemas/Length",
+            "default": 3.2,
+            "description": "The width of material each cut removes, in millimetres — the thickness of your saw blade's teeth, not the blade body. Every cut between two parts uses this much material, so parts are spaced by it. Typical values: 3.2–4.4 mm for panel and table saws, 2.2–2.8 mm for track saws. Set 0 only if your dimensions already include it.",
+            "minimum": 0,
+            "title": "Saw blade thickness (kerf)"
+          },
+          "stages": {
+            "$ref": "#/components/schemas/Stages",
+            "default": 3,
+            "description": "How many times a piece is turned and cut again. **Stage 1**: full-length cuts across the whole panel, splitting it into strips. **Stage 2**: each strip is cut across into pieces. **Stage 3**: each piece is cut once more, across stage-2 cuts. More stages let parts nest more tightly, so less waste, but mean more handling at the saw. 2 suits simple strip cutting; 3 suits most panel-saw work; \"Unlimited\" gives the least waste with the most handling: cuts may then go either way at every stage, and the last-stage trimming setting does not apply.",
+            "title": "Cutting stages"
+          }
+        },
+        "type": "object"
+      },
+      "Solution": {
+        "description": "A cutting plan: one pattern per distinct way of cutting a panel.",
+        "properties": {
+          "patterns": {
+            "description": "The cutting patterns, in the order the panels are used.",
+            "items": {
+              "$ref": "#/components/schemas/Pattern"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "patterns"
+        ],
+        "type": "object"
+      },
+      "Stages": {
+        "description": "The maximum number of cutting stages: 2, 3 or \"unlimited\".",
+        "oneOf": [
+          {
+            "const": 2,
+            "title": "2",
+            "type": "integer"
+          },
+          {
+            "const": 3,
+            "title": "3",
+            "type": "integer"
+          },
+          {
+            "const": "unlimited",
+            "title": "Unlimited",
+            "type": "string"
+          }
+        ]
+      },
+      "StateEvent": {
+        "description": "The data of a `state` event: a job's state changed.",
+        "properties": {
+          "elapsed": {
+            "description": "Seconds spent searching so far, as in the job status.",
+            "format": "double",
+            "type": "number"
+          },
+          "ended_by": {
+            "description": "Why the job ended, as in the job status; `null` until it ends.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EndedBy"
+              }
+            ]
+          },
+          "message": {
+            "description": "Why the job failed, in state `failed`; otherwise `null`.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "plans_found": {
+            "description": "How many better plans have been found so far.",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "state": {
+            "$ref": "#/components/schemas/JobState",
+            "description": "Where the job is in its life."
+          }
+        },
+        "required": [
+          "state",
+          "elapsed",
+          "plans_found"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Cutting plans for sheet material: submit the parts, panels and saw settings, follow the search as it finds better plans, stop it when you like. See docs/API.md in the repository.",
+    "license": {
+      "identifier": "MIT",
+      "name": "MIT"
+    },
+    "title": "sheetsolver",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/jobs": {
+      "post": {
+        "description": "The job then runs on its own: poll `GET /jobs/{id}` or follow `GET /jobs/{id}/events`.",
+        "operationId": "submit_job",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            },
+            "description": "The job was created; usually `queued` or `running`.",
+            "headers": {
+              "Location": {
+                "description": "The job's URL, `/jobs/{id}`.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "The body is not JSON (`invalid_json`)."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "The body is larger than 2 MB (`too_large`)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "The body is not a valid job (`invalid_instance`); `problems` lists every problem found."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Too many jobs are waiting (`busy`).",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds after which to try again: when the first running job reaches its time limit, at the latest.",
+                "schema": {
+                  "format": "int64",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Submit an instance to solve.",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/jobs/{id}": {
+      "delete": {
+        "description": "A queued job is cancelled at once; a running job stops at the solver's next check, normally within milliseconds. The response is the status at the time of the request, so it may still say `running`.",
+        "operationId": "cancel_job",
+        "parameters": [
+          {
+            "description": "The job's id.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            },
+            "description": "The stop was requested (or the job had already ended)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "No job with this id, or it has expired (`not_found`)."
+          }
+        },
+        "summary": "Stop the search; the best plan so far is kept.",
+        "tags": [
+          "jobs"
+        ]
+      },
+      "get": {
+        "operationId": "get_job",
+        "parameters": [
+          {
+            "description": "The job's id.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            },
+            "description": "The job status."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "No job with this id, or it has expired (`not_found`)."
+          }
+        },
+        "summary": "The job's state and best plan so far.",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/jobs/{id}/events": {
+      "get": {
+        "description": "Events: `plan` (data: a `PlanReport`) when a better plan is found, and `state` (data: a `StateEvent`) when the state changes. On connecting, the current best plan (if any), then the current state. The stream ends after a `state` event with a final state; close the `EventSource` then, or it reconnects.",
+        "operationId": "job_events",
+        "parameters": [
+          {
+            "description": "The job's id.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "An event stream of `plan` events (data: `PlanReport`) and `state` events (data: `StateEvent`)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "No job with this id, or it has expired (`not_found`)."
+          }
+        },
+        "summary": "Live stream of better plans and state changes (Server-Sent Events).",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "operationId": "get_openapi",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "This document."
+          }
+        },
+        "summary": "The OpenAPI 3.1 description of this API.",
+        "tags": [
+          "openapi"
+        ]
+      }
+    }
+  }
+}

@@ -1,4 +1,4 @@
-# Only the Cargo workspace (and later web/) goes into the image build.
+# Only the Cargo workspace and web/ go into the image build.
 .git
 .github
 target
@@ -9,3 +9,6 @@ web/dist
 deploy
 Dockerfile
 .dockerignore
+web/mockups
+web/test-results
+web/playwright-report

@@ -13,8 +13,8 @@ cutting stages (Stages 0–5 of [docs/STAGES.md](docs/STAGES.md)). On every
 test instance it gives exactly upstream's cutting plan for the same
 settings and algorithm, in 0.35–1.17× upstream's time on the benchmark
 instances ([details](docs/STAGES.md)). The web API (Stage 6,
-[docs/API.md](docs/API.md)) and its Docker deployment are done. Next:
-the web UI (Stage 7).
+[docs/API.md](docs/API.md)), its Docker deployment and the web UI
+(Stage 7, [web/](web/README.md)) are done.
 
 ## Web API
 
@@ -29,14 +29,34 @@ cargo run -p api -- --print-openapi > openapi.json
 Submit a job with `POST /jobs`, follow it with `GET /jobs/{id}/events`,
 stop it with `DELETE /jobs/{id}`; see [docs/API.md](docs/API.md).
 
+## Web UI
+
+The UI in [`web/`](web/README.md) is a Svelte app that the API serves
+itself, on the same origin. Design: [web/DESIGN.md](web/DESIGN.md).
+
+```bash
+# Through the API: build the UI once, then open http://127.0.0.1:8080.
+(cd web && npm ci && npm run build)
+cargo run --release -p api -- --web-dir web/dist
+
+# While working on the UI: the API, and Vite's dev server on
+# http://localhost:5173 (it forwards /jobs and /openapi.json to :8080).
+cargo run --release -p api
+(cd web && npm run dev)
+
+# Checks: types, unit tests, end-to-end tests against the real API.
+(cd web && npm run check && npm test && npm run e2e)
+```
+
+The Docker image below builds and serves the UI the same way.
+
 ## Docker image
 
 One image holds the API and the web UI it serves (see
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#deployment)). Until the UI
-in `web/` builds, the image serves the API alone.
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#deployment)).
 
 ```bash
-# Build and run it locally; then open http://localhost:8080/openapi.json.
+# Build and run it locally; then open http://localhost:8080.
 docker build -t sheetsolver .
 docker run --rm -p 8080:8080 sheetsolver
 
