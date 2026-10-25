@@ -18,6 +18,16 @@ test the Rust crates: the golden files it produces are committed.
 Needs CMake ≥ 3.28 and a C++17 compiler. The first build downloads upstream
 and its dependencies (including HiGHS) and takes several minutes.
 
+Where GitHub archive downloads are refused but git clones work (the
+Claude Code cloud environment), clone HiGHS at the tag upstream pins and
+point CMake at it; the rest of upstream's dependencies are git clones:
+
+```bash
+git clone --depth 1 --branch v1.13.1 https://github.com/ERGO-Code/highs /home/user/ergo-code/highs
+cmake -S tools/oracle -B tools/oracle/build -DCMAKE_BUILD_TYPE=Release \
+  -DFETCHCONTENT_SOURCE_DIR_HIGHS=/home/user/ergo-code/highs
+```
+
 ```bash
 git clone https://github.com/fontanf/packingsolver /tmp/packingsolver
 git -C /tmp/packingsolver checkout 9b656a0dcafd1e9019bf39a5910d4307af65579a
