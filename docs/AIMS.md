@@ -1,5 +1,27 @@
 # Aims
 
+## Who it is for
+
+**Woodworkers** — cabinet makers, joiners, furniture workshops and serious
+hobbyists — who cut parts from sheet material (plywood, MDF, chipboard,
+melamine-faced board, solid-wood panels) on a panel saw, beam saw, table
+saw or track saw, and want a cutting plan that wastes as little board as
+possible and can actually be cut.
+
+What this means for the product:
+
+- **Woodworking vocabulary** in everything the user sees: *panel* (not
+  bin), *part* (not item), *kerf*, *grain direction*, *offcut*, *cutting
+  plan*. Upstream terms stay inside the code and the port comments.
+  `FIELDS.md` is the mapping.
+- **Millimetres** as the default unit; lengths are whole millimetres.
+- **Defaults that suit a workshop**: rotation allowed unless the part has
+  grain, 3 stages, a non-zero kerf (e.g. 3–4 mm) pre-filled rather than 0.
+- **Plans a person can follow at the saw**: guillotine cuts only, cut
+  order and dimensions shown clearly.
+- **Every field explained precisely** in the UI (see `FIELDS.md`): what it
+  means, its unit, its effect on the plan, and a typical value.
+
 ## Why
 
 packingsolver produces excellent 2D cutting plans, but for building a

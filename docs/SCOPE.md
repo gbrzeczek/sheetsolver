@@ -1,7 +1,13 @@
 # Scope
 
-Status values: **In** (implement), **Out** (do not implement), **Open**
+Status values: **In** (implement), **Later** (decided, but after the first
+version — do not implement yet), **Out** (do not implement), **Open**
 (owner has not decided — do not implement, ask).
+
+The product is built for **woodworkers** cutting sheet material (plywood,
+MDF, chipboard, melamine-faced board) on panel saws, beam saws and track
+saws. When a choice of default or wording is unclear, choose what suits
+that user. See `AIMS.md` and `FIELDS.md`.
 
 Upstream names are given so the port can be traced back.
 
@@ -30,32 +36,33 @@ Upstream names are given so the port can be traced back.
 
 ## Objectives
 
-| Objective | Status |
-|---|---|
-| Bin packing (minimize number/cost of sheets) | Open |
-| Bin packing with leftovers | Open |
-| Knapsack (maximize profit of placed items) | Open |
-| Open dimension X / Y (strip packing) | Open |
-| Variable-sized bin packing | Open |
-| Bin packing with cutting cost, feasibility | Out |
+| Objective | Upstream | Status |
+|---|---|---|
+| Bin packing (cut all parts from as few panels as possible) | `BinPacking` | **In** |
+| Knapsack (choose which parts to cut to maximize total value; value defaults to part area) | `Knapsack` | **In** |
+| Open dimension X / Y (one panel side unlimited, minimize the used length) | `OpenDimensionX`, `OpenDimensionY` | **In** |
+| Bin packing with leftovers | `BinPackingWithLeftovers` | Later |
+| Variable-sized bin packing | `VariableSizedBinPacking` | Later |
+| Bin packing with cutting cost, feasibility, open dimension XY | | Out |
 
 ## Instance features (guillotine)
 
 | Feature | Upstream field | Status |
 |---|---|---|
-| Item types: width, height, copies, profit | `ItemType` | **In** |
-| Item rotation allowed/forbidden per item | `oriented` | Open |
-| Bin types: width, height, copies, cost | `BinType` | **In** |
-| Trims (left/right/bottom/top, soft/hard) | `*_trim`, `TrimType` | Open |
-| Defects | `defects` | Open |
-| Number of stages (2, 3, unlimited) | `number_of_stages` | Open |
-| Cut type (exact, non-exact, homogenous, roadef2018) | `CutType` | Open |
-| First stage orientation | `first_stage_orientation` | Open |
-| Saw blade (cut) thickness | `cut_thickness` | Open |
-| Min/max distance between 1st/2nd stage cuts | `*_distance_*_cuts` | Open |
-| Minimum waste length | `minimum_waste_length` | Open |
-| Max number of 1st/2nd stage cuts | `maximum_number_*_cuts` | Open |
-| Cut through defects | `cut_through_defects` | Open |
+| Part types: width, height, quantity, value | `ItemType` | **In** |
+| Rotation allowed/forbidden per part (grain direction) | `oriented` | **In** |
+| Panel types: width, height, quantity, cost | `BinType` | **In** |
+| Saw blade (kerf) thickness | `cut_thickness` | **In** |
+| Number of stages (2, 3, unlimited) | `number_of_stages` | **In** |
+| Cut type (exact, non-exact, homogenous) | `CutType` | **In** |
+| Cut type roadef2018 | `CutType::Roadef2018` | Out |
+| First stage orientation | `first_stage_orientation` | Open — needed to express "first cuts along the grain"; decide before Stage 3 |
+| Trims (left/right/bottom/top, soft/hard) | `*_trim`, `TrimType` | Later — first after v1; damaged factory edges are common in wood |
+| Minimum waste length | `minimum_waste_length` | Later |
+| Defects | `defects` | Later |
+| Cut through defects | `cut_through_defects` | Later (with defects) |
+| Min/max distance between 1st/2nd stage cuts | `*_distance_*_cuts` | Later |
+| Max number of 1st/2nd stage cuts | `maximum_number_*_cuts` | Later |
 | Stacks / item ordering constraints | `stack_id` | Out |
 | Resources | `resources` | Out |
 | Cutting costs, waste cost | `cutting_costs`, `waste_cost` | Out |
@@ -68,6 +75,8 @@ Upstream names are given so the port can be traced back.
 | HTTP API: submit job, stream improved solutions, fetch result, cancel | **In** |
 | Developer CLI (solve a JSON instance, diff against oracle) | **In** |
 | Web UI (instance editor, solution viewer) | **In**, after the API stage |
+| Precise help text for every UI field (from `FIELDS.md`) | **In** |
+| Edge banding allowance, grain matching across parts, labels | Open |
 | Persistence of jobs/instances (database) | Open |
 | Authentication / multi-tenant | Open |
 | Export (PDF, DXF, CSV cut lists) | Open |
@@ -78,3 +87,8 @@ Record every scope decision here with a date, so agents can see why.
 
 - 2026-10-25 — Repository created. Guillotine tree search, library, API
   and dev CLI are in. Everything else open or out as listed above.
+- 2026-10-25 — Target audience: woodworkers. First version: objectives
+  bin packing, knapsack, open dimension X/Y; constraints part/panel
+  quantities, per-part rotation, kerf, number of stages, cut type. Trims,
+  minimum waste, defects, machine cut limits, leftovers and variable-sized
+  panels moved to Later. Every UI field gets precise help text.

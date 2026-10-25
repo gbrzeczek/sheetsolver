@@ -31,9 +31,12 @@ Exit criteria:
 **Goal:** the types everything else speaks, and an independent judge.
 
 Deliverables:
-- `model` crate: `Instance`, `ItemType`, `BinType`, parameters and
-  `Solution` (tree: bins → nodes with explicit `NodeKind`), with `serde`
-  and validation (`Instance::validate`).
+- `model` crate: `Instance`, `Part`, `Panel`, saw settings and
+  `Solution` (tree: patterns → nodes with explicit `NodeKind`), with
+  `serde` and validation (`Instance::validate`). Field names and doc
+  comments follow `FIELDS.md` exactly.
+- Resolve every **[verify]** marker in `FIELDS.md` against upstream code,
+  and fix the help text if it was wrong.
 - `checker` crate: `check(&Instance, &Solution) -> Result<Metrics, Vec<Violation>>`
   covering every **In** constraint in `SCOPE.md`, plus metrics (sheets
   used, waste, profit).
@@ -96,21 +99,28 @@ Deliverables:
   `GET /jobs/{id}/events` (SSE stream of improved solutions),
   `DELETE /jobs/{id}` (cancel), `GET /openapi.json`.
 - Solver runs on a bounded blocking pool; concurrency limit configurable.
-- OpenAPI spec generated from the Rust types (`utoipa`).
+- OpenAPI spec generated from the Rust types (`utoipa`), with every
+  field's description taken from its doc comment.
 
 Exit criteria:
+- Test: every field in `openapi.json` has a description.
 - Integration tests: submit, stream, cancel, invalid instance → 422.
 - Solutions served by the API pass the checker.
 
 ## Stage 6 — Web UI
 
 Deliverables (in `web/`, see `ARCHITECTURE.md`):
-- Instance editor (items, sheets, parameters), job submission, live
-  progress, solution viewer (SVG, one sheet at a time + overview).
+- Instance editor (parts, panels, saw settings), job submission, live
+  progress, cutting-plan viewer (SVG, one panel at a time + overview,
+  dimensions on every part and offcut).
+- Every input shows its help text from `openapi.json` (i.e. from
+  `FIELDS.md`) next to the field, not only on hover, so it also works on
+  touch screens in the workshop.
 - TypeScript client generated from `openapi.json`.
 
 Exit criteria:
 - End-to-end test: enter instance → solve → see a valid plan.
+- No input without help text; UI wording matches `FIELDS.md`.
 
 ## Later (only after scope decisions)
 

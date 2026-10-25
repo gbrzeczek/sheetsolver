@@ -9,6 +9,10 @@ Instructions for AI coding agents (and humans) working in this repository.
 2D guillotine (`rectangleguillotine`) and, later, the 2D non-guillotine
 (`rectangle`) solvers — exposed as a library and a web API, with a web UI.
 
+It is built **for woodworkers** cutting parts from sheet material. Anything
+the user sees uses woodworking terms (panel, part, kerf, grain, offcut),
+never solver terms (bin, item, profit, cut thickness).
+
 Read these before starting any task:
 
 | File | What it answers |
@@ -16,6 +20,7 @@ Read these before starting any task:
 | [docs/AIMS.md](docs/AIMS.md) | Why this exists, goals and non-goals |
 | [docs/SCOPE.md](docs/SCOPE.md) | Which features are in, out, or undecided |
 | [docs/STAGES.md](docs/STAGES.md) | Implementation order and the exit criteria of each stage |
+| [docs/FIELDS.md](docs/FIELDS.md) | Every user-facing field: label, exact help text, unit, default, upstream mapping |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Repository layout, crates, data flow, API shape |
 | [docs/TESTING.md](docs/TESTING.md) | Feasibility checker, differential testing against upstream |
 | [docs/UPSTREAM.md](docs/UPSTREAM.md) | Pinned upstream commit and the map of upstream files to port |
@@ -49,7 +54,11 @@ Read these before starting any task:
    anything without a benchmark showing it matters.
 7. **No `unsafe`** without a written justification in the code and a
    benchmark that requires it.
-8. **Upstream is read-only reference.** Never vendor upstream source into
+8. **Every user-facing field has precise help text**, written in
+   `docs/FIELDS.md` first and copied into the field's doc comment, which
+   becomes its OpenAPI description and the UI's help text. A field
+   without help text is not done.
+9. **Upstream is read-only reference.** Never vendor upstream source into
    this repo. The C++ oracle in `tools/oracle` builds upstream at the
    pinned commit from `docs/UPSTREAM.md`.
 

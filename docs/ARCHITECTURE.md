@@ -47,51 +47,67 @@ that split hard.
 
 ## Data contracts (draft)
 
-Lengths are integers in the instance's unit (e.g. mm). Field names are
-`snake_case`. These shapes are the API contract; Stage 1 finalises them.
+Lengths are integers in millimetres. Field names are `snake_case` and use
+the woodworking terms from `FIELDS.md` (panel, part, length, width,
+quantity, grain, value, kerf), not upstream's (bin, item, width, height,
+copies, oriented, profit, cut thickness). The mapping to upstream lives
+in one place: the `guillotine` crate's conversion from `model` types.
+These shapes are the API contract; Stage 1 finalises them.
 
 ### Instance
 
 ```json
 {
   "objective": "bin_packing",
-  "parameters": {
-    "number_of_stages": 3,
-    "cut_type": "non_exact",
-    "first_stage_orientation": "vertical",
-    "cut_thickness": 0
+  "saw": {
+    "kerf": 4,
+    "stages": 3,
+    "cut_type": "non_exact"
   },
-  "bin_types": [
-    { "id": "sheet-2800x2070", "width": 2800, "height": 2070, "copies": 10, "cost": 1 }
+  "panels": [
+    { "id": "Birch ply 18 mm", "length": 2500, "width": 1250, "quantity": 10 }
   ],
-  "item_types": [
-    { "id": "door-left", "width": 720, "height": 2000, "copies": 4, "profit": 1, "rotatable": true }
+  "parts": [
+    { "id": "Side left", "length": 720, "width": 560, "quantity": 4, "grain": true }
   ]
 }
 ```
+
+### Field help text
+
+`FIELDS.md` holds the help text for every user-facing field. It flows to
+the UI through the types, so it cannot drift:
+
+```
+FIELDS.md  →  /// doc comment on the model field  →  utoipa  →  openapi.json (description)  →  UI tooltip / help
+```
+
+A test in the `api` crate fails if any field in `openapi.json` has no
+description.
 
 User-supplied `id` strings are carried through to the solution; internal
 code uses dense integer indices.
 
 ### Solution
 
-A tree per used sheet pattern. Every node has an explicit kind.
+A tree per cutting pattern; `repeat` says how many panels are cut the
+same way. Every node has an explicit kind. `x` runs along the panel's
+length, `y` along its width.
 
 ```json
 {
-  "metrics": { "bins_used": 3, "waste_area": 123456, "waste_percentage": 4.2, "profit": 42 },
-  "bins": [
+  "metrics": { "panels_used": 3, "waste_area": 123456, "waste_percentage": 4.2, "total_value": 42 },
+  "patterns": [
     {
-      "bin_type_id": "sheet-2800x2070",
-      "copies": 2,
-      "first_cut_orientation": "vertical",
+      "panel_id": "Birch ply 18 mm",
+      "repeat": 2,
       "root": {
-        "kind": "plate",
-        "x": 0, "y": 0, "width": 2800, "height": 2070, "depth": 0,
+        "kind": "piece",
+        "x": 0, "y": 0, "length": 2500, "width": 1250, "stage": 0,
         "children": [
-          { "kind": "item", "item_type_id": "door-left", "rotated": false,
-            "x": 0, "y": 0, "width": 720, "height": 2000, "depth": 1, "children": [] },
-          { "kind": "waste", "x": 720, "y": 0, "width": 30, "height": 2070, "depth": 1, "children": [] }
+          { "kind": "part", "part_id": "Side left", "rotated": false,
+            "x": 0, "y": 0, "length": 720, "width": 560, "stage": 1, "children": [] },
+          { "kind": "offcut", "x": 724, "y": 0, "length": 1776, "width": 1250, "stage": 1, "children": [] }
         ]
       }
     }
@@ -99,8 +115,9 @@ A tree per used sheet pattern. Every node has an explicit kind.
 }
 ```
 
-Kinds: `plate` (intermediate subplate), `item`, `waste`, `residual`
-(reusable leftover), `defect`.
+Kinds: `piece` (intermediate piece that is cut further), `part`,
+`offcut` (waste), `leftover` (reusable remainder of the last panel),
+`defect`.
 
 ## Solver interface
 
