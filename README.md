@@ -8,14 +8,13 @@ Under the hood: a Rust reimplementation of the 2D guillotine solver from
 [fontanf/packingsolver](https://github.com/fontanf/packingsolver),
 as a library, a web API and a web UI.
 
-Status: the solver library and a developer CLI work for 2 and 3 cutting
-stages (Stages 0–4 of [docs/STAGES.md](docs/STAGES.md)). On every test
-instance it gives exactly upstream's cutting plan for the same settings,
-and it runs in 0.61–0.69× upstream's time on the benchmark instances
-([details](docs/STAGES.md)). Unlimited stages (Stage 5) are ported and
-match upstream; their timing is still to be measured. The web API
-(Stage 6, [docs/API.md](docs/API.md)) and the web UI (Stage 7,
-[web/](web/README.md)) are done.
+Status: the solver and a developer CLI work for 2, 3 and unlimited
+cutting stages (Stages 0–5 of [docs/STAGES.md](docs/STAGES.md)). On every
+test instance it gives exactly upstream's cutting plan for the same
+settings and algorithm, in 0.35–1.17× upstream's time on the benchmark
+instances ([details](docs/STAGES.md)). The web API (Stage 6,
+[docs/API.md](docs/API.md)), its Docker deployment and the web UI
+(Stage 7, [web/](web/README.md)) are done.
 
 ## Web API
 
@@ -86,12 +85,13 @@ and a summary, and exits with status 1 if any plan differs from
 upstream's or breaks a rule:
 
 ```
-278 golden files in 5.5 s: 216 same, 0 differ, 0 infeasible, 0 errors, 62 skipped
+562 golden files in 1128.3 s: 558 same, 0 differ, 0 infeasible, 0 errors, 4 skipped
 PASS
 ```
 
-The 62 skipped files are the unlimited-stage instances, which the solver
-does not handle yet. `check` also exits with status 1 for a plan that
-breaks a rule, so both work in scripts.
+The 4 skipped files are those where upstream's best plan comes from
+column generation, which is out of scope. The whole suite takes about
+20 minutes; `--filter` narrows it. `check` also exits with status 1 for
+a plan that breaks a rule, so both work in scripts.
 
 Start with [AGENTS.md](AGENTS.md) and [docs/AIMS.md](docs/AIMS.md).

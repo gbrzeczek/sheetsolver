@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Instance, Metrics } from "../api/types";
-import { headline, oversizedParts, totalParts } from "./summary";
+import { headline, oversizedParts, panelsLine, totalParts } from "./summary";
 
 const instance: Instance = {
   objective: "bin_packing",
@@ -24,5 +24,13 @@ describe("plan summary", () => {
 
   it("finds parts that fit on no panel, turning those without grain", () => {
     expect(oversizedParts(instance).map((p) => p.id)).toEqual(["Worktop"]);
+  });
+
+  it("names the panels, or gives their size when the name was generated", () => {
+    const plan = { patterns: [{ panel_id: "Birch", repeat: 3, first_cuts: "along_length", root: {} }] } as never;
+    expect(panelsLine(instance, plan)).toBe("3 panels of Birch, 2440 × 1220 mm");
+    const unnamed = { ...instance, panels: [{ id: "Panel 1", length: 2440, width: 1220 }] };
+    const plan2 = { patterns: [{ panel_id: "Panel 1", repeat: 1, first_cuts: "along_length", root: {} }] } as never;
+    expect(panelsLine(unnamed, plan2)).toBe("1 panel, 2440 × 1220 mm");
   });
 });

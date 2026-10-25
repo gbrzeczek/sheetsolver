@@ -58,17 +58,21 @@ Upstream packingsolver at the pinned commit is the reference.
   checker's metrics are compared against them in Stage 1.
 - A golden file with no patterns means upstream found no solution; the
   Rust port must also find none.
-- **Bounds (verified in Stage 3):** upstream computes bounds before the
-  tree search and stops the search once a solution reaches one. The Rust
-  port does not compute them. This cannot change the best solution: a
-  later solution only replaces the best one if it is strictly better, and
-  none can be better than a valid bound. Stage 3 confirmed it on every
-  2- and 3-stage instance: the port, which never stops early, gives the
-  golden plans, and so does upstream's `tree_search()` run alone
-  (`sheetsolver_oracle --benchmark`) on the benchmark instances. The one
-  early stop the port keeps is upstream's own inside `tree_search()`: once
-  a search with a fixed first-cut direction proves its result optimal,
-  the remaining searches are skipped.
+- **Bounds:** upstream computes bounds before it searches and stops every
+  running search once the best plan reaches one. This cannot change the
+  best plan: a later plan only replaces the best one if it is strictly
+  better, and none can be better than a valid bound. Stage 3 confirmed it
+  on every 2- and 3-stage instance, with a port that never stopped early.
+  Stage 5 ported upstream's cheap area bounds (`optimize_trivial_bound`,
+  in `crates/guillotine/src/bounds.rs`) and the stop, because skipping
+  them made the sequential heuristics' one-panel subproblems search on
+  long after every part was cut (1.55× upstream's time on one
+  benchmark). Upstream's other bounds, from its one-dimensional solver
+  and dual feasible functions, are not ported: where only they would
+  stop a search, the port searches on and finds the same plan. The early
+  stop inside `tree_search()` is kept too: once a search with a fixed
+  first-cut direction proves its result optimal, the remaining searches
+  are skipped.
 - When the Rust port intentionally deviates (a bug fix, a scope
   difference), the test for that instance is marked with the reason and
   checked against the checker plus a quality bound instead.

@@ -24,7 +24,7 @@ export interface PanelRow {
 }
 
 export interface Draft {
-  /** Optional, UI-only for now (docs/FIELDS.md, "UI-only fields"). */
+  /** Optional (docs/FIELDS.md, *Job name*). */
   name: string;
   objective: Objective;
   kerf: string;
@@ -224,13 +224,22 @@ export function toRequest(draft: Draft): { request: JobRequest; problems: Proble
     at("instance.panels", '"Shortest length/width from one panel" needs exactly one panel, with quantity 1');
   }
 
+  // Job name: optional, one line, at most 100 characters (docs/API.md).
+  const name = draft.name.trim();
+  const maxName = API_FIELDS["JobRequest.name"].maxLength ?? 100;
+  if ([...name].length > maxName) at("name", `job name must be at most ${maxName} characters, not ${[...name].length}`);
+  // eslint-disable-next-line no-control-regex -- control characters are what is checked
+  else if (/[\u0000-\u001f\u007f]/.test(name)) at("name", "job name must be one line, without tabs or line breaks");
+
   const instance: Instance = {
     objective: draft.objective,
     saw: { kerf, stages: draft.stages, cut_type: draft.cutType, first_cuts: draft.firstCuts },
     panels: outPanels,
     parts: outParts,
   };
-  return { request: { instance, time_limit: timeLimit }, problems };
+  const request: JobRequest = { instance, time_limit: timeLimit };
+  if (name) request.name = name;
+  return { request, problems };
 }
 
 function duplicates(names: readonly string[]): number[] {

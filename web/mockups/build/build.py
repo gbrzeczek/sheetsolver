@@ -708,21 +708,9 @@ def setting(section: str, field: str, control: str, *, open_: bool = False,
             f'{help_btn(hid, section, field, open_)}</div>{control}{box}</div>')
 
 
-def ui_field(field: str) -> dict:
-    """A row of FIELDS.md's "UI-only fields" table."""
-    chapter = None
-    for line in (ROOT / "docs/FIELDS.md").read_text().splitlines():
-        if line.startswith("## "):
-            chapter = line[3:].strip()
-        elif chapter == "UI-only fields" and line.startswith(f"| `{field}`"):
-            c = [x.strip() for x in line.strip().strip("|").split("|")]
-            return {"label": c[1], "help": c[2]}
-    raise KeyError(field)
-
-
 def setting_ui(field: str, control: str) -> str:
-    row = ui_field(field)
-    hid = f"help-ui-{field}"
+    row = {"label": label("job", field), "help": FIELDS[("job", field)]["help"]}
+    hid = f"help-job-{field}"
     return (f'<div class="label-row"><span class="field-label">{esc(row["label"])} <span class="unit">optional</span></span>'
             f'<button class="help-btn" type="button" aria-expanded="false" aria-controls="{hid}" '
             f'aria-label="About {esc(row["label"])}">?</button></div>{control}'
@@ -783,7 +771,7 @@ def editor_page(errors: dict | None = None) -> str:
   {alert}
   <div class="setup-grid">
     <div>
-      <div class="field job-name">{setting_ui("job_name", f'<input class="input" value="{JOB_NAME}" placeholder="Untitled job" aria-label="Job name" readonly>')}</div>
+      <div class="field job-name">{setting_ui("name", f'<input class="input" value="{JOB_NAME}" placeholder="Untitled job" aria-label="Job name" readonly>')}</div>
       <section class="form-block" aria-labelledby="parts-h">
         <div class="section-title"><h2 id="parts-h">Parts to make</h2><small>{PARTS_TOTAL} parts · {len(INST["parts"])} sizes</small></div>
         {parts_table(errors, focus, None if errors else "grain")}

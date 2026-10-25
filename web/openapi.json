@@ -173,6 +173,15 @@
             "$ref": "#/components/schemas/Instance",
             "description": "The parts to cut, the panels to cut them from and how the saw cuts."
           },
+          "name": {
+            "description": "Your name for this job, shown at the top of the job and its cutting plan (e.g. \"Kitchen units\"). Optional.",
+            "maxLength": 100,
+            "title": "Job name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "time_limit": {
             "default": 10,
             "description": "How long the solver may search for a better plan. The first plan usually appears within a second; longer searches find plans with less waste. You can stop the search at any time and keep the best plan so far.",
@@ -240,6 +249,13 @@
           },
           "message": {
             "description": "Why the job failed, in state `failed`; otherwise `null`.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "description": "The job's name as submitted, without spaces at either end; `null` if it has none.",
             "type": [
               "string",
               "null"

@@ -206,14 +206,57 @@ Deliverables:
 Exit criteria:
 - One command runs the full differential suite and prints a report.
 
-## Stage 5 — Unlimited stages
+## Stage 5 — Unlimited stages ✅ done 2026-10-25
 
-Status (2026-10-25): every ported algorithm matches upstream on every
-golden file and passes the checker; what is left is timing against the
-oracle and measuring the two decisions below, which need the oracle
-built (see `HANDOVER-STAGE5.md`). The owner approved starting Stage 6
-(API) and the design of Stage 7 (UI) in parallel meanwhile, since
-neither changes the solver.
+Result:
+- Ported: treesearchsolver's `iterative_beam_search` (global history),
+  the maximal-spaces search (blocks, scheme, plan replay, sequential
+  feasibility), the hypergraph search with infinite copies (with
+  `minimize_number_of_stages`), sequential single knapsack and sequential
+  value correction, the tree search on unlimited stages, upstream's
+  automatic selection and run order, libc++'s `std::sort` (upstream's ties
+  depend on it), and upstream's area bounds with the stop once a plan
+  reaches one (`bounds.rs`).
+- Oracle `--algorithm` for each algorithm and `auto`; 42 new generated
+  `generated__unlimited_*` instances. `diff-oracle`: 562 golden files,
+  558 identical, 0 different, 4 skipped (their best plan is column
+  generation's, which is Out); every plan passes the checker. `solve()`
+  selects every algorithm upstream's own selection used (checked against
+  the `auto` files' improvement labels).
+- Checker: deep plans with turning cuts and pass-through pieces are
+  accepted (`crates/checker/tests/unlimited.rs`).
+- Benchmarks against the oracle built with libc++ (port's median over
+  upstream's fastest of 10): tree search 0.59–0.72× (0.35× on bin
+  packing with a kerf, where the bound now ends the search early),
+  maximal spaces 0.95–1.05×, hypergraph 1.02–1.17×, sequential single
+  knapsack 0.65–0.72×, sequential value correction 0.76–1.10×. Two
+  speed-ups were needed: the hypergraph's raster-point tables (1.8× →
+  1.0–1.2×), and the bounds, without which the sequential heuristics'
+  one-panel subproblems searched on after cutting every part (1.55× →
+  0.72×).
+- Deviations: open-dimension plans get the uncut rest of the panel as a
+  cut and a leftover (`open_dimension.rs`; the differential tests apply
+  the same completion to the golden plans); upstream's bounds from its
+  1D solver and dual feasible functions are not ported (same plans,
+  `TESTING.md`).
+- The oracle builds in the cloud environment with a git clone of HiGHS
+  and must use libc++ on Linux: with libstdc++, 10 of the 35 sequential
+  single knapsack golden files differ (`tools/README.md`).
+- The two decisions, measured with `tools/measure_decisions.py`:
+  - Subproblems without reduction (35 unlimited-stage instances with
+    several panels): the same panel count on every bin-packing
+    instance; on knapsack, reduction cuts more value on 4 instances
+    (+0.4 % to +1.4 %), never less. Without reduction is faster on most
+    instances (up to 2.7× on value correction). Kept.
+  - Sequential heuristics on 2 and 3 stages (59 instances with several
+    panels): upstream runs them next to the tree search and keeps the
+    better plan. They would save a panel on 1 instance
+    (`generated__panels_bin_packing_2_either_exact_kerf3_2`, 3 → 2
+    panels) and cut 1.7 % more value on 1, at up to 5 s more time;
+    elsewhere the tree search's plan is as good or better. Owner to
+    decide whether to revisit (`SCOPE.md`).
+- The owner approved Stages 6 and 7 in parallel with the end of this
+  stage, since neither changes the solver.
 
 **Goal:** real unlimited-stage plans, solved the way upstream solves them.
 
@@ -355,8 +398,7 @@ covered by `npm run e2e` (Playwright, desktop and tablet, against the real
 API): enter a job → solve → a plan the checker passed, followed cut by
 cut; every field of `FIELDS.md` has its help button with the exact text.
 Unit tests check the cut order and per-panel figures against all golden
-plans. Open follow-ups are in `web/DESIGN.md` §9 and API request #21
-(job name on the server).
+plans. Open follow-ups are in `web/DESIGN.md` §9.
 
 Design (screens, flows, visual language, front-end stack, and what the UI
 needs from the API): `web/DESIGN.md`, with static mockups in

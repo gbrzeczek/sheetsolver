@@ -23,6 +23,7 @@ const SETTINGS: Record<string, FieldKey> = {
   "instance.saw.cut_type": "Saw.cut_type",
   "instance.saw.first_cuts": "Saw.first_cuts",
   time_limit: "JobRequest.time_limit",
+  name: "JobRequest.name",
 };
 
 export function place(path: string | null): ProblemPlace {

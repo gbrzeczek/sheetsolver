@@ -25,14 +25,17 @@ export function panelsLine(instance: Instance, plan: Solution): string {
   const counts = new Map<string, number>();
   for (const p of plan.patterns) counts.set(p.panel_id, (counts.get(p.panel_id) ?? 0) + p.repeat);
   const total = [...counts.values()].reduce((a, b) => a + b, 0);
-  const describe = (id: string) => {
+  // A generated name ("Panel 1") says nothing: show the size alone.
+  const generated = (id: string) => /^Panel \d+$/.test(id);
+  const sizeOf = (id: string) => {
     const panel = instance.panels.find((p) => p.id === id);
-    return panel ? `${id}, ${mm(panel.length)} × ${mm(panel.width)} mm` : id;
+    return panel ? `${mm(panel.length)} × ${mm(panel.width)} mm` : "";
   };
+  const describe = (id: string) => (generated(id) ? sizeOf(id) || id : [id, sizeOf(id)].filter(Boolean).join(", "));
   const noun = (n: number) => (n === 1 ? "panel" : "panels");
   if (counts.size === 1) {
     const [id] = counts.keys();
-    return `${total} ${noun(total)} of ${describe(id!)}`;
+    return generated(id!) ? `${total} ${noun(total)}, ${describe(id!)}` : `${total} ${noun(total)} of ${describe(id!)}`;
   }
   return `${total} panels: ${[...counts].map(([id, n]) => `${n} × ${describe(id)}`).join("; ")}`;
 }

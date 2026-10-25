@@ -31,6 +31,7 @@ test("enter a job, solve it, and follow the plan cut by cut", async ({ page, req
   expect(job.state).toBe("done");
   expect(job.best.metrics.parts_cut).toBe(6);
   expect(job.instance.parts.map((p: { id: string }) => p.id)).toEqual(["Side", "Part 2", "Shelf"]);
+  expect(job.name).toBe("Test cabinet");
 
   // Checklist: every part, cut as often as needed.
   const checklist = page.locator("section", { hasText: "Parts checklist" });
@@ -49,9 +50,12 @@ test("enter a job, solve it, and follow the plan cut by cut", async ({ page, req
   await expect(page).toHaveURL(/cut=2/);
   await expect(page.locator('.cutlist .cut[aria-current="step"] .n')).toHaveText("2");
 
-  // Reloading keeps the place: the job comes back from the server.
+  // Reloading keeps the place: the job comes back from the server, name
+  // included, even without this browser's draft (another device).
+  await page.evaluate(() => localStorage.clear());
   await page.reload();
   await expect(page.getByText(`Cut 2 of ${count}`)).toBeVisible();
+  await expect(page.locator(".context")).toHaveText("Test cabinet");
 
   // Edit job brings the job back, the generated name still generated.
   await page.getByRole("button", { name: "Edit job" }).click();
@@ -60,20 +64,23 @@ test("enter a job, solve it, and follow the plan cut by cut", async ({ page, req
 });
 
 test("stop a running search and keep the best plan so far", async ({ page }) => {
-  // The mockups' job (11 sizes, 21 parts): with the test server's large
-  // queue size, its search runs until it is stopped.
-  const instance = JSON.parse(readFileSync(join(import.meta.dirname, "../../data/instances/generated__bin_packing_3_non_exact_kerf3_2.json"), "utf8"));
+  // "Best use of the panels I have" on two panels: 88 parts that cannot all
+  // fit, so the search has no bound to stop at and runs until it is stopped.
+  const instance = JSON.parse(readFileSync(join(import.meta.dirname, "../../data/instances/generated__knapsack_3_non_exact_kerf3_2.json"), "utf8"));
   const parts = instance.parts.map((p: { length: number; width: number; quantity: number; grain?: boolean }) => ({
     length: String(p.length), width: String(p.width), quantity: String(p.quantity), grain: p.grain,
   }));
-  await enterJob(page, parts, { length: "2440", width: "1220" }, "60");
+  await enterJob(page, parts, { length: "2800", width: "2070", quantity: "2" }, "60");
+  await page.locator("#objective").selectOption("knapsack");
   await findPlan(page);
   await expect(page.getByRole("progressbar", { name: "Search time" })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("All 21 parts fit so far", { timeout: 20_000 });
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^\d+ of 88 parts fit so far$/, { timeout: 20_000 });
   await expect(page.getByText("Plans found")).toBeVisible();
   await page.getByRole("button", { name: "Stop and keep this plan" }).click();
   await expect(page.getByText(/stopped after/)).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("All 21 parts fit");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^\d+ of 88 parts fit$/);
+  // Parts not cut come first in the checklist, marked as such.
+  await expect(page.locator("tr.not-cut").first()).toBeVisible();
 });
 
 test("a part larger than every panel gives the no-plan state with its cause", async ({ page }) => {

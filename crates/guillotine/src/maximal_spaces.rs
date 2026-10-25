@@ -1159,19 +1159,30 @@ impl Scheme<'_> {
 /// upstream: tree_search_maximal_spaces.cpp, `tree_search_maximal_spaces`
 /// in not-anytime-sequential mode: the knapsack and feasibility objectives
 /// search directly; bin packing and the open dimensions go through
-/// [`sequential_feasibility`].
-pub(crate) fn tree_search_maximal_spaces(problem: &Problem, queue_size: u64, stop: &Stop) -> Plan {
+/// [`sequential_feasibility`]. `on_plan` sees each better plan as it is
+/// found, so that the caller can stop the search once one reaches a bound.
+pub(crate) fn tree_search_maximal_spaces(
+    problem: &Problem,
+    queue_size: u64,
+    stop: &Stop,
+    on_plan: &mut dyn FnMut(&Plan),
+) -> Plan {
     debug_assert!(problem.number_of_bins <= 1, "one panel only");
     match problem.objective {
-        Objective::Knapsack | Objective::Feasibility => search(problem, queue_size, stop),
+        Objective::Knapsack | Objective::Feasibility => search(problem, queue_size, stop, on_plan),
         Objective::BinPacking | Objective::OpenDimensionX | Objective::OpenDimensionY => {
-            sequential_feasibility(problem, stop, |sub, stop| search(sub, queue_size, stop))
+            sequential_feasibility(
+                problem,
+                stop,
+                |sub, stop| search(sub, queue_size, stop, &mut |_| {}),
+                on_plan,
+            )
         }
     }
 }
 
-/// The beam search itself.
-fn search(problem: &Problem, queue_size: u64, stop: &Stop) -> Plan {
+/// The beam search itself. `on_plan` sees each better plan.
+fn search(problem: &Problem, queue_size: u64, stop: &Stop, on_plan: &mut dyn FnMut(&Plan)) -> Plan {
     let scheme = Scheme::new(problem);
     // upstream: the algorithm's own end flag, set once its best plan is
     // proven optimal: for feasibility, once it cuts every part.
@@ -1188,6 +1199,7 @@ fn search(problem: &Problem, queue_size: u64, stop: &Stop) -> Plan {
         let plan = scheme.to_plan(&output.best);
         if plan.is_better_than(&best, problem.objective) {
             best = plan;
+            on_plan(&best);
             if problem.objective == Objective::Feasibility && best.feasible {
                 done.store(true, Ordering::Relaxed);
             }
@@ -1206,6 +1218,7 @@ pub(crate) fn sequential_feasibility(
     problem: &Problem,
     stop: &Stop,
     mut solve: impl FnMut(&Problem, &Stop) -> Plan,
+    on_plan: &mut dyn FnMut(&Plan),
 ) -> Plan {
     let bin_type = problem.bin_type_of_position(0);
     let bin = &problem.bin_types[bin_type];
@@ -1303,6 +1316,7 @@ pub(crate) fn sequential_feasibility(
         let (used_width, used_height) = (sub_plan.width, sub_plan.height);
         if plan.is_better_than(&best, problem.objective) {
             best = plan;
+            on_plan(&best);
         }
 
         match problem.objective {

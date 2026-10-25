@@ -3,7 +3,7 @@ import { cancelJob, getJob, submitJob } from "../api/client";
 import { followJob } from "../api/events";
 import { isFinal, type ErrorBody, type JobRequest, type JobStatus, type PlanReport } from "../api/types";
 import { fromInstance, newDraft, toRequest, type Draft, type Problem } from "./draft";
-import { jobName, loadDraft, rememberJobName, saveDraft } from "./storage";
+import { loadDraft, saveDraft } from "./storage";
 import { router } from "../router.svelte";
 
 /** A plan found, as the "Plans found" list shows it. */
@@ -63,7 +63,7 @@ class Session {
       return false;
     }
     if (timeLimit !== undefined) request.time_limit = timeLimit;
-    return this.#send(request, this.draft.name.trim());
+    return this.#send(request);
   }
 
   /** Submits the job shown, again, e.g. with a longer time limit. */
@@ -71,10 +71,11 @@ class Session {
     const job = this.job;
     if (!job) return false;
     const request: JobRequest = { instance: $state.snapshot(job.instance), time_limit: timeLimit ?? job.time_limit };
-    return this.#send(request, jobName(job.id));
+    if (job.name) request.name = job.name;
+    return this.#send(request);
   }
 
-  async #send(request: JobRequest, name: string): Promise<boolean> {
+  async #send(request: JobRequest): Promise<boolean> {
     this.submitting = true;
     this.submitTrouble = null;
     const result = await submitJob(request);
@@ -82,7 +83,6 @@ class Session {
     if (result.ok) {
       this.problems = [];
       this.problemsMessage = null;
-      if (name) rememberJobName(result.job.id, name);
       this.#show(result.job);
       router.go({ name: "plan", id: result.job.id, panel: null, cut: null });
       return true;
@@ -191,7 +191,7 @@ class Session {
   /** Puts the shown job back into the editor ("Edit job"). */
   edit(): void {
     if (this.job) {
-      this.draft = fromInstance($state.snapshot(this.job.instance), this.job.time_limit, jobName(this.job.id));
+      this.draft = fromInstance($state.snapshot(this.job.instance), this.job.time_limit, this.job.name ?? "");
       this.save();
     }
     router.go({ name: "setup" });
@@ -199,7 +199,7 @@ class Session {
 
   /** The name of the shown job, if it has one. */
   get jobName(): string {
-    return this.jobId ? jobName(this.jobId) : "";
+    return this.job?.name ?? "";
   }
 }
 

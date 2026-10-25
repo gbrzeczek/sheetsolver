@@ -40,6 +40,7 @@ for (const schemaName of SCHEMAS) {
       ...(property.default !== undefined && { default: property.default }),
       ...(property.minimum !== undefined && { minimum: property.minimum }),
       ...(property.maximum !== undefined && { maximum: property.maximum }),
+      ...(property.maxLength !== undefined && { maxLength: property.maxLength }),
       ...(options?.length && { options }),
     };
   }
@@ -54,6 +55,7 @@ export interface ApiField {
   readonly default?: unknown;
   readonly minimum?: number;
   readonly maximum?: number;
+  readonly maxLength?: number;
   readonly options?: readonly { readonly value: string | number; readonly title: string }[];
 }
 

@@ -60,7 +60,7 @@
       const input = document.getElementById(`${list}-${where.row}-${name}`) as HTMLInputElement | null;
       input?.focus();
     } else if (where.field) {
-      const id = { "Instance.objective": "objective", "Saw.kerf": "kerf", "JobRequest.time_limit": "time-limit" }[where.field as string];
+      const id = { "Instance.objective": "objective", "Saw.kerf": "kerf", "JobRequest.time_limit": "time-limit", "JobRequest.name": "job-name" }[where.field as string];
       if (id) document.getElementById(id)?.focus();
     }
   }
@@ -111,10 +111,11 @@
   <div class="setup-grid">
     <div>
       <div class="job-name">
-        <Setting key="Ui.job_name" optional for="job-name">
+        <Setting key="JobRequest.name" optional for="job-name" error={problems.get("name")}>
           {#snippet children({ helpId })}
             <input id="job-name" class="input" placeholder="Untitled job" autocomplete="off" aria-describedby={helpId}
-              bind:value={session.draft.name} oninput={() => edited()} />
+              class:invalid={problems.has("name")} maxlength={200}
+              bind:value={session.draft.name} oninput={() => edited("name")} />
           {/snippet}
         </Setting>
       </div>

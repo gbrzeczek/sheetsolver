@@ -3,9 +3,13 @@
 //! upstream: src/rectangleguillotine/optimize.cpp, `optimize`: the
 //! automatic selection and the order the selected algorithms run in.
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use treesearch::Stop;
 
 use crate::SolveParams;
+use crate::bounds::Bound;
 use crate::hypergraph::tree_search_hypergraph_infinite_copies;
 use crate::maximal_spaces::tree_search_maximal_spaces;
 use crate::plan::Plan;
@@ -158,14 +162,15 @@ pub(crate) fn not_applicable(problem: &Problem, algorithm: Algorithm) -> Option<
     }
 }
 
-/// Runs one algorithm. `on_plan` sees each improvement the tree search
-/// finds; the other algorithms only return their best plan.
+/// Runs one algorithm. `on_plan` sees each improvement as the algorithm
+/// finds it; the hypergraph search only returns its plan at the end, as
+/// upstream's does.
 pub(crate) fn run(
     problem: &Problem,
     algorithm: Algorithm,
     params: &SolveParams,
     nodes_expanded: &mut u64,
-    on_plan: impl FnMut(&Plan),
+    on_plan: &mut dyn FnMut(&Plan),
 ) -> Plan {
     let stop = &params.stop;
     match algorithm {
@@ -175,14 +180,14 @@ pub(crate) fn run(
             plan
         }
         Algorithm::MaximalSpaces => {
-            tree_search_maximal_spaces(problem, params.maximal_spaces_queue_size, stop)
+            tree_search_maximal_spaces(problem, params.maximal_spaces_queue_size, stop, on_plan)
         }
         Algorithm::Hypergraph => tree_search_hypergraph_infinite_copies(problem, stop),
         Algorithm::SequentialSingleKnapsack => {
-            sequential_value_correction(problem, Variant::SingleKnapsack, stop)
+            sequential_value_correction(problem, Variant::SingleKnapsack, stop, on_plan)
         }
         Algorithm::SequentialValueCorrection => {
-            sequential_value_correction(problem, Variant::ValueCorrection, stop)
+            sequential_value_correction(problem, Variant::ValueCorrection, stop, on_plan)
         }
     }
 }
@@ -204,7 +209,11 @@ fn some_part_never_fits(problem: &Problem) -> bool {
 }
 
 /// Runs the selected algorithms in order and keeps the first plan strictly
-/// better than all before it. Returns it with the algorithms run.
+/// better than all before it. Returns it with the algorithms selected.
+///
+/// Once the best plan reaches the area bound, the running algorithm stops
+/// and the later ones are skipped (upstream starts them, and they stop at
+/// once); nothing strictly better exists, so the plan is the same.
 ///
 /// upstream: optimize.cpp, `optimize`.
 pub(crate) fn optimize(
@@ -217,15 +226,30 @@ pub(crate) fn optimize(
     if some_part_never_fits(problem) {
         return (best, Vec::new());
     }
+    // upstream: `optimize_trivial_bound`, before any search.
+    let bound = Bound::of(problem);
+    // upstream: the algorithm formatter's end flag, which every search
+    // started from here also stops on.
+    let end = Arc::new(AtomicBool::new(false));
+    let params = SolveParams {
+        stop: params.stop.with_flag(&end),
+        ..params.clone()
+    };
     let algorithms = select(problem);
     let mut consider = |plan: &Plan| {
         if plan.is_better_than(&best, problem.objective) {
             best = plan.clone();
             on_plan(&best);
+            if bound.reached_by(&best, problem.objective) {
+                end.store(true, Ordering::Relaxed);
+            }
         }
     };
     for &algorithm in &algorithms {
-        let plan = run(problem, algorithm, params, nodes_expanded, &mut consider);
+        if params.stop.requested() {
+            break;
+        }
+        let plan = run(problem, algorithm, &params, nodes_expanded, &mut consider);
         consider(&plan);
     }
     (best, algorithms)

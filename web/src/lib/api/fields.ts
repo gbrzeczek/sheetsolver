@@ -1,20 +1,12 @@
-// Labels and help text for every input: from openapi.json (generated), and
-// for the UI-only fields from docs/FIELDS.md, "UI-only fields" (copied
-// here; fields.test.ts keeps the copy exact).
+// Labels and help text for every input, from openapi.json (generated from
+// docs/FIELDS.md through the Rust types).
 import { API_FIELDS, type ApiField, type ApiFieldKey } from "./fields.generated";
 
-export const UI_FIELDS = {
-  "Ui.job_name": {
-    label: "Job name",
-    help: 'Your name for this job, shown at the top of the job and its cutting plan (e.g. "Kitchen units"). Optional.',
-  },
-} as const satisfies Record<string, ApiField>;
-
 /** Every input field: an input component must name one, so it has help text. */
-export type FieldKey = ApiFieldKey | keyof typeof UI_FIELDS;
+export type FieldKey = ApiFieldKey;
 
 export function field(key: FieldKey): ApiField {
-  return key in UI_FIELDS ? UI_FIELDS[key as keyof typeof UI_FIELDS] : API_FIELDS[key as ApiFieldKey];
+  return API_FIELDS[key];
 }
 
 /** The option names of a field with options, in order. */

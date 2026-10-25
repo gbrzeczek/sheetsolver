@@ -89,3 +89,17 @@ describe("problem places", () => {
     expect(place(null)).toMatchObject({ section: "page" });
   });
 });
+
+describe("the job name", () => {
+  it("is sent trimmed, left out when blank, and checked like the API does", () => {
+    const d = draft();
+    d.name = "  Kitchen units ";
+    expect(toRequest(d).request.name).toBe("Kitchen units");
+    d.name = "   ";
+    expect(toRequest(d).request).not.toHaveProperty("name");
+    d.name = "x".repeat(101);
+    expect(toRequest(d).problems).toContainEqual({ field: "name", message: "job name must be at most 100 characters, not 101" });
+    d.name = "two\nlines";
+    expect(toRequest(d).problems).toContainEqual({ field: "name", message: "job name must be one line, without tabs or line breaks" });
+  });
+});

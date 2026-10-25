@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { API_FIELDS } from "./fields.generated";
-import { helpHtml, optionTitle, UI_FIELDS } from "./fields";
+import { helpHtml, optionTitle } from "./fields";
 
 const FIELDS_MD = readFileSync(join(__dirname, "../../../../docs/FIELDS.md"), "utf8");
 
@@ -15,16 +15,9 @@ describe("field help", () => {
     }
   });
 
-  it("copies the UI-only fields exactly from FIELDS.md", () => {
-    const chapter = FIELDS_MD.split("## UI-only fields")[1]!.split("\n## ")[0]!;
-    for (const [key, f] of Object.entries(UI_FIELDS)) {
-      const name = key.split(".")[1]!;
-      const row = chapter.split("\n").find((line) => line.startsWith(`| \`${name}\``));
-      expect(row, key).toBeDefined();
-      const cells = row!.split(" | ");
-      expect(cells[1], key).toBe(f.label);
-      expect(cells[2], key).toBe(f.help);
-    }
+  it("has the job name, with its limit", () => {
+    expect(API_FIELDS["JobRequest.name"].label).toBe("Job name");
+    expect(FIELDS_MD).toContain(API_FIELDS["JobRequest.name"].help);
   });
 
   it("names options as FIELDS.md does", () => {

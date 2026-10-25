@@ -122,8 +122,8 @@ to the workshop tablet resumes it:
 fills a centred column about 1080 px wide.
 - *Job name* (optional): one field above the parts, placeholder
   "Untitled job". It names the job in the app bar and above the cutting
-  plan. Until the API carries it (§8, #21), it is kept with the draft
-  in the browser.
+  plan. It is sent with the job (`name`, §8 #21), so a plan link opened
+  on another device shows it too.
 - **Names are optional** for parts and panels. An empty Name cell shows
   its generated name greyed ("Part 9", "Panel 1": the FIELDS.md default,
   by row number, skipping names already used), and the UI sends that
@@ -573,7 +573,7 @@ web/
 - `.npmrc` sets `legacy-peer-deps`, because npm 10 crashes resolving
   Vitest's optional peers; every dependency is listed explicitly.
 - Field keys are `Schema.property` (`Saw.kerf`, `Part.length`,
-  `JobRequest.time_limit`), and the UI-only job name is `Ui.job_name`.
+  `JobRequest.time_limit`, `JobRequest.name`).
 - The end-to-end tests start the API with a large `--queue-size`, so a
   search runs until its time limit or until it is stopped.
 
@@ -619,7 +619,7 @@ current status.
 | 18 | The instance in `GET /jobs/{id}` | 🔨 accepted | A plan opened from a link on another device; *Edit job* | Parts summary, parts not cut, and *Edit job* work on any device; the local draft is only a convenience |
 | 19 | `POST /instances/validate` | ⏸ deferred | Server-side problems before submitting | Client checks while typing, plus the 422 on submit |
 | 20 | `problems[].field` positions = submitted arrays | 🔨 accepted (docs) | 422 mapping to rows | Relied on; rows are sent in display order and never dropped |
-| 21 | Optional `name` on `POST /jobs`, echoed in the job status (new, 2026-10-25: the owner decided jobs have an optional name) | ❔ requested | App bar and plan heading, also on another device opening a job link | The name is kept with the draft in this browser; a link opened elsewhere shows "Cutting plan" without a name |
+| 21 | Optional `name` on `POST /jobs`, echoed in the job status (new, 2026-10-25: the owner decided jobs have an optional name) | ✅ done | App bar and plan heading, also on another device opening a job link | Sent trimmed, left out when blank; checked locally like the API (one line, at most 100 characters) |
 
 No request needed server-side persistence.
 

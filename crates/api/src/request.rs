@@ -13,11 +13,15 @@ use model::{Instance, Length, Stages};
 use serde_json::{Map, Value};
 
 use crate::fields::{CUT_TYPE, Choice, FIRST_CUTS, OBJECTIVE};
-use crate::types::{DEFAULT_TIME_LIMIT, FieldProblem, MAX_TIME_LIMIT, MIN_TIME_LIMIT};
+use crate::types::{
+    DEFAULT_TIME_LIMIT, FieldProblem, MAX_NAME_CHARS, MAX_TIME_LIMIT, MIN_TIME_LIMIT,
+};
 
 /// A job to run: a valid instance and its time limit in seconds.
 #[derive(Debug, Clone)]
 pub struct JobSpec {
+    /// The job's name, trimmed; `None` if it has none.
+    pub name: Option<String>,
     /// The instance; [`Instance::validate`] accepts it.
     pub instance: Instance,
     /// The time limit, in seconds.
@@ -53,6 +57,8 @@ pub fn parse_job(body: &Value) -> Result<JobSpec, Vec<FieldProblem>> {
         },
     };
 
+    let name = read_name(body.get("name"), &mut problems);
+
     let instance = match body.get("instance") {
         None | Some(Value::Null) => {
             problems.push(FieldProblem::at("instance", "this field is required"));
@@ -63,11 +69,39 @@ pub fn parse_job(body: &Value) -> Result<JobSpec, Vec<FieldProblem>> {
 
     match (instance, time_limit) {
         (Some(instance), Some(time_limit)) if problems.is_empty() => Ok(JobSpec {
+            name,
             instance,
             time_limit,
         }),
         _ => Err(problems),
     }
+}
+
+/// Reads the optional job name: trimmed, and no name if blank. Adds a
+/// problem if it is not one line of at most [`MAX_NAME_CHARS`]
+/// characters.
+fn read_name(value: Option<&Value>, problems: &mut Vec<FieldProblem>) -> Option<String> {
+    let text = match value {
+        None | Some(Value::Null) => return None,
+        Some(Value::String(text)) => text.trim(),
+        Some(_) => {
+            problems.push(FieldProblem::at("name", "must be text"));
+            return None;
+        }
+    };
+    let length = text.chars().count();
+    if length > MAX_NAME_CHARS {
+        problems.push(FieldProblem::at(
+            "name",
+            format!("job name must be at most {MAX_NAME_CHARS} characters, not {length}"),
+        ));
+    } else if text.chars().any(char::is_control) {
+        problems.push(FieldProblem::at(
+            "name",
+            "job name must be one line, without tabs or line breaks",
+        ));
+    }
+    (!text.is_empty()).then(|| text.to_string())
 }
 
 /// Reads and validates the instance, adding its problems to `problems`.

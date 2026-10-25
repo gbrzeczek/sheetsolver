@@ -40,8 +40,7 @@ Rules that matter here:
 
 - Every input names a field key (`"Saw.kerf"`), from which it gets its
   label and help text; an input without one does not compile.
-- Wording comes from `docs/FIELDS.md` (via `openapi.json`); the one
-  UI-only field (job name) is copied in `src/lib/api/fields.ts` and a
-  test keeps the copy exact.
+- Wording comes from `docs/FIELDS.md`, via `openapi.json`, for every
+  field, the job name included.
 - Lengths are millimetres with at most one decimal, as typed; a comma is
   accepted as the decimal mark.

@@ -11,7 +11,7 @@ export interface PartInput {
 }
 
 /** Fills the job setup with parts and one panel, starting from a new job. */
-export async function enterJob(page: Page, parts: PartInput[], panel: { name?: string; length: string; width: string }, timeLimit = "2") {
+export async function enterJob(page: Page, parts: PartInput[], panel: { name?: string; length: string; width: string; quantity?: string }, timeLimit = "2") {
   await page.goto("/#/");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
@@ -26,6 +26,7 @@ export async function enterJob(page: Page, parts: PartInput[], panel: { name?: s
   if (panel.name) await page.locator("#panel-0-id").fill(panel.name);
   await page.locator("#panel-0-length").fill(panel.length);
   await page.locator("#panel-0-width").fill(panel.width);
+  if (panel.quantity) await page.locator("#panel-0-quantity").fill(panel.quantity);
   await page.locator("summary", { hasText: "More cutting settings" }).click();
   await page.locator("#time-limit").fill(timeLimit);
 }
@@ -37,7 +38,7 @@ export async function findPlan(page: Page) {
 
 /**
  * The help texts of docs/FIELDS.md, markdown removed, keyed like the UI's
- * help elements: "Part.id", "Saw.kerf", "JobRequest.time_limit", "Ui.job_name".
+ * help elements: "Part.id", "Saw.kerf", "JobRequest.time_limit", "JobRequest.name".
  */
 export function fieldsMd(): Map<string, { label: string; help: string }> {
   const md = readFileSync(join(import.meta.dirname, "../../docs/FIELDS.md"), "utf8");
@@ -48,10 +49,10 @@ export function fieldsMd(): Map<string, { label: string; help: string }> {
   for (const line of md.split("\n")) {
     if (line.startsWith("## ")) chapter = line.slice(3).trim();
     else if (line.startsWith("### ")) section = line.slice(4).trim();
-    else if ((chapter === "Fields" || chapter === "UI-only fields") && line.startsWith("| `")) {
+    else if (chapter === "Fields" && line.startsWith("| `")) {
       const cells = line.split(" | ");
       const name = cells[0]!.replace(/[|` ]/g, "");
-      const owner = chapter === "UI-only fields" ? "Ui" : section === "Job" ? (name === "time_limit" ? "JobRequest" : "Instance") : schema[section]!;
+      const owner = section === "Job" ? (name === "time_limit" || name === "name" ? "JobRequest" : "Instance") : schema[section]!;
       help.set(`${owner}.${name}`, {
         label: cells[1]!,
         help: cells[2]!.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*(.+?)\*/g, "$1"),
