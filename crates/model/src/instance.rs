@@ -13,6 +13,7 @@ use crate::solution::CutDirection;
 
 /// A cutting job: everything the solver needs to produce a cutting plan.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct Instance {
     /// What the plan should optimise. **Use as few panels as possible**:
     /// cut every part, using the fewest panels; panels are used in the
@@ -35,6 +36,7 @@ pub struct Instance {
 /// What the plan optimises. See [`Instance::objective`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum Objective {
     /// Use as few panels as possible (upstream `BinPacking`).
     BinPacking,
@@ -61,6 +63,7 @@ impl Objective {
 
 /// Saw and cutting settings.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct Saw {
     /// The width of material each cut removes, in millimetres — the
     /// thickness of your saw blade's teeth, not the blade body. Every cut
@@ -103,6 +106,7 @@ pub struct Saw {
 /// Which way the first cuts may run. See [`Saw::first_cuts`].
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum FirstCuts {
     /// Whichever gives the better plan (upstream `Any`).
     #[default]
@@ -175,6 +179,7 @@ impl<'de> Deserialize<'de> for Stages {
 /// [`Saw::cut_type`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum CutType {
     /// Last-stage trimming allowed (upstream `NonExact`).
     NonExact,
@@ -188,6 +193,7 @@ pub enum CutType {
 
 /// A stock panel size.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct Panel {
     /// Your name for this panel, shown on the cutting plan (e.g. "Birch ply
     /// 18 mm").
@@ -219,6 +225,7 @@ impl Panel {
 
 /// A part to cut.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct Part {
     /// Your name for this part, shown on the cutting plan and labels (e.g.
     /// "Side left").
@@ -320,43 +327,64 @@ pub enum ValidationError {
     OpenDimensionNeedsOnePanel,
 }
 
+/// A [`ValidationError`] and the field it is about.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FieldError {
+    /// The path of the field in the instance's JSON, with 0-based list
+    /// positions: `saw.kerf`, `parts[2].quantity`, or a whole list
+    /// (`parts`) for a problem with the list itself.
+    pub field: String,
+    /// What is wrong with it.
+    pub error: ValidationError,
+}
+
 impl Instance {
     /// Checks everything that makes an instance unsolvable as given, and
     /// returns every problem found, not just the first.
     pub fn validate(&self) -> Result<(), Vec<ValidationError>> {
+        self.validate_fields()
+            .map_err(|errors| errors.into_iter().map(|error| error.error).collect())
+    }
+
+    /// As [`Instance::validate`], with the field each problem is about.
+    pub fn validate_fields(&self) -> Result<(), Vec<FieldError>> {
         let mut errors = Vec::new();
+        let mut report = |field: String, error| errors.push(FieldError { field, error });
 
         if self.saw.kerf < Length::ZERO {
-            errors.push(ValidationError::NegativeKerf);
+            report("saw.kerf".into(), ValidationError::NegativeKerf);
         }
         if let Stages::Limited(count) = self.saw.stages {
             if !(2..=3).contains(&count) {
-                errors.push(ValidationError::UnsupportedStages(count));
+                report(
+                    "saw.stages".into(),
+                    ValidationError::UnsupportedStages(count),
+                );
             }
         }
 
         if self.panels.is_empty() {
-            errors.push(ValidationError::NoPanels);
+            report("panels".into(), ValidationError::NoPanels);
         }
         if self.parts.is_empty() {
-            errors.push(ValidationError::NoParts);
+            report("parts".into(), ValidationError::NoParts);
         }
 
         let panels = self
             .panels
             .iter()
             .map(|p| (p.id.as_str(), p.length, p.width, p.quantity, p.cost));
-        validate_items("panel", panels, &mut errors);
+        validate_items("panel", panels, &mut report);
         let parts = self
             .parts
             .iter()
             .map(|p| (p.id.as_str(), p.length, p.width, Some(p.quantity), p.value));
-        validate_items("part", parts, &mut errors);
+        validate_items("part", parts, &mut report);
 
         if self.objective.is_open_dimension()
             && (self.panels.len() != 1 || self.panels[0].quantity.is_some_and(|q| q != 1))
         {
-            errors.push(ValidationError::OpenDimensionNeedsOnePanel);
+            report("panels".into(), ValidationError::OpenDimensionNeedsOnePanel);
         }
 
         if errors.is_empty() {
@@ -378,47 +406,63 @@ impl Instance {
 }
 
 /// Checks the fields panels and parts have in common: name, size, quantity
-/// and cost/value.
+/// and cost/value. `report` takes the field's path and the problem.
 fn validate_items<'a>(
     what: &'static str,
     items: impl Iterator<Item = (&'a str, Length, Length, Option<u32>, Option<f64>)>,
-    errors: &mut Vec<ValidationError>,
+    report: &mut impl FnMut(String, ValidationError),
 ) {
     let number_field = if what == "panel" { "cost" } else { "value" };
     let mut seen = HashSet::new();
     for (index, (id, length, width, quantity, number)) in items.enumerate() {
+        let path = |field: &str| format!("{what}s[{index}].{field}");
         if id.trim().is_empty() {
-            errors.push(ValidationError::EmptyId {
-                what,
-                index: index + 1,
-            });
+            report(
+                path("id"),
+                ValidationError::EmptyId {
+                    what,
+                    index: index + 1,
+                },
+            );
         } else if !seen.insert(id) {
-            errors.push(ValidationError::DuplicateId {
-                what,
-                id: id.to_string(),
-            });
+            report(
+                path("id"),
+                ValidationError::DuplicateId {
+                    what,
+                    id: id.to_string(),
+                },
+            );
         }
         for (field, size) in [("length", length), ("width", width)] {
             if size <= Length::ZERO {
-                errors.push(ValidationError::NonPositiveSize {
-                    what,
-                    id: id.to_string(),
-                    field,
-                });
+                report(
+                    path(field),
+                    ValidationError::NonPositiveSize {
+                        what,
+                        id: id.to_string(),
+                        field,
+                    },
+                );
             }
         }
         if quantity == Some(0) {
-            errors.push(ValidationError::ZeroQuantity {
-                what,
-                id: id.to_string(),
-            });
+            report(
+                path("quantity"),
+                ValidationError::ZeroQuantity {
+                    what,
+                    id: id.to_string(),
+                },
+            );
         }
         if number.is_some_and(|n| !n.is_finite() || n < 0.0) {
-            errors.push(ValidationError::InvalidNumber {
-                what,
-                id: id.to_string(),
-                field: number_field,
-            });
+            report(
+                path(number_field),
+                ValidationError::InvalidNumber {
+                    what,
+                    id: id.to_string(),
+                    field: number_field,
+                },
+            );
         }
     }
 }
@@ -505,5 +549,24 @@ mod tests {
         );
         instance.panels[0].quantity = Some(1);
         assert_eq!(instance.validate(), Ok(()));
+    }
+
+    #[test]
+    fn names_the_field_of_each_problem() {
+        let mut instance = example();
+        instance.saw.kerf = Length::from_tenths(-1);
+        instance.parts.push(instance.parts[0].clone());
+        instance.parts[1].quantity = 0;
+        instance.panels.clear();
+        let fields: Vec<String> = instance
+            .validate_fields()
+            .unwrap_err()
+            .into_iter()
+            .map(|error| error.field)
+            .collect();
+        assert_eq!(
+            fields,
+            ["saw.kerf", "panels", "parts[1].id", "parts[1].quantity"]
+        );
     }
 }

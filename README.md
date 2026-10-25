@@ -12,8 +12,22 @@ Status: the solver library and a developer CLI work for 2 and 3 cutting
 stages (Stages 0–4 of [docs/STAGES.md](docs/STAGES.md)). On every test
 instance it gives exactly upstream's cutting plan for the same settings,
 and it runs in 0.61–0.69× upstream's time on the benchmark instances
-([details](docs/STAGES.md)). Next: unlimited stages, then the web API
-and the web UI.
+([details](docs/STAGES.md)). Unlimited stages (Stage 5) are ported and
+match upstream; their timing is still to be measured. The web API
+(Stage 6, [docs/API.md](docs/API.md)) is done. Next: the web UI.
+
+## Web API
+
+```bash
+# Serve the API on http://127.0.0.1:8080 (--help lists the limits).
+cargo run --release -p api
+
+# Or print its OpenAPI description, e.g. to generate a client.
+cargo run -p api -- --print-openapi > openapi.json
+```
+
+Submit a job with `POST /jobs`, follow it with `GET /jobs/{id}/events`,
+stop it with `DELETE /jobs/{id}`; see [docs/API.md](docs/API.md).
 
 ## Developer CLI
 

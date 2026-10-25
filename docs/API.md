@@ -13,11 +13,13 @@ property in `openapi.json`.
 
 ## Conventions
 
-- JSON in and out, UTF-8. Field names are `snake_case` and use the
+- JSON in and out, UTF-8. The request body is read as JSON whatever
+  its `Content-Type`. Field names are `snake_case` and use the
   woodworking terms: panel, part, kerf, grain, offcut, leftover, plan.
 - Lengths are millimetres with at most one decimal (`720`, `3.2`); more
   decimals are rejected, never rounded. Areas are mm². Durations are
-  seconds (`time_limit` whole seconds, measured times with decimals).
+  seconds (`time_limit` whole seconds, measured times with decimals,
+  to the millisecond).
 - Optional fields are left out when empty, except where this page says
   they are `null`.
 - No authentication, no persistence: jobs live in the server's memory
@@ -32,6 +34,9 @@ property in `openapi.json`.
 | `GET /jobs/{id}/events` | Live stream of better plans and state changes (Server-Sent Events) | `200 OK`, `text/event-stream` |
 | `DELETE /jobs/{id}` | Stop the search; the best plan so far is kept | `202 Accepted`, body: job status |
 | `GET /openapi.json` | The OpenAPI 3.1 description of this API | `200 OK` |
+
+Any other path answers `404 not_found`. In `openapi.json` the operations
+are `submit_job`, `get_job`, `cancel_job`, `job_events` and `get_openapi`.
 
 ### `POST /jobs`
 
@@ -91,7 +96,7 @@ The response is the job status (below), usually in state `queued` or
 | `time_limit` | The time limit the job runs with, in seconds. |
 | `elapsed` | Seconds spent searching: 0 while queued, growing while running, final once the job has ended. |
 | `plans_found` | How many better plans have been found so far. |
-| `best` | The best plan so far, or `null` if none yet (or none exists: see below). |
+| `best` | The best plan so far, or `null` if none yet (or none exists: see below). A plan always cuts at least one part. |
 | `message` | Why the job failed, for state `failed`; otherwise `null`. |
 
 `best` (also the payload of the `plan` event):
@@ -120,13 +125,16 @@ whole plan, counting repeated patterns):
 
 Every plan the API serves has passed the checker. Should the solver ever
 produce a plan that breaks a cutting rule, that plan is not served: the
-job stops in state `failed` with the violations in `message`, and `best`
-stays the last valid plan.
+search is stopped, the job ends in state `failed` with the violations in
+`message`, and `best` stays the last valid plan. A job also fails if the
+solver stops unexpectedly (`message`: "the solver stopped
+unexpectedly").
 
 A job can end with `best: null`: no plan cuts every part (for example, a
 part larger than every panel, or too few panels), or the job was stopped
 before the first plan. With the goal "Best use of the panels I have",
-any plan counts, so a plan is found unless the search was stopped first.
+any plan that cuts at least one part counts, so a plan is found unless
+no part fits on any panel or the search was stopped first.
 
 ### Job states
 
@@ -164,15 +172,16 @@ names:
 
 | Event | `data` (JSON) | Sent when |
 |---|---|---|
-| `plan` | A plan report: the same object as `best` in the job status (`number`, `found_after`, `metrics`, `plan`). | A better plan is found. |
-| `state` | `{ "state": "running", "elapsed": 0.003, "plans_found": 0, "message": null }`, fields as in the job status. | The state changes. |
+| `plan` | A plan report: the same object as `best` in the job status (`number`, `found_after`, `metrics`, `plan`; `PlanReport` in `openapi.json`). | A better plan is found. |
+| `state` | `{ "state": "running", "elapsed": 0.003, "plans_found": 0, "message": null }`, fields as in the job status (`StateEvent` in `openapi.json`). | The state changes. |
 
 Order:
 
 1. On connecting, the client gets the current best plan as a `plan`
    event (if there is one), then the current state as a `state` event.
    A client that connects late, or reconnects, so starts from the
-   current status without a separate `GET`.
+   current status without a separate `GET`; it does not see the states
+   it missed (a job that is already running sends no `queued`).
 2. Then one event per change. A `plan` event always comes before the
    `state` event of the state change that follows it.
 3. After a `state` event with a final state (`done`, `cancelled`,
@@ -191,9 +200,14 @@ sent every 15 seconds to keep idle connections open.
 ### `GET /openapi.json`
 
 OpenAPI 3.1, generated from the Rust types with `utoipa`. Every property
-has a `description`: for instance fields, the help text from `FIELDS.md`
-(markdown: `**bold**` marks the name of an option). The UI shows these
-next to its inputs and generates its TypeScript client from this file.
+has a `description`: for instance fields and `time_limit`, exactly the
+help text from `FIELDS.md` (one paragraph, markdown: `**bold**` marks the
+name of an option; a test compares them). The UI shows these next to its
+inputs and generates its TypeScript client from this file. The event
+payloads are the components `PlanReport` and `StateEvent`.
+
+`cargo run -p api -- --print-openapi` prints the same document without
+starting the server, for generating the client.
 
 ## Errors
 
@@ -211,22 +225,28 @@ Every error response has this body:
 
 - `error`: a stable code for programs (below).
 - `message`: one sentence for people.
-- `problems`: for `invalid_instance`, every problem found (all of them,
-  not just the first, when the JSON itself could be read); empty
-  otherwise. `field` is the path of the field at fault in the request
+- `problems`: for `invalid_instance`, every problem found; empty
+  otherwise. Problems are found in two rounds: first every field that is
+  missing or has the wrong type (a length with more than one decimal, a
+  word where a number belongs, an unknown option), all at once; once
+  every field reads, the checks of `Instance::validate` (no parts,
+  duplicate names, quantity 0, …), again all at once. So a body with
+  both kinds lists only the first kind until those are fixed. `field` is the path of the field at fault in the request
   body (`instance.saw.kerf`, `instance.parts[2].quantity`, `time_limit`),
   with 0-based list positions. A problem with a whole list points at the
   list ("add at least one part": `instance.parts`); `field` is `null`
-  only when no part of the body is at fault. `message` is written
-  for the woodworker and can be shown next to the field as is.
+  only when the body is not a JSON object. `message` is written
+  for the woodworker and can be shown next to the field as is, e.g.
+  "this field is required", "must be one of: non_exact, exact,
+  homogenous", "quantity of part \"Side left\" must be at least 1".
 
 | Status | `error` | When |
 |---|---|---|
-| 400 | `invalid_json` | The body is not JSON at all (syntax error). |
-| 404 | `not_found` | No job with this id, or it has expired. |
+| 400 | `invalid_json` | The body is not JSON at all (syntax error, or empty). `message` says where. |
+| 404 | `not_found` | No job with this id (or the id is not a UUID), it has expired, or no such path. |
 | 413 | `too_large` | The body is larger than 2 MB. |
 | 422 | `invalid_instance` | The body is JSON but not a valid job: a missing or mistyped field, a length with more than one decimal, a time limit outside 1–600, or anything `Instance::validate` rejects (no parts, duplicate names, quantity 0, …). |
-| 503 | `busy` | Too many jobs are already waiting; try again later. |
+| 503 | `busy` | Every solver is busy and `--max-queued-jobs` jobs are already waiting; try again later. |
 
 A JSON field the server does not know is ignored, as is a missing
 optional field.
@@ -247,11 +267,12 @@ Command-line options of `cargo run -p api -- …` (`--help` lists them):
 | Option | Default | What it limits |
 |---|---|---|
 | `--listen` | `127.0.0.1:8080` | Address and port to listen on. |
-| `--max-running-jobs` | number of CPU cores | Jobs solved at the same time, each on its own thread of a bounded blocking pool. Further jobs wait in state `queued`, first come first served. |
+| `--max-running-jobs` | number of CPU cores | Jobs solved at the same time, each on its own thread of a blocking pool of that size. Further jobs wait in state `queued`, first come first served. |
 | `--max-queued-jobs` | 32 | Jobs that may wait; beyond that `POST /jobs` answers `503 busy`. |
-| `--keep-jobs-for` | 3600 | Seconds a job stays readable after it ends; then `GET` answers `404`. |
+| `--keep-jobs-for` | 3600 | Seconds a job stays readable after it ends; then `GET` answers `404`. A queued or running job never expires. |
 | `--queue-size` | 2048 | The solver's beam width (not user-facing; larger finds better plans, slower). |
 | `--cors-origin` | any | Allowed browser origin; repeat for several. |
+| `--print-openapi` | | Print `openapi.json` and exit. |
 
 Fixed limits: `time_limit` 1–600 seconds (default 10), request body
 2 MB.
@@ -259,3 +280,28 @@ Fixed limits: `time_limit` 1–600 seconds (default 10), request body
 The solver runs upstream's deterministic search: the same instance and
 time limit give the same plans, unless the time limit cuts the search
 short on a slower or busier machine.
+
+## Changes
+
+Changes to this contract since it was first written (commit 8531aa3),
+for reconciling the UI. None changes a field name or a JSON shape.
+
+- 2026-10-25, Stage 6 implementation:
+  - `best` (and every `plan` event) always cuts at least one part: an
+    empty plan is never served. With "Best use of the panels I have",
+    `best` stays `null` when no part fits on any panel.
+  - `problems` are reported in two rounds (wrong types first, then
+    `Instance::validate`), not all in one; see [Errors](#errors).
+    `field` is `null` only when the body is not a JSON object.
+  - `404 not_found` also for an id that is not a UUID and for unknown
+    paths. The body is read as JSON whatever its `Content-Type`.
+  - `503 busy` precisely: every solver busy and `--max-queued-jobs`
+    jobs waiting.
+  - Measured times (`elapsed`, `found_after`) are rounded to the
+    millisecond.
+  - A job also fails if the solver stops unexpectedly.
+  - `openapi.json`: descriptions are single paragraphs, equal to the
+    help text in `FIELDS.md`; operation ids `submit_job`, `get_job`,
+    `cancel_job`, `job_events`, `get_openapi`; the event payloads are
+    the components `PlanReport` and `StateEvent`. New option
+    `--print-openapi`.

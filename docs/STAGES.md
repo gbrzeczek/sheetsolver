@@ -276,7 +276,41 @@ Exit criteria:
   instance.
 - All solutions pass the checker; benchmarks within ~1.2× of the oracle.
 
-## Stage 6 — Web API
+## Stage 6 — Web API ✅ done 2026-10-25
+
+Result:
+- `api` crate (axum, tokio; library plus binary): `POST /jobs`,
+  `GET /jobs/{id}`, `GET /jobs/{id}/events` (SSE), `DELETE /jobs/{id}`,
+  `GET /openapi.json`, as in `docs/API.md`, which the implementation
+  sharpened in a few places (its "Changes" section lists them; no field
+  or shape changed). `cargo run -p api -- --help` lists the limits.
+- Each job's state is a `watch` channel: the solver thread writes it,
+  `GET` reads it, each event stream sends the latest plan and then the
+  state from one snapshot, so a plan always precedes the state after it
+  and the last plan is never skipped. A FIFO semaphore with one permit
+  per solver bounds the running jobs (`--max-running-jobs`, default the
+  CPU cores) on a blocking pool of that size; `DELETE` sets the solver's
+  `Stop` cancellation flag (a queued job is cancelled at once).
+- Every plan passes the checker before it is served, and its `metrics`
+  are the checker's; a plan that broke a rule would stop the job as
+  `failed` instead. Empty plans are never served.
+- `openapi.json` from `utoipa`: `model` derives `ToSchema` behind its
+  `openapi` feature, with hand-written schemas for `Length`, `Area`,
+  `Stages` and `NodeKind` (whose serde code is custom or whose tag a
+  derived schema leaves undescribed). Descriptions are joined into
+  paragraphs, so instance fields read exactly as in `FIELDS.md`.
+- `422` lists every mistyped or missing field at once (a field-by-field
+  walk of the body, used only to find problems; the instance itself is
+  always read by serde) and then every `Instance::validate` problem with
+  its field path, from the new `Instance::validate_fields`.
+- Tests (`cargo test -p api`, about a second): every property and path
+  parameter in `openapi.json` has a description; instance field
+  descriptions equal `FIELDS.md`; submit and poll to a checked plan;
+  the event stream (plans numbered upwards, all checked, final state
+  last, replay after the end); cancelling a running and a queued job;
+  `503 busy`; `422` with every problem; `400`, `404`, `413`; expiry;
+  CORS. A test also walks all test instances to make sure the problem
+  walk accepts everything serde accepts.
 
 **Goal:** solver as a service.
 

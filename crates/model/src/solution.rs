@@ -6,6 +6,7 @@ use crate::length::{Area, Length};
 
 /// A cutting plan: one pattern per distinct way of cutting a panel.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct Solution {
     /// The cutting patterns, in the order the panels are used.
     pub patterns: Vec<Pattern>,
@@ -14,6 +15,7 @@ pub struct Solution {
 /// One way of cutting a panel, possibly repeated on several identical
 /// panels.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct Pattern {
     /// The name of the panel this pattern cuts.
     pub panel_id: String,
@@ -28,6 +30,7 @@ pub struct Pattern {
 /// The direction of a set of parallel cuts, relative to the panel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum CutDirection {
     /// Cuts at a fixed `x` that run across the panel's length, from one
     /// long edge to the other (upstream "vertical"). The pieces they
@@ -63,6 +66,7 @@ impl CutDirection {
 /// `x` runs along the panel's length and `y` along its width, both from
 /// the panel's corner at (0, 0).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct Node {
     /// What this rectangle is.
     #[serde(flatten)]
@@ -82,10 +86,14 @@ pub struct Node {
     /// direction of the next stage's cuts. Empty for everything but
     /// pieces.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[cfg_attr(feature = "openapi", schema(no_recursion))]
     pub children: Vec<Node>,
 }
 
 /// The kind of a [`Node`].
+///
+/// Its OpenAPI schema is written by hand (`openapi.rs`), to describe the
+/// `kind` field.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum NodeKind {
@@ -152,6 +160,7 @@ impl Node {
 
 /// Figures describing a cutting plan. Computed by the checker.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct Metrics {
     /// Panels cut, counting repeats.
     pub panels_used: u32,

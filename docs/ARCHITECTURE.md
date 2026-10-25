@@ -29,10 +29,14 @@ Dependency direction (no cycles, no shortcuts):
 ```
 model ← checker
 model ← treesearch ← guillotine ← cli, api
-checker ← cli, tests
+checker ← cli, api, tests
 ```
 
-`checker` must never depend on `treesearch` or `guillotine`.
+`checker` must never depend on `treesearch` or `guillotine`. `api` uses
+`checker` to check every plan before serving it and to compute its
+metrics, and `treesearch` for the `Stop` it hands the solver. `model`'s
+`openapi` feature (used by `api` only) adds `utoipa::ToSchema` to its
+types without changing their JSON.
 
 ## UI in the same repository
 
@@ -94,7 +98,8 @@ FIELDS.md  →  /// doc comment on the model field  →  utoipa  →  openapi.js
 ```
 
 A test in the `api` crate fails if any field in `openapi.json` has no
-description.
+description, or if an instance field's description differs from its
+help text in `FIELDS.md`.
 
 User-supplied `id` strings are carried through to the solution; internal
 code uses dense integer indices.
