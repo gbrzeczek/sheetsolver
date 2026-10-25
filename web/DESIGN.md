@@ -44,7 +44,7 @@ up: the names ("Part 4" became "Side"), and the times at which plans
 were found (the golden files have no timings).
 
 **Regenerating.** `python3 web/mockups/build/build.py` writes the HTML
-files, and `node web/mockups/build/screenshot.js` writes the PNGs (with
+files, and `node web/mockups/build/screenshot.cjs` writes the PNGs (with
 the preinstalled Playwright and Chromium). The HTML files are
 self-contained: inline CSS and SVG, no scripts, no network.
 
@@ -762,29 +762,36 @@ No request needed server-side persistence.
 
 ---
 
-## 9. Open questions for the owner
+## 9. Owner decisions (2026-10-25)
 
-These are proposals; per AGENTS.md they stay unimplemented until
-decided.
+Asked as open questions; the owner's answers, now implemented:
 
-1. **Local draft and per-job notes** (the job kept in `localStorage`,
-   ticked-off panels at the saw). This is client-side only, not the
-   server persistence that is Open in SCOPE.md. OK to include?
-2. **Printing.** The handoff's third concept, *Job sheet* (a document
-   with a per-panel manifest), suits printing: one panel per page with
-   its cut list and parts. Export is Open; is a print stylesheet in
-   scope for v1?
-3. **Dimension format**: plain `1040.5` (as typed), or with thousands
-   separators (`1 040.5`)? The mockups use plain figures to match
-   input.
-4. **Part labels** in the drawing show the size as drawn (horizontal ×
-   vertical). The alternative is the part's own length × width as
-   entered. The first matches the rulers and the saw; the second
-   matches the parts table.
+1. **Local draft: kept, with "New job".** The job being edited is kept
+   in the browser (`localStorage`), never on the server, so a reload or
+   a closed tab loses nothing. A **New job** button in Job setup starts
+   over, with Undo instead of a confirmation. (Ticking off panels at the
+   saw was not chosen.)
+2. **Printing: a print stylesheet now.** The handoff's *Job sheet* as
+   paper. **Print** on the finished plan, or the browser's own print,
+   gives A4 landscape pages in black and white, one per panel:
+   - the job name, headline and settings;
+   - the drawing, with rulers and numbered cuts;
+   - the whole cut order, in four columns;
+   - a ☐ checklist of the parts on that panel.
 
-Decided (2026-10-25, owner): help text sits behind a (?) button next to
-each label, opened by tap or click, instead of being always visible
-(§5; `docs/STAGES.md` updated). The visual direction follows the design
+   It uses no PDF library and no server change. File exports (PDF, DXF,
+   CSV) stay Open in `SCOPE.md`.
+3. **Sizes: thin-space thousands.** Shown sizes group thousands with a
+   narrow no-break space: `1 040.5`, `2 440 × 1 220`. It never breaks
+   across lines. Inputs keep what was typed, and accept such spaces when
+   pasted back (`docs/FIELDS.md`, *Conventions*).
+4. **Part labels: as drawn.** A turned part shows its size as it lies
+   on the panel (horizontal × vertical), with the ↻ mark, matching the
+   rulers and the saw.
+
+Earlier decisions: help text sits behind a (?) button next to each
+label, opened by tap or click, instead of being always visible (§5;
+`docs/STAGES.md` updated). The visual direction follows the design
 handoff (Guided setup + Workbench). Jobs have an optional name; part and
 panel names are optional and generated when empty (`docs/SCOPE.md`,
 `docs/FIELDS.md`).

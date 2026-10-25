@@ -1,6 +1,6 @@
 // Screenshot every mockup at desktop and tablet widths, light and dark.
 //
-//   node web/mockups/build/screenshot.js [page-name ...]
+//   node web/mockups/build/screenshot.cjs [page-name ...]
 //
 // Uses the Playwright and Chromium already installed in the environment.
 const { chromium } = require("playwright");

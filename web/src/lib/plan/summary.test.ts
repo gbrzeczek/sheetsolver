@@ -19,7 +19,7 @@ describe("plan summary", () => {
     expect(totalParts(instance)).toBe(6);
     expect(headline(instance, metrics)).toBe("All 6 parts fit");
     expect(headline(instance, { ...metrics, parts_cut: 4 })).toBe("4 of 6 parts fit");
-    expect(headline({ ...instance, objective: "open_dimension_x" }, metrics)).toBe("Uses 1850 mm of 2440 mm");
+    expect(headline({ ...instance, objective: "open_dimension_x" }, metrics)).toBe("Uses 1\u202f850 mm of 2\u202f440 mm");
   });
 
   it("finds parts that fit on no panel, turning those without grain", () => {
@@ -28,9 +28,9 @@ describe("plan summary", () => {
 
   it("names the panels, or gives their size when the name was generated", () => {
     const plan = { patterns: [{ panel_id: "Birch", repeat: 3, first_cuts: "along_length", root: {} }] } as never;
-    expect(panelsLine(instance, plan)).toBe("3 panels of Birch, 2440 × 1220 mm");
+    expect(panelsLine(instance, plan)).toBe("3 panels of Birch, 2\u202f440 × 1\u202f220 mm");
     const unnamed = { ...instance, panels: [{ id: "Panel 1", length: 2440, width: 1220 }] };
     const plan2 = { patterns: [{ panel_id: "Panel 1", repeat: 1, first_cuts: "along_length", root: {} }] } as never;
-    expect(panelsLine(unnamed, plan2)).toBe("1 panel, 2440 × 1220 mm");
+    expect(panelsLine(unnamed, plan2)).toBe("1 panel, 2\u202f440 × 1\u202f220 mm");
   });
 });

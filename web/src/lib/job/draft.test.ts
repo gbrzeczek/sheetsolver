@@ -78,6 +78,9 @@ describe("lengths", () => {
     expect(parseLength("3.25", "width", 0.1).ok).toBe(false);
     expect(parseLength("0", "width", 0.1).ok).toBe(false);
     expect(parseLength("abc", "width", 0.1).ok).toBe(false);
+    expect(parseLength("1 040.5", "length", 0.1)).toEqual({ ok: true, value: 1040.5 });
+    expect(parseLength("2\u202f440", "length", 0.1)).toEqual({ ok: true, value: 2440 });
+    expect(parseLength("1 04", "length", 0.1).ok).toBe(false);
   });
 });
 

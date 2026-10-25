@@ -76,6 +76,15 @@ test("problems the server finds map to the same fields (422)", async ({ page }) 
   await expect(page.locator("#panel-0-width")).toHaveAttribute("aria-invalid", "true");
 });
 
+test("New job starts over, with Undo", async ({ page }) => {
+  await enterJob(page, [{ name: "Side", length: "720", width: "560" }], { length: "2440", width: "1220" });
+  await page.getByRole("button", { name: "New job" }).click();
+  await expect(page.locator("#part-0-id")).toHaveValue("");
+  await expect(page.locator("#part-0-length")).toHaveValue("");
+  await page.getByRole("status").getByRole("button", { name: "Undo" }).click();
+  await expect(page.locator("#part-0-id")).toHaveValue("Side");
+});
+
 test("the draft survives a reload", async ({ page }) => {
   await enterJob(page, [{ name: "Side", length: "720", width: "560" }], { length: "2440", width: "1220" });
   await page.locator("#job-name").fill("Wardrobe");

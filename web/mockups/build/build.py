@@ -116,9 +116,14 @@ def options(section: str, name: str) -> list[str]:
 # --------------------------------------------------------------------------
 
 def fmt(v: float) -> str:
-    """Millimetres as the user typed them: 720, 3.2, 1040.5."""
+    """Millimetres for reading: 720, 3.2, 1 040.5 (narrow no-break space
+    as the thousands separator, as the app shows them)."""
     v = round(v, 1)
-    return str(int(v)) if v == int(v) else f"{v:.1f}"
+    text = str(int(v)) if v == int(v) else f"{v:.1f}"
+    whole, _, decimal = text.partition(".")
+    if len(whole) >= 4:
+        whole = f"{int(whole):,}".replace(",", "\u202f")
+    return whole + ("." + decimal if decimal else "")
 
 
 def fmt_area_m2(mm2: float) -> str:
@@ -666,7 +671,7 @@ def parts_table(errors: dict, focus: tuple[int, str] | None, pop_field: str | No
                 chk = " checked" if p.get("grain") else ""
                 cells.append(f'<td class="c"><input type="checkbox"{chk} aria-label="{esc(lab)}"></td>')
             else:
-                val = errors.get(key, (None, None))[0] or (fmt(p[f]) if f in ("length", "width") else p.get(f, ""))
+                val = errors.get(key, (None, None))[0] or (fmt(p[f]).replace("\u202f", "") if f in ("length", "width") else p.get(f, ""))
                 if f == "id" and val == f"Part {i + 1}":
                     # Left empty: the generated name shows as a placeholder.
                     cells.append(f'<td>{cell("", placeholder=val, label_text=lab, text=True)}</td>')
@@ -690,7 +695,7 @@ def panels_table() -> str:
     for i, p in enumerate(INST["panels"]):
         rows.append(
             f'<tr><td class="idx">{i + 1}</td><td>{cell(p["id"], label_text="Name", text=True)}</td>'
-            f'<td>{cell(fmt(p["length"]), label_text="Length")}</td><td>{cell(fmt(p["width"]), label_text="Width")}</td>'
+            f'<td>{cell(fmt(p["length"]).replace("\u202f", ""), label_text="Length")}</td><td>{cell(fmt(p["width"]).replace("\u202f", ""), label_text="Width")}</td>'
             f'<td>{cell(p.get("quantity"), placeholder="Unlimited", label_text="Quantity")}</td>'
             f'<td>{cell(p.get("cost"), placeholder="Area", label_text="Cost")}</td>'
             f'<td><button class="icon-btn" aria-label="Remove panel">{icon("close", 12)}</button></td></tr>')
