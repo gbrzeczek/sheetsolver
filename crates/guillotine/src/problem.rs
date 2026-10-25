@@ -6,7 +6,34 @@
 //! upstream's height (`h`, along y), *quantity* is copies, *grain* is
 //! oriented and *value* is profit (see `docs/ARCHITECTURE.md`).
 
-use model::{CutType, FirstCuts, Instance, Objective, Stages};
+use model::{CutType, FirstCuts, Instance, Stages};
+
+/// What a plan optimizes, in upstream's terms.
+///
+/// upstream: include/packingsolver/algorithms/common.hpp, `Objective`: the
+/// four objectives users choose from, plus `Feasibility`, which only the
+/// subproblems of upstream's algorithms use.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Objective {
+    BinPacking,
+    Knapsack,
+    OpenDimensionX,
+    OpenDimensionY,
+    /// Cut every part from the panels given: a plan is feasible once every
+    /// part is cut, and is then as good as any other.
+    Feasibility,
+}
+
+impl From<model::Objective> for Objective {
+    fn from(objective: model::Objective) -> Self {
+        match objective {
+            model::Objective::BinPacking => Objective::BinPacking,
+            model::Objective::Knapsack => Objective::Knapsack,
+            model::Objective::OpenDimensionX => Objective::OpenDimensionX,
+            model::Objective::OpenDimensionY => Objective::OpenDimensionY,
+        }
+    }
+}
 
 /// The direction of the first cuts of a panel, as upstream names it.
 ///
@@ -22,7 +49,7 @@ pub(crate) enum Orientation {
 }
 
 /// A rectangle's size, in tenths of a millimetre.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Size {
     /// Along x.
     pub w: i64,
@@ -77,13 +104,26 @@ pub(crate) struct BinType {
     /// How many panels of this type there are, resolved: "as many as
     /// needed" is one per part, as upstream does.
     pub copies: u32,
+    /// Cost of one panel (by default its area in mm²).
+    pub cost: f64,
+}
+
+/// The saw settings of a problem (upstream `Parameters`, for the In
+/// features).
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Settings {
+    pub number_of_stages: u32,
+    pub cut_type: CutType,
+    pub first_stage_orientation: Orientation,
+    pub cut_thickness: i64,
 }
 
 /// An instance ready for the search.
 #[derive(Debug, Clone)]
 pub(crate) struct Problem {
     pub objective: Objective,
-    /// 2 or 3.
+    /// 2 or 3, or for unlimited stages the largest length plus width of a
+    /// panel type: no cutting tree can be deeper (upstream's convention).
     pub number_of_stages: u32,
     pub cut_type: CutType,
     pub first_stage_orientation: Orientation,
@@ -104,18 +144,20 @@ pub(crate) struct Problem {
     /// The part type with the highest value per area (the first one on
     /// ties).
     pub largest_efficiency_item_type: usize,
+    /// upstream `number_of_stacks()`. Each part type is its own stack, but
+    /// a subproblem's part types keep the stack numbers of the problem they
+    /// come from, so a subproblem without the first part types has more
+    /// stacks than part types, which changes upstream's choice of
+    /// algorithm (see `selection.rs`).
+    pub number_of_stacks: usize,
 }
 
 impl Problem {
-    /// Converts a valid instance with 2 or 3 stages.
+    /// Converts a valid instance.
     ///
     /// upstream: src/rectangleguillotine/instance_builder.cpp, `InstanceBuilder::build`,
     /// for the derived totals; tools/oracle/main.cpp for the field mapping.
     pub fn new(instance: &Instance) -> Problem {
-        let number_of_stages = match instance.saw.stages {
-            Stages::Limited(count) => count,
-            Stages::Unlimited => unreachable!("unlimited stages are solved elsewhere"),
-        };
         let first_stage_orientation = match instance.saw.first_cuts {
             FirstCuts::Either => Orientation::Any,
             FirstCuts::AlongLength => Orientation::Horizontal,
@@ -137,21 +179,6 @@ impl Problem {
             .collect();
         let number_of_items: u32 = item_types.iter().map(|item| item.copies).sum();
 
-        let mut item_area = 0;
-        let mut item_profit = 0.0;
-        let mut largest_efficiency_item_type = 0;
-        for (index, item) in item_types.iter().enumerate() {
-            item_area += i64::from(item.copies) * item.size.area();
-            // upstream: `copies * profit`, summed in order, so the total
-            // compares equal to upstream's.
-            item_profit += f64::from(item.copies) * item.profit;
-            let best = &item_types[largest_efficiency_item_type];
-            let efficiency = |item: &ItemType| item.profit / item.size.area() as f64;
-            if efficiency(best) < efficiency(item) {
-                largest_efficiency_item_type = index;
-            }
-        }
-
         let bin_types: Vec<BinType> = instance
             .panels
             .iter()
@@ -167,20 +194,73 @@ impl Problem {
                 } else {
                     panel.quantity.unwrap_or(number_of_items)
                 },
+                cost: panel.effective_cost(),
             })
             .collect();
+
+        let (number_of_stages, cut_type, first_stage_orientation) = match instance.saw.stages {
+            Stages::Limited(count) => (count, instance.saw.cut_type, first_stage_orientation),
+            // upstream: unlimited stages are exact cuts in either direction,
+            // whatever the cut type and first cuts the instance gives.
+            Stages::Unlimited => {
+                let deepest = bin_types
+                    .iter()
+                    .map(|bin| (bin.size.w + bin.size.h) as u32)
+                    .max()
+                    .unwrap_or(0);
+                (deepest, CutType::Exact, Orientation::Any)
+            }
+        };
+
+        Problem::from_types(
+            instance.objective.into(),
+            Settings {
+                number_of_stages,
+                cut_type,
+                first_stage_orientation,
+                cut_thickness: instance.saw.kerf.tenths(),
+            },
+            item_types,
+            bin_types,
+        )
+    }
+
+    /// A problem from its part and panel types, with the totals derived as
+    /// upstream's `InstanceBuilder::build` derives them.
+    pub fn from_types(
+        objective: Objective,
+        settings: Settings,
+        item_types: Vec<ItemType>,
+        bin_types: Vec<BinType>,
+    ) -> Problem {
+        let number_of_items: u32 = item_types.iter().map(|item| item.copies).sum();
+        let mut item_area = 0;
+        let mut item_profit = 0.0;
+        let mut largest_efficiency_item_type = 0;
+        for (index, item) in item_types.iter().enumerate() {
+            item_area += i64::from(item.copies) * item.size.area();
+            // upstream: `copies * profit`, summed in order, so the total
+            // compares equal to upstream's.
+            item_profit += f64::from(item.copies) * item.profit;
+            let best = &item_types[largest_efficiency_item_type];
+            let efficiency = |item: &ItemType| item.profit / item.size.area() as f64;
+            if efficiency(best) < efficiency(item) {
+                largest_efficiency_item_type = index;
+            }
+        }
         let bin_area = bin_types
             .iter()
             .map(|bin| i64::from(bin.copies) * bin.size.area())
             .sum();
         let number_of_bins = bin_types.iter().map(|bin| bin.copies).sum();
+        let item_types_len = item_types.len();
 
         Problem {
-            objective: instance.objective,
-            number_of_stages,
-            cut_type: instance.saw.cut_type,
-            first_stage_orientation,
-            cut_thickness: instance.saw.kerf.tenths(),
+            objective,
+            number_of_stages: settings.number_of_stages,
+            cut_type: settings.cut_type,
+            first_stage_orientation: settings.first_stage_orientation,
+            cut_thickness: settings.cut_thickness,
             item_types,
             bin_types,
             number_of_items,
@@ -189,7 +269,46 @@ impl Problem {
             bin_area,
             number_of_bins,
             largest_efficiency_item_type,
+            number_of_stacks: item_types_len,
         }
+    }
+
+    /// The saw settings, to build subproblems with the same ones
+    /// (upstream `InstanceBuilder::set_parameters`).
+    pub fn settings(&self) -> Settings {
+        Settings {
+            number_of_stages: self.number_of_stages,
+            cut_type: self.cut_type,
+            first_stage_orientation: self.first_stage_orientation,
+            cut_thickness: self.cut_thickness,
+        }
+    }
+
+    /// Whether the number of stages is unlimited: no panel type could be
+    /// cut deeper.
+    ///
+    /// upstream: instance.hpp, `Instance::number_of_stages_unlimited`.
+    pub fn unlimited_stages(&self) -> bool {
+        let deepest = self
+            .bin_types
+            .iter()
+            .map(|bin| bin.size.w + bin.size.h)
+            .max()
+            .unwrap_or(0);
+        i64::from(self.number_of_stages) >= deepest
+    }
+
+    /// The panel type of the panel at `position`, panels taken in the
+    /// order listed (upstream `Instance::bin_type_id`).
+    pub fn bin_type_of_position(&self, position: u32) -> usize {
+        let mut remaining = position;
+        for (bin_type, bin) in self.bin_types.iter().enumerate() {
+            if remaining < bin.copies {
+                return bin_type;
+            }
+            remaining -= bin.copies;
+        }
+        panic!("panel position {position} beyond the last panel")
     }
 
     /// The size of a part type, seen with first cuts in `orientation`:

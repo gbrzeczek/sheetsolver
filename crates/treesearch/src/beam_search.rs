@@ -65,6 +65,10 @@ pub struct Stop {
     /// Stop once this flag is set, from any thread or from a new-solution
     /// callback.
     pub cancel: Option<Arc<AtomicBool>>,
+    /// More flags that stop the search once set: those of the searches
+    /// this one runs inside (upstream adds each enclosing algorithm's end
+    /// flag to the timer it passes down).
+    pub flags: Vec<Arc<AtomicBool>>,
 }
 
 impl Stop {
@@ -74,8 +78,16 @@ impl Stop {
             .is_some_and(|deadline| Instant::now() >= deadline)
             || self
                 .cancel
-                .as_ref()
-                .is_some_and(|flag| flag.load(Ordering::Relaxed))
+                .iter()
+                .chain(&self.flags)
+                .any(|flag| flag.load(Ordering::Relaxed))
+    }
+
+    /// This stop, plus `flag`.
+    pub fn with_flag(&self, flag: &Arc<AtomicBool>) -> Stop {
+        let mut stop = self.clone();
+        stop.flags.push(Arc::clone(flag));
+        stop
     }
 }
 

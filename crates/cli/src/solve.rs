@@ -28,6 +28,7 @@ pub fn run(
             deadline: time_limit.map(|limit| start + limit),
             ..Stop::default()
         },
+        ..SolveParams::default()
     };
     let result = solve(&instance, &params, |solution| {
         if !progress {

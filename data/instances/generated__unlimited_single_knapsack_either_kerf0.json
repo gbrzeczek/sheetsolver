@@ -1,0 +1,57 @@
+{
+  "objective": "knapsack",
+  "saw": {
+    "kerf": 0,
+    "stages": "unlimited",
+    "cut_type": "non_exact",
+    "first_cuts": "either"
+  },
+  "panels": [
+    {
+      "id": "Panel 1",
+      "length": 2500,
+      "width": 1250,
+      "quantity": 1
+    }
+  ],
+  "parts": [
+    {
+      "id": "Part 1",
+      "length": 160,
+      "width": 110,
+      "quantity": 3
+    },
+    {
+      "id": "Part 2",
+      "length": 840.5,
+      "width": 200,
+      "quantity": 1,
+      "grain": true
+    },
+    {
+      "id": "Part 3",
+      "length": 820,
+      "width": 280.5,
+      "quantity": 3
+    },
+    {
+      "id": "Part 4",
+      "length": 270,
+      "width": 260.5,
+      "quantity": 4
+    },
+    {
+      "id": "Part 5",
+      "length": 1110,
+      "width": 580,
+      "quantity": 4,
+      "value": 934032
+    },
+    {
+      "id": "Part 6",
+      "length": 920,
+      "width": 100,
+      "quantity": 4
+    }
+  ]
+}

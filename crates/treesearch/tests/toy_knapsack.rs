@@ -242,6 +242,7 @@ fn stops_when_cancelled_from_a_callback() {
         stop: Stop {
             deadline: None,
             cancel: Some(cancel.clone()),
+            ..Stop::default()
         },
         ..Parameters::default()
     };
@@ -267,6 +268,7 @@ fn stops_at_the_deadline() {
         stop: Stop {
             deadline: Some(Instant::now()),
             cancel: None,
+            ..Stop::default()
         },
         ..Parameters::default()
     };

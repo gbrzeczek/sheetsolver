@@ -4,7 +4,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use model::{Instance, Solution};
+use checker::Problem;
+use model::{Instance, Solution, Stages};
 use serde_json::Value;
 
 fn data_dir() -> PathBuf {
@@ -18,7 +19,8 @@ fn golden_files() -> Vec<(String, PathBuf)> {
         for entry in fs::read_dir(commit_dir.unwrap().path()).unwrap() {
             let path = entry.unwrap().path();
             let file_name = path.file_name().unwrap().to_str().unwrap();
-            let stem = file_name.rsplit_once(".q").unwrap().0.to_string();
+            // `<instance>.<algorithm and queue size>.json`.
+            let stem = file_name.split_once('.').unwrap().0.to_string();
             files.push((stem, path));
         }
     }
@@ -59,8 +61,12 @@ fn oracle_solutions_pass_and_metrics_match_upstream() {
 
         if solution.patterns.is_empty() {
             // Upstream found no solution. Only objectives that may leave
-            // parts out accept an empty plan.
-            assert_eq!(upstream["feasible"], false, "{name}");
+            // parts out accept an empty plan, upstream and here.
+            assert_eq!(
+                upstream["feasible"],
+                !instance.objective.cuts_every_part(),
+                "{name}"
+            );
             assert_eq!(
                 report.is_feasible(),
                 !instance.objective.cuts_every_part(),
@@ -70,6 +76,25 @@ fn oracle_solutions_pass_and_metrics_match_upstream() {
         }
 
         assert_eq!(upstream["feasible"], true, "{name}");
+        if instance.objective.is_open_dimension()
+            && instance.saw.stages == Stages::Unlimited
+            && !report.is_feasible()
+        {
+            // Upstream cuts these plans on a shorter panel and leaves the
+            // rest of the panel out of the tree; the solver completes them
+            // (guillotine's open_dimension.rs). That must be all that is
+            // wrong with them.
+            for violation in &report.violations {
+                assert!(
+                    matches!(
+                        violation.problem,
+                        Problem::UnaccountedRemainder { .. } | Problem::NotSpanningParent { .. }
+                    ),
+                    "{name}: {violation}"
+                );
+            }
+            continue;
+        }
         if !report.is_feasible() {
             let lines: Vec<String> = report.violations.iter().map(|v| v.to_string()).collect();
             failures.push(format!("{name}:\n  {}", lines.join("\n  ")));

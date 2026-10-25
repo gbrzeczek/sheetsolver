@@ -2,14 +2,18 @@
 //!
 //! A port of the part of upstream `treesearchsolver` that the guillotine
 //! solver uses: a branching-scheme trait ([`BranchingScheme`]) and
-//! `iterative_beam_search_2` ([`iterative_beam_search`]).
+//! `iterative_beam_search_2` ([`iterative_beam_search`]), and the variant
+//! that generates children one at a time, `iterative_beam_search`
+//! ([`child_by_child_beam_search`], with [`ChildByChildScheme`]).
 
 mod beam_search;
+mod child_by_child;
 mod scheme;
 
 use std::cmp::Ordering;
 
 pub use beam_search::{Output, Parameters, Stop, iterative_beam_search};
+pub use child_by_child::{ChildByChildScheme, child_by_child_beam_search};
 pub use scheme::BranchingScheme;
 
 /// A floating-point guide value usable in a [`BranchingScheme::Priority`].

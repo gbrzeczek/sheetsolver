@@ -161,10 +161,15 @@ pub fn solve(
 ) -> Result<SolveOutput, SolveError>;    // best plan, nodes expanded
 ```
 
-`SolveError` is an invalid instance or, until Stage 5, unlimited stages.
-`solve` runs upstream's deterministic mode: one beam search per guide and
-first-cut direction, one after the other, each with queue size 1 and then
-`queue_size` (see `crates/guillotine/src/lib.rs`).
+`SolveError` is an invalid instance (or, for `solve_with_algorithm`, an
+algorithm that does not apply). `solve` runs the algorithms upstream's
+`optimize()` would select, limited to the In ones (`select_algorithms`),
+in upstream's deterministic mode, and keeps the first strictly better
+plan: the tree search for 2 and 3 stages; with unlimited stages, the
+maximal-spaces search (one panel), the hypergraph search (one small panel,
+many copies, knapsack), or the tree search and the sequential heuristics
+(several panels). `solve_with_algorithm` runs one of them, as the oracle's
+`--algorithm` does. See `crates/guillotine/src/lib.rs`.
 
 Single-threaded first. Parallelism (several searches with different
 settings, as upstream's anytime mode does) is added later behind the same

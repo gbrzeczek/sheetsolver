@@ -19,6 +19,12 @@ upstream's paths for several panel sizes: with first cuts "either", one
 search in which each new panel picks its own direction, and for knapsack,
 the panels taken smallest first whatever order they are listed in.
 
+A third set (`generated__unlimited_*`) covers how upstream solves
+unlimited stages: a single panel (the maximal-spaces search), several
+panels (the sequential heuristics, with few or many parts per panel), and
+many copies of few parts on small panels (the hypergraph search, which
+upstream only picks for panels of at most 0.1 m²).
+
 Output is deterministic (fixed seed), so regenerating never changes
 existing files unless this script changes.
 """
@@ -118,6 +124,121 @@ def multi_panel_instance(rng, objective, stages, cut_type, kerf, first_cuts):
     }
 
 
+# The unlimited-stage set. Upstream ignores the cut type and the first-cut
+# direction with unlimited stages, so they only vary for realism.
+UNLIMITED_SEED = 20261027
+# Small offcut-sized boards, at most 0.1 m² (upstream's hypergraph limit).
+SMALL_BOARDS = [(400, 250), (316, 316), (300, 200)]
+
+
+def unlimited_parts(rng, count, quantities, max_length=1200, max_width=700):
+    """Like `parts`, with given quantities and an upper size."""
+    result = []
+    for i in range(count):
+        length = rng.randrange(min(150, max_length // 2), max_length, 10) + rng.choice([0, 0, 0.5])
+        width = rng.randrange(min(80, max_width // 2), min(int(length), max_width) + 1, 10) \
+            + rng.choice([0, 0, 0.5])
+        result.append({
+            "id": f"Part {i + 1}",
+            "length": length,
+            "width": width,
+            "quantity": rng.choice(quantities),
+            **({"grain": True} if rng.random() < 0.4 else {}),
+        })
+    return result
+
+
+def fill_to(rng, items, area, fraction):
+    """Drops parts until their total area is at most `fraction` of `area`."""
+    while sum(p["length"] * p["width"] * p["quantity"] for p in items) > fraction * area:
+        part = rng.choice(items)
+        if part["quantity"] > 1:
+            part["quantity"] -= 1
+        elif len(items) > 1:
+            items.remove(part)
+    for i, part in enumerate(items):
+        part["id"] = f"Part {i + 1}"
+    return items
+
+
+def unlimited_instances(rng):
+    """Yields (name, instance) for the unlimited-stage set."""
+    def saw(kerf, first_cuts):
+        return {"kerf": kerf, "stages": "unlimited",
+                "cut_type": rng.choice(CUT_TYPES), "first_cuts": first_cuts}
+
+    for index, (kerf, first_cuts) in enumerate(
+            [(k, f) for k in KERFS for f in FIRST_CUTS]):
+        kerf_name = str(kerf).replace(".", "_")
+        suffix = f"{first_cuts}_kerf{kerf_name}"
+        length, width = rng.choice(BOARDS)
+
+        # One panel, all parts fit: bin packing on a single panel.
+        items = fill_to(rng, unlimited_parts(rng, rng.randint(5, 10), [1, 1, 2, 3]),
+                        length * width, 0.75)
+        yield f"single_bin_packing_{suffix}", {
+            "objective": "bin_packing", "saw": saw(kerf, first_cuts),
+            "panels": [{"id": "Panel 1", "length": length, "width": width, "quantity": 1}],
+            "parts": items}
+
+        # One panel, too many parts: knapsack, some with values.
+        items = unlimited_parts(rng, rng.randint(6, 12), [1, 2, 3, 4])
+        for part in items:
+            if rng.random() < 0.3:
+                part["value"] = round(part["length"] * part["width"] * rng.uniform(0.5, 2.0))
+        yield f"single_knapsack_{suffix}", {
+            "objective": "knapsack", "saw": saw(kerf, first_cuts),
+            "panels": [{"id": "Panel 1", "length": length, "width": width, "quantity": 1}],
+            "parts": items}
+
+        # Several panels, few parts per panel: sequential value correction.
+        items = unlimited_parts(rng, rng.randint(5, 9), [2, 3, 4, 6])
+        yield f"panels_bin_packing_{suffix}", {
+            "objective": "bin_packing", "saw": saw(kerf, first_cuts),
+            "panels": [{"id": "Panel 1", "length": length, "width": width}],
+            "parts": items}
+
+        # Several panels, many small parts per panel: sequential single
+        # knapsack (more than 16 parts per panel on average).
+        items = unlimited_parts(rng, rng.randint(4, 7), [8, 12, 20],
+                                max_length=400, max_width=300)
+        yield f"panels_small_parts_{suffix}", {
+            "objective": "bin_packing", "saw": saw(kerf, first_cuts),
+            "panels": [{"id": "Panel 1", "length": length, "width": width}],
+            "parts": items}
+
+        # Two panel sizes, knapsack: panels used smallest first.
+        boards = rng.sample(BOARDS, 2)
+        items = unlimited_parts(rng, rng.randint(6, 10), [2, 4, 6])
+        yield f"panels_knapsack_{suffix}", {
+            "objective": "knapsack", "saw": saw(kerf, first_cuts),
+            "panels": [{"id": f"Panel {i + 1}", "length": l, "width": w,
+                        "quantity": rng.choice([1, 2])}
+                       for i, (l, w) in enumerate(boards)],
+            "parts": items}
+
+        # Many copies of few parts on one small panel: the hypergraph
+        # search (knapsack only).
+        small_length, small_width = SMALL_BOARDS[index % len(SMALL_BOARDS)]
+        items = unlimited_parts(rng, rng.randint(2, 4), [40, 60, 100],
+                                max_length=small_length // 2, max_width=small_width // 2)
+        yield f"copies_knapsack_{suffix}", {
+            "objective": "knapsack", "saw": saw(kerf, first_cuts),
+            "panels": [{"id": "Offcut", "length": small_length, "width": small_width,
+                        "quantity": 1}],
+            "parts": items}
+
+        # Many copies, several small panels: the sequential heuristics with
+        # hypergraph subproblems.
+        items = unlimited_parts(rng, rng.randint(2, 3), [30, 50],
+                                max_length=small_length // 2, max_width=small_width // 2)
+        yield f"copies_panels_{suffix}", {
+            "objective": rng.choice(["bin_packing", "knapsack"]), "saw": saw(kerf, first_cuts),
+            "panels": [{"id": "Offcut", "length": small_length, "width": small_width,
+                        "quantity": rng.choice([3, 5])}],
+            "parts": items}
+
+
 def main():
     if len(sys.argv) != 2:
         sys.exit(__doc__)
@@ -152,7 +273,13 @@ def main():
                     data = multi_panel_instance(rng, objective, stages, cut_type, kerf, first_cuts)
                     (out / name).write_text(json.dumps(data, indent=2) + "\n")
                     multi_count += 1
-    print(f"generated {count} + {multi_count} with several panel sizes")
+    rng = random.Random(UNLIMITED_SEED)
+    unlimited_count = 0
+    for name, data in unlimited_instances(rng):
+        (out / f"generated__unlimited_{name}.json").write_text(json.dumps(data, indent=2) + "\n")
+        unlimited_count += 1
+    print(f"generated {count} + {multi_count} with several panel sizes"
+          f" + {unlimited_count} with unlimited stages")
 
 
 if __name__ == "__main__":

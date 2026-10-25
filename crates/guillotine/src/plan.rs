@@ -1,22 +1,22 @@
-//! Turning a search node into a cutting plan.
+//! Cutting plans as upstream builds and compares them.
 //!
 //! upstream: src/rectangleguillotine/solution_builder.cpp (`SolutionBuilder`),
 //! tree_search.cpp (`BranchingScheme::to_solution`) and solution.cpp
-//! (`Solution::update_indicators`, `Solution::operator<`).
+//! (`Solution::update_indicators`, `append_bin`, `operator<`).
 //!
-//! The plan is first built the way upstream builds it, as a flat list of
-//! nodes per panel, so that every node (and every offcut upstream adds to
-//! close a piece) comes out in upstream's order. It is converted to the
-//! public [`model::Solution`] tree only when someone asks for it.
+//! A plan is built the way upstream builds it, as a flat list of nodes per
+//! panel, so that every node (and every offcut upstream adds to close a
+//! piece) comes out in upstream's order. It is converted to the public
+//! [`model::Solution`] tree only when someone asks for it.
 
-use model::{CutDirection, Instance, Length, NodeKind, Objective, Pattern, Solution};
+use model::{CutDirection, Instance, Length, NodeKind, Pattern, Solution};
 
-use crate::problem::{Orientation, Problem};
+use crate::problem::{Objective, Orientation, Problem};
 use crate::scheme::{Node, Scheme};
 
 /// What a plan node holds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Content {
+pub(crate) enum Content {
     /// The panel itself.
     Panel,
     /// A piece cut further.
@@ -32,26 +32,27 @@ enum Content {
 /// A rectangle of a panel's cutting tree, in the panel's own coordinates
 /// (upstream `SolutionNode`).
 #[derive(Debug, Clone)]
-struct PlanNode {
+pub(crate) struct PlanNode {
     /// Index of the parent in the panel's node list; `None` for the panel.
-    parent: Option<usize>,
+    pub parent: Option<usize>,
     /// Stage: 0 for the panel, 1 for the pieces of the first cuts, …
-    depth: u32,
-    left: i64,
-    right: i64,
-    bottom: i64,
-    top: i64,
-    content: Content,
+    pub depth: u32,
+    pub left: i64,
+    pub right: i64,
+    pub bottom: i64,
+    pub top: i64,
+    pub content: Content,
     /// Indices of the children, in cutting order.
-    children: Vec<usize>,
+    pub children: Vec<usize>,
 }
 
-/// One panel's cutting tree (upstream `SolutionBin`).
+/// One panel's cutting tree, cut `copies` times (upstream `SolutionBin`).
 #[derive(Debug, Clone)]
-struct PlanBin {
-    bin_type: usize,
-    first_cut_orientation: Orientation,
-    nodes: Vec<PlanNode>,
+pub(crate) struct PlanBin {
+    pub bin_type: usize,
+    pub copies: u32,
+    pub first_cut_orientation: Orientation,
+    pub nodes: Vec<PlanNode>,
 }
 
 /// A complete or partial cutting plan, with the figures upstream compares
@@ -59,9 +60,15 @@ struct PlanBin {
 #[derive(Debug, Clone)]
 pub(crate) struct Plan {
     bins: Vec<PlanBin>,
-    /// Whether every part that must be cut is cut.
+    /// Whether the plan breaks no rule and, except for the knapsack
+    /// objective, cuts every part.
     pub feasible: bool,
+    /// Panels used, repeats included.
     pub number_of_bins: u32,
+    /// Parts cut, repeats included.
+    pub number_of_items: u32,
+    /// Copies cut of each part type.
+    pub item_copies: Vec<u32>,
     pub profit: f64,
     /// How far the cuts reach along x on the last panel (upstream `width`).
     pub width: i64,
@@ -72,7 +79,73 @@ pub(crate) struct Plan {
 impl Plan {
     /// The plan with no panel (upstream's empty `Solution`).
     pub fn empty(problem: &Problem) -> Plan {
-        PlanBuilder::new(problem).build()
+        Plan::evaluate(Vec::new(), problem)
+    }
+
+    /// The panels of the plan, in cutting order.
+    pub fn bins(&self) -> &[PlanBin] {
+        &self.bins
+    }
+
+    /// Panels of `bin_type` used, repeats included.
+    pub fn bin_copies(&self, bin_type: usize) -> u32 {
+        self.bins
+            .iter()
+            .filter(|bin| bin.bin_type == bin_type)
+            .map(|bin| bin.copies)
+            .sum()
+    }
+
+    /// The figures of a plan made of `bins`.
+    ///
+    /// upstream: solution.cpp, `Solution::update_indicators`, run on each
+    /// panel in turn; the figures it accumulates are summed in the same
+    /// order here.
+    fn evaluate(bins: Vec<PlanBin>, problem: &Problem) -> Plan {
+        let mut item_copies = vec![0u32; problem.item_types.len()];
+        let mut number_of_bins = 0;
+        let mut number_of_items = 0;
+        let mut profit = 0.0;
+        let (mut width, mut height) = (0, 0);
+        for bin in &bins {
+            number_of_bins += bin.copies;
+            // upstream: the extent is that of the last panel.
+            width = 0;
+            height = 0;
+            for node in &bin.nodes {
+                if let Content::Part(item_type) = node.content {
+                    number_of_items += bin.copies;
+                    profit += f64::from(bin.copies) * problem.item_types[item_type].profit;
+                    item_copies[item_type] += bin.copies;
+                }
+                if node.depth > 0 && node.content != Content::Leftover {
+                    width = width.max(node.right);
+                    height = height.max(node.top);
+                }
+            }
+        }
+        let copies_fit = item_copies
+            .iter()
+            .zip(&problem.item_types)
+            .all(|(&cut, item)| cut <= item.copies);
+        let all_cut = item_copies
+            .iter()
+            .zip(&problem.item_types)
+            .all(|(&cut, item)| cut == item.copies);
+        // upstream also checks the number of stages, but no plan built here
+        // can break it: the tree search builds at most the stages allowed,
+        // and the other algorithms only run with unlimited stages.
+        let feasible = copies_fit && (problem.objective == Objective::Knapsack || all_cut);
+        Plan {
+            bins,
+            feasible,
+            number_of_bins,
+            number_of_items,
+            item_copies,
+            profit,
+            width,
+            height,
+        }
     }
 
     /// Whether `self` is strictly better than `other`.
@@ -90,31 +163,151 @@ impl Plan {
             Objective::BinPacking => self.number_of_bins < other.number_of_bins,
             Objective::OpenDimensionX => self.width < other.width,
             Objective::OpenDimensionY => self.height < other.height,
-            Objective::Knapsack => strictly_greater_profit(self.profit, other.profit),
+            Objective::Knapsack | Objective::Feasibility => {
+                strictly_greater_profit(self.profit, other.profit)
+            }
         }
+    }
+
+    /// The number of stages of the plan, counting every level of cuts.
+    ///
+    /// upstream: solution.cpp, `Solution::update_indicators` ("staging
+    /// analysis") for exact cuts: the deepest node that differs from its
+    /// parent.
+    pub fn number_of_stages(&self) -> u32 {
+        self.bins.iter().map(stages_used_exact).max().unwrap_or(0)
+    }
+
+    /// Appends panel `bin_pos` of `from`, a plan of another problem, cut
+    /// `copies` times. `bin_types` and `item_types` map `from`'s panel and
+    /// part types to this problem's (`None`: the same).
+    ///
+    /// upstream: solution.cpp, `Solution::append_bin`. The panel takes the
+    /// size of its new panel type (a subproblem may have cut a shorter
+    /// one), and the previous last panel's leftover becomes an offcut.
+    pub fn append_bin(
+        &mut self,
+        problem: &Problem,
+        from: &Plan,
+        bin_pos: usize,
+        copies: u32,
+        bin_types: Option<&[usize]>,
+        item_types: Option<&[usize]>,
+    ) {
+        if let Some(node) = self.bins.last_mut().and_then(|bin| bin.nodes.last_mut()) {
+            if node.content == Content::Leftover {
+                node.content = Content::Offcut;
+            }
+        }
+        let old = &from.bins[bin_pos];
+        let bin_type = bin_types.map_or(old.bin_type, |map| map[old.bin_type]);
+        let size = problem.bin_types[bin_type].size;
+        let nodes = old
+            .nodes
+            .iter()
+            .map(|node| {
+                let mut node = node.clone();
+                match node.content {
+                    Content::Panel => {
+                        node.right = size.w;
+                        node.top = size.h;
+                    }
+                    Content::Part(item_type) => {
+                        node.content =
+                            Content::Part(item_types.map_or(item_type, |map| map[item_type]));
+                    }
+                    _ => {}
+                }
+                node
+            })
+            .collect();
+        let mut bins = std::mem::take(&mut self.bins);
+        bins.push(PlanBin {
+            bin_type,
+            copies,
+            first_cut_orientation: old.first_cut_orientation,
+            nodes,
+        });
+        *self = Plan::evaluate(bins, problem);
+    }
+
+    /// Appends every panel of `from`, once each.
+    ///
+    /// upstream: solution.cpp, `Solution::append_bins`.
+    pub fn append_bins(&mut self, problem: &Problem, from: &Plan, bin_types: Option<&[usize]>) {
+        for bin_pos in 0..from.bins.len() {
+            self.append_bin(problem, from, bin_pos, 1, bin_types, None);
+        }
+    }
+
+    /// Appends `copies` uncut panels of `bin_type`.
+    ///
+    /// upstream: solution.cpp, `Solution::append_empty_bin`.
+    pub fn append_empty_bin(&mut self, problem: &Problem, bin_type: usize, copies: u32) {
+        let orientation = match problem.first_stage_orientation {
+            Orientation::Any => Orientation::Vertical,
+            orientation => orientation,
+        };
+        let mut builder = PlanBuilder::new(problem);
+        builder.add_bin(bin_type, copies, orientation);
+        let empty = builder.build();
+        self.append_bins(problem, &empty, None);
     }
 
     /// The plan in the public format.
     ///
     /// upstream: tools/oracle/main.cpp, `write_solution`, which defines how
     /// upstream's nodes map to ours.
+    ///
+    /// Upstream's leftover belongs to the very last panel only: a last
+    /// panel cut several times becomes two patterns, the copies but the
+    /// last with the leftover as an offcut, then the last one (the oracle
+    /// writes it the same way).
     pub fn to_solution(&self, problem: &Problem, instance: &Instance) -> Solution {
-        let patterns = self
-            .bins
-            .iter()
-            .map(|bin| Pattern {
-                panel_id: instance.panels[bin.bin_type].id.clone(),
-                repeat: 1,
-                first_cuts: if bin.first_cut_orientation == Orientation::Vertical {
-                    CutDirection::AcrossLength
-                } else {
-                    CutDirection::AlongLength
-                },
-                root: model_node(problem, instance, bin, 0),
-            })
-            .collect();
-        Solution { patterns }
+        let pattern = |bin: &PlanBin, repeat: u32, leftover_as_offcut: bool| Pattern {
+            panel_id: instance.panels[bin.bin_type].id.clone(),
+            repeat,
+            first_cuts: if bin.first_cut_orientation == Orientation::Vertical {
+                CutDirection::AcrossLength
+            } else {
+                CutDirection::AlongLength
+            },
+            root: model_node(problem, instance, bin, 0, leftover_as_offcut),
+        };
+        let mut patterns = Vec::new();
+        for bin in &self.bins {
+            let has_leftover = bin
+                .nodes
+                .iter()
+                .any(|node| node.content == Content::Leftover);
+            if has_leftover && bin.copies > 1 {
+                patterns.push(pattern(bin, bin.copies - 1, true));
+                patterns.push(pattern(bin, 1, false));
+            } else {
+                patterns.push(pattern(bin, bin.copies, false));
+            }
+        }
+        let mut solution = Solution { patterns };
+        crate::open_dimension::complete_open_dimension(instance, &mut solution);
+        solution
     }
+}
+
+/// The deepest stage of a node that differs from its parent: the number of
+/// stages of the panel with exact cuts.
+fn stages_used_exact(bin: &PlanBin) -> u32 {
+    bin.nodes
+        .iter()
+        .filter(|node| {
+            node.parent.is_none_or(|parent| {
+                let parent = &bin.nodes[parent];
+                (node.left, node.right, node.bottom, node.top)
+                    != (parent.left, parent.right, parent.bottom, parent.top)
+            })
+        })
+        .map(|node| node.depth)
+        .max()
+        .unwrap_or(0)
 }
 
 /// Whether `v1` is greater than `v2` by more than a relative 1e-6.
@@ -132,7 +325,13 @@ pub(crate) fn strictly_greater_profit(v1: f64, v2: f64) -> bool {
     }
 }
 
-fn model_node(problem: &Problem, instance: &Instance, bin: &PlanBin, index: usize) -> model::Node {
+fn model_node(
+    problem: &Problem,
+    instance: &Instance,
+    bin: &PlanBin,
+    index: usize,
+    leftover_as_offcut: bool,
+) -> model::Node {
     let node = &bin.nodes[index];
     let length = node.right - node.left;
     let kind = match node.content {
@@ -144,6 +343,7 @@ fn model_node(problem: &Problem, instance: &Instance, bin: &PlanBin, index: usiz
             }
         }
         Content::Offcut if node.children.is_empty() => NodeKind::Offcut,
+        Content::Leftover if node.children.is_empty() && leftover_as_offcut => NodeKind::Offcut,
         Content::Leftover if node.children.is_empty() => NodeKind::Leftover,
         _ => NodeKind::Piece,
     };
@@ -157,21 +357,25 @@ fn model_node(problem: &Problem, instance: &Instance, bin: &PlanBin, index: usiz
         children: node
             .children
             .iter()
-            .map(|&child| model_node(problem, instance, bin, child))
+            .map(|&child| model_node(problem, instance, bin, child, leftover_as_offcut))
             .collect(),
     }
 }
 
+/// Why a cut could not be added (upstream throws).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct BuildError;
+
 /// Builds a plan cut by cut, the way upstream's `SolutionBuilder` does:
 /// each new node is a child of the last node one stage up, and pieces are
 /// closed with an offcut when the next node leaves them.
-struct PlanBuilder<'a> {
+pub(crate) struct PlanBuilder<'a> {
     problem: &'a Problem,
     bins: Vec<PlanBin>,
 }
 
 impl<'a> PlanBuilder<'a> {
-    fn new(problem: &'a Problem) -> Self {
+    pub fn new(problem: &'a Problem) -> Self {
         PlanBuilder {
             problem,
             bins: Vec::new(),
@@ -179,10 +383,11 @@ impl<'a> PlanBuilder<'a> {
     }
 
     /// upstream: `SolutionBuilder::add_bin`, without trims.
-    fn add_bin(&mut self, bin_type: usize, first_cut_orientation: Orientation) {
+    pub fn add_bin(&mut self, bin_type: usize, copies: u32, first_cut_orientation: Orientation) {
         let size = self.problem.bin_types[bin_type].size;
         self.bins.push(PlanBin {
             bin_type,
+            copies,
             first_cut_orientation,
             nodes: vec![PlanNode {
                 parent: None,
@@ -228,23 +433,27 @@ impl<'a> PlanBuilder<'a> {
     }
 
     /// Adds a node at `depth`, ending at `cut_position`, after the last
-    /// child of the current piece one stage up.
+    /// child of the current piece one stage up. Fails, like upstream, if
+    /// the depth skips a stage, the parent holds a part, or the cut is
+    /// outside the piece.
     ///
     /// upstream: `SolutionBuilder::add_node`.
-    fn add_node(&mut self, depth: u32, cut_position: i64) {
+    pub fn try_add_node(&mut self, depth: u32, cut_position: i64) -> Result<(), BuildError> {
         let cut_thickness = self.problem.cut_thickness;
-        let bin = self.bins.last_mut().expect("a panel is added first");
+        let bin = self.bins.last_mut().ok_or(BuildError)?;
         let mut parent = bin.nodes.len() - 1;
-        debug_assert!(depth >= 1 && depth <= bin.nodes[parent].depth + 1);
+        if depth < 1 || depth > bin.nodes[parent].depth + 1 {
+            return Err(BuildError);
+        }
         while bin.nodes[parent].depth != depth - 1 {
             Self::close(bin, parent, cut_thickness);
-            parent = bin.nodes[parent]
-                .parent
-                .expect("depth found below the panel");
+            parent = bin.nodes[parent].parent.ok_or(BuildError)?;
         }
 
         if bin.nodes[parent].parent.is_some() {
-            debug_assert!(!matches!(bin.nodes[parent].content, Content::Part(_)));
+            if matches!(bin.nodes[parent].content, Content::Part(_)) {
+                return Err(BuildError);
+            }
             bin.nodes[parent].content = Content::Piece;
         }
         let piece = &bin.nodes[parent];
@@ -252,13 +461,17 @@ impl<'a> PlanBuilder<'a> {
         let cuts_along_x = (bin.first_cut_orientation == Orientation::Vertical) == (depth % 2 == 1);
         let (left, right, bottom, top) = if cuts_along_x {
             let left = previous.map_or(piece.left, |node| node.right + cut_thickness);
+            if cut_position <= left || cut_position > piece.right {
+                return Err(BuildError);
+            }
             (left, cut_position, piece.bottom, piece.top)
         } else {
             let bottom = previous.map_or(piece.bottom, |node| node.top + cut_thickness);
+            if cut_position <= bottom || cut_position > piece.top {
+                return Err(BuildError);
+            }
             (piece.left, piece.right, bottom, cut_position)
         };
-        debug_assert!(left < right && right <= piece.right, "bad cut position");
-        debug_assert!(bottom < top && top <= piece.top, "bad cut position");
         let node = PlanNode {
             parent: Some(parent),
             depth,
@@ -272,27 +485,46 @@ impl<'a> PlanBuilder<'a> {
         let index = bin.nodes.len();
         bin.nodes[parent].children.push(index);
         bin.nodes.push(node);
+        Ok(())
     }
 
-    /// Marks the last node as a part.
+    /// [`PlanBuilder::try_add_node`] for callers whose cuts are valid by
+    /// construction.
+    pub fn add_node(&mut self, depth: u32, cut_position: i64) {
+        self.try_add_node(depth, cut_position)
+            .expect("the cut fits its piece");
+    }
+
+    /// Marks the last node as a part. Fails, like upstream, if the node
+    /// does not have the part's size.
     ///
     /// upstream: `SolutionBuilder::set_last_node_item`.
-    fn set_last_node_item(&mut self, item_type: usize) {
+    pub fn try_set_last_node_item(&mut self, item_type: usize) -> Result<(), BuildError> {
+        let size = self.problem.item_types[item_type].size;
         let node = self
             .bins
             .last_mut()
             .and_then(|bin| bin.nodes.last_mut())
-            .expect("a node is added first");
-        let size = self.problem.item_types[item_type].size;
+            .ok_or(BuildError)?;
         let (w, h) = (node.right - node.left, node.top - node.bottom);
-        debug_assert!((w, h) == (size.w, size.h) || (w, h) == (size.h, size.w));
+        if (w, h) != (size.w, size.h) && (w, h) != (size.h, size.w) {
+            return Err(BuildError);
+        }
         node.content = Content::Part(item_type);
+        Ok(())
+    }
+
+    /// [`PlanBuilder::try_set_last_node_item`] for callers whose nodes
+    /// have the part's size by construction.
+    pub fn set_last_node_item(&mut self, item_type: usize) {
+        self.try_set_last_node_item(item_type)
+            .expect("the node has the part's size");
     }
 
     /// Closes the open pieces, marks the leftover and computes the figures.
     ///
-    /// upstream: `SolutionBuilder::build` and `Solution::update_indicators`.
-    fn build(mut self) -> Plan {
+    /// upstream: `SolutionBuilder::build`.
+    pub fn build(mut self) -> Plan {
         let cut_thickness = self.problem.cut_thickness;
         for bin in &mut self.bins {
             let mut parent = Some(bin.nodes.len() - 1);
@@ -306,41 +538,7 @@ impl<'a> PlanBuilder<'a> {
                 node.content = Content::Leftover;
             }
         }
-
-        let mut copies = vec![0u32; self.problem.item_types.len()];
-        let mut profit = 0.0;
-        let (mut width, mut height) = (0, 0);
-        for bin in &self.bins {
-            // upstream: the extent is that of the last panel.
-            width = 0;
-            height = 0;
-            for node in &bin.nodes {
-                if let Content::Part(item_type) = node.content {
-                    if node.children.is_empty() {
-                        copies[item_type] += 1;
-                        profit += self.problem.item_types[item_type].profit;
-                    }
-                }
-                if node.depth > 0 && node.content != Content::Leftover {
-                    width = width.max(node.right);
-                    height = height.max(node.top);
-                }
-            }
-        }
-        let feasible = self.problem.objective == Objective::Knapsack
-            || copies
-                .iter()
-                .zip(&self.problem.item_types)
-                .all(|(&cut, item)| cut == item.copies);
-
-        Plan {
-            number_of_bins: self.bins.len() as u32,
-            bins: self.bins,
-            feasible,
-            profit,
-            width,
-            height,
-        }
+        Plan::evaluate(self.bins, self.problem)
     }
 }
 
@@ -374,6 +572,7 @@ pub(crate) fn plan_of(scheme: &Scheme, problem: &Problem, node: &Node) -> Plan {
             let bin_type = scheme.bin_type_ids()[builder.bins.len()];
             builder.add_bin(
                 bin_type,
+                1,
                 if vertical {
                     Orientation::Vertical
                 } else {

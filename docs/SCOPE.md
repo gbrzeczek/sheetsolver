@@ -102,6 +102,20 @@ Record every scope decision here with a date, so agents can see why.
   hypergraph search with infinite copies, the sequential multi-panel
   heuristics and upstream's automatic algorithm selection. The general
   hypergraph search stays Open.
+- 2026-10-25 — Stage 5: the sequential heuristics (single knapsack,
+  value correction) solve each panel's subproblem without instance
+  reduction, unlike upstream, whose subproblems call `optimize()` with
+  reduction on (reduction stays Open). They are selected for unlimited
+  stages only; 2- and 3-stage instances with several panels stay on the
+  tree search alone, although upstream would add them there too (with
+  column generation, which is Out). Both choices are measured at the end
+  of Stage 5 so they can be revisited with numbers.
+- 2026-10-25 — Stage 5 ports upstream's `minimize_number_of_stages`
+  (`post_process.cpp`) only because the hypergraph search calls it on
+  every plan it finds; post-processing as a separate step stays Open.
+  Upstream picks the hypergraph search for panels of at most 0.1 m²
+  (10⁷ in its units, which are ours): offcut-sized panels, never full
+  sheets. Ported as is, so `solve()` picks what upstream picks.
 - 2026-10-25 — First cuts direction is In: either (default), along or
   across the panel's length. "Either" shares the search time between the
   two directions (or uses twice the CPU once searches run in parallel);

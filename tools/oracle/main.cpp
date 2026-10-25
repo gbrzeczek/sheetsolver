@@ -5,13 +5,31 @@
  *
  * Usage:
  *
- *     sheetsolver_oracle INSTANCE.json OUTPUT.json [--queue-size N] [--benchmark R]
+ *     sheetsolver_oracle INSTANCE.json OUTPUT.json [--algorithm A]
+ *         [--queue-size N] [--benchmark R] [--reduce-subproblems]
  *
- * The search runs in upstream's deterministic single-threaded mode
- * (not-anytime-sequential) with a fixed queue size, with only the tree
- * search enabled and instance reduction disabled, so that the output is
- * reproducible and depends only on the algorithm being ported (see
- * docs/TESTING.md).
+ * Every algorithm runs in upstream's deterministic single-threaded mode
+ * (not-anytime-sequential) with instance reduction disabled, so that the
+ * output is reproducible and depends only on the algorithm being ported
+ * (see docs/TESTING.md). --algorithm picks it (default: tree_search):
+ *
+ * - tree_search: `optimize()` with only the tree search enabled, at queue
+ *   size N (default 2048).
+ * - maximal_spaces: `tree_search_maximal_spaces()` alone, at queue size N
+ *   (default 16, upstream's).
+ * - hypergraph: `tree_search_hypergraph_infinite_copies()` alone, with
+ *   upstream's not-anytime maximum array size.
+ * - sequential_single_knapsack, sequential_value_correction: upstream's
+ *   `optimize_sequential_single_knapsack` and
+ *   `optimize_sequential_value_correction` (optimize.cpp), reproduced here
+ *   with one difference: their single-panel subproblems are solved by
+ *   `optimize()` with reduction off (upstream leaves it on; see the Stage 5
+ *   decision in docs/SCOPE.md), unless --reduce-subproblems, which is
+ *   upstream's own behaviour (to measure what the decision costs).
+ *   Upstream's default parameters otherwise.
+ * - auto: `optimize()` with upstream's automatic algorithm selection
+ *   (reduction off). Records the label of every improvement, which names
+ *   the algorithm that found it.
  *
  * With --benchmark R, the oracle instead runs upstream's tree search alone
  * (`tree_search()`, without the bounds `optimize()` computes first) R times,
@@ -25,15 +43,21 @@
  * inside upstream.
  */
 
+#include "packingsolver/rectangleguillotine/algorithm_formatter.hpp"
 #include "packingsolver/rectangleguillotine/instance_builder.hpp"
 #include "packingsolver/rectangleguillotine/optimize.hpp"
-// Internal header, for --benchmark.
+// Internal headers, to run single algorithms.
 #include "rectangleguillotine/tree_search.hpp"
+#include "rectangleguillotine/tree_search_maximal_spaces.hpp"
+#include "rectangleguillotine/tree_search_hypergraph_infinite_copies.hpp"
+#include "algorithms/sequential_value_correction.hpp"
 
 #include <chrono>
 #include <limits>
 
 #include <cmath>
+#include <cstdlib>
+#include <iomanip>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -47,6 +71,11 @@ namespace
 
 /** Default of upstream's 'not_anytime_tree_search_queue_size'. */
 constexpr NodeId default_queue_size = 2048;
+
+/**
+ * Default of upstream's 'not_anytime_tree_search_maximal_spaces_queue_size'.
+ */
+constexpr NodeId default_maximal_spaces_queue_size = 16;
 
 [[noreturn]] void fail(const std::string& message)
 {
@@ -172,7 +201,11 @@ Instance read_instance(
     return builder.build();
 }
 
-std::string node_kind(const SolutionNode& node)
+/**
+ * With 'leftover_as_offcut', upstream's residual (-3) is written as an
+ * offcut: for the copies of a repeated last panel but its very last one.
+ */
+std::string node_kind(const SolutionNode& node, bool leftover_as_offcut)
 {
     // Upstream stores the bin type in the root's item type, so the root
     // must be recognised by its depth before looking at the item type.
@@ -185,7 +218,7 @@ std::string node_kind(const SolutionNode& node)
     switch (node.item_type_id) {
     case -1: return "offcut";
     case -2: return "piece";
-    case -3: return "leftover";
+    case -3: return leftover_as_offcut? "offcut": "leftover";
     case -4: return "defect";
     }
     fail("unknown node type " + std::to_string(node.item_type_id));
@@ -195,11 +228,12 @@ json write_node(
         const Instance& instance,
         const SolutionBin& bin,
         SolutionNodeId node_id,
-        const std::vector<std::string>& part_ids)
+        const std::vector<std::string>& part_ids,
+        bool leftover_as_offcut)
 {
     const SolutionNode& node = bin.nodes[node_id];
     json j;
-    std::string kind = node_kind(node);
+    std::string kind = node_kind(node, leftover_as_offcut);
     j["kind"] = kind;
     if (kind == "part") {
         const ItemType& item_type = instance.item_type(node.item_type_id);
@@ -214,13 +248,13 @@ json write_node(
     j["stage"] = node.d;
     j["children"] = json::array();
     for (SolutionNodeId child_id: node.children)
-        j["children"].push_back(write_node(instance, bin, child_id, part_ids));
+        j["children"].push_back(write_node(instance, bin, child_id, part_ids, leftover_as_offcut));
     return j;
 }
 
 json write_solution(
         const Solution& solution,
-        NodeId queue_size,
+        const json& oracle,
         const std::vector<std::string>& panel_ids,
         const std::vector<std::string>& part_ids)
 {
@@ -229,10 +263,9 @@ json write_solution(
     j["oracle"] = {
         {"upstream_commit", PACKINGSOLVER_COMMIT},
         {"optimization_mode", "not_anytime_sequential"},
-        {"algorithm", "tree_search"},
-        {"queue_size", queue_size},
-        {"internal_length_unit", "0.1 mm"},
     };
+    j["oracle"].update(oracle);
+    j["oracle"]["internal_length_unit"] = "0.1 mm";
     // Upstream's own metrics, unchanged, so Stage 1 can compare the
     // checker's metrics against them. Their units are internal: lengths in
     // tenths of a millimetre, areas in hundredths of mm², profit as given
@@ -266,18 +299,185 @@ json write_solution(
         }
         if (root_id == -1)
             fail("bin without a root node");
-        j["patterns"].push_back({
-            {"panel_id", panel_ids[bin.bin_type_id]},
-            {"repeat", bin.copies},
-            // Upstream "vertical" first cuts are at a fixed x: they run
-            // across the panel's length (x).
-            {"first_cuts",
-                bin.first_cut_orientation == CutOrientation::Vertical?
-                "across_length": "along_length"},
-            {"root", write_node(instance, bin, root_id, part_ids)},
-        });
+        // Upstream's leftover only belongs to the very last panel: a last
+        // panel cut several times becomes two patterns, the copies but the
+        // last with the leftover as an offcut, then the last one.
+        bool has_leftover = false;
+        for (const SolutionNode& node: bin.nodes)
+            if (node.item_type_id == -3 && node.d > 0)
+                has_leftover = true;
+        bool split = has_leftover && bin.copies > 1;
+        auto pattern = [&](BinPos copies, bool leftover_as_offcut)
+        {
+            return json{
+                {"panel_id", panel_ids[bin.bin_type_id]},
+                {"repeat", copies},
+                // Upstream "vertical" first cuts are at a fixed x: they run
+                // across the panel's length (x).
+                {"first_cuts",
+                    bin.first_cut_orientation == CutOrientation::Vertical?
+                    "across_length": "along_length"},
+                {"root", write_node(instance, bin, root_id, part_ids, leftover_as_offcut)},
+            };
+        };
+        if (split)
+            j["patterns"].push_back(pattern(bin.copies - 1, true));
+        j["patterns"].push_back(pattern(split? 1: bin.copies, false));
     }
     return j;
+}
+
+/** Parameters every algorithm and subproblem runs with. */
+OptimizeParameters deterministic_parameters()
+{
+    OptimizeParameters parameters;
+    parameters.verbosity_level = 0;
+    parameters.optimization_mode = OptimizationMode::NotAnytimeSequential;
+    parameters.reduction_parameters.reduce = false;
+    // The tree search needs no LP solver, but upstream computes a
+    // one-dimensional bound with one before searching. The bound can only
+    // stop a search early once a solution matches it, which does not
+    // change the best solution found (later solutions must be strictly
+    // better to replace it); Stage 3 verified it.
+    parameters.linear_programming_solver_name
+        = columngenerationsolver::SolverName::Highs;
+    return parameters;
+}
+
+/**
+ * The single-panel subproblem solver of the sequential algorithms: as in
+ * optimize.cpp, but with reduction off.
+ */
+/** --reduce-subproblems: upstream's own subproblems, reduced. */
+bool reduce_subproblems = false;
+
+SequentialValueCorrectionFunction<Instance, Solution> knapsack_solver(
+        NodeId queue_size,
+        NodeId queue_size_maximal_spaces)
+{
+    return [queue_size, queue_size_maximal_spaces](const Instance& kp_instance)
+    {
+        OptimizeParameters kp_parameters = deterministic_parameters();
+        kp_parameters.reduction_parameters.reduce = reduce_subproblems;
+        kp_parameters.not_anytime_tree_search_queue_size = queue_size;
+        kp_parameters.not_anytime_tree_search_maximal_spaces_queue_size
+            = queue_size_maximal_spaces;
+        auto pool = optimize(kp_instance, kp_parameters).solution_pool;
+        if (std::getenv("SHEETSOLVER_TRACE")) {
+            std::cerr << "kp bin " << kp_instance.bin_type(0).rect.w << "x" << kp_instance.bin_type(0).rect.h << " items";
+            for (ItemTypeId i = 0; i < kp_instance.number_of_item_types(); ++i)
+                std::cerr << " " << kp_instance.item_type(i).rect.w << "x" << kp_instance.item_type(i).rect.h
+                    << "*" << kp_instance.item_type(i).copies << "@" << std::setprecision(17) << kp_instance.item_type(i).profit;
+            std::cerr << " -> profit " << pool.best().profit() << " items " << pool.best().number_of_items() << " by " << pool.best_label() << std::endl;
+        }
+        return pool;
+    };
+}
+
+/**
+ * upstream: optimize.cpp, 'optimize_sequential_single_knapsack' in
+ * not-anytime mode (one pass).
+ */
+Solution sequential_single_knapsack(const Instance& instance, json& oracle)
+{
+    OptimizeParameters defaults;
+    NodeId queue_size
+        = defaults.not_anytime_sequential_single_knapsack_subproblem_tree_search_queue_size;
+    NodeId queue_size_maximal_spaces
+        = defaults.not_anytime_sequential_single_knapsack_subproblem_tree_search_maximal_spaces_queue_size;
+    SequentialValueCorrectionParameters<Instance, Solution, rectangleguillotine::Output> svc_parameters;
+    svc_parameters.verbosity_level = 0;
+    svc_parameters.maximum_number_of_iterations = 1;
+    svc_parameters.initial_profit_exponent = 1.0;
+    auto output = packingsolver::sequential_value_correction<Instance, InstanceBuilder, Solution, AlgorithmFormatter, rectangleguillotine::Output>(
+            instance,
+            knapsack_solver(queue_size, queue_size_maximal_spaces),
+            svc_parameters);
+    oracle["subproblem_queue_size"] = queue_size;
+    oracle["subproblem_maximal_spaces_queue_size"] = queue_size_maximal_spaces;
+    oracle["subproblem_reduction"] = reduce_subproblems;
+    return output.solution_pool.best();
+}
+
+/**
+ * upstream: optimize.cpp, 'optimize_sequential_value_correction' in
+ * not-anytime mode.
+ */
+Solution sequential_value_correction(const Instance& instance, json& oracle)
+{
+    OptimizeParameters defaults;
+    NodeId queue_size
+        = defaults.sequential_value_correction_subproblem_tree_search_queue_size;
+    NodeId queue_size_maximal_spaces
+        = defaults.sequential_value_correction_subproblem_tree_search_maximal_spaces_queue_size;
+    Counter iterations
+        = defaults.not_anytime_sequential_value_correction_number_of_iterations;
+    SequentialValueCorrectionParameters<Instance, Solution, rectangleguillotine::Output> svc_parameters;
+    svc_parameters.verbosity_level = 0;
+    svc_parameters.initial_profit_exponent = 1.1;
+    svc_parameters.maximum_number_of_iterations = iterations;
+    auto output = packingsolver::sequential_value_correction<Instance, InstanceBuilder, Solution, AlgorithmFormatter, rectangleguillotine::Output>(
+            instance,
+            knapsack_solver(queue_size, queue_size_maximal_spaces),
+            svc_parameters);
+    oracle["subproblem_queue_size"] = queue_size;
+    oracle["subproblem_maximal_spaces_queue_size"] = queue_size_maximal_spaces;
+    oracle["subproblem_reduction"] = reduce_subproblems;
+    oracle["iterations"] = iterations;
+    return output.solution_pool.best();
+}
+
+/** Runs one algorithm as the usage above describes. */
+Solution run_algorithm(
+        const Instance& instance,
+        const std::string& algorithm,
+        NodeId queue_size,
+        json& oracle)
+{
+    oracle["algorithm"] = algorithm;
+    if (algorithm == "tree_search") {
+        OptimizeParameters parameters = deterministic_parameters();
+        parameters.use_tree_search = true;
+        parameters.not_anytime_tree_search_queue_size = queue_size;
+        oracle["queue_size"] = queue_size;
+        return optimize(instance, parameters).solution_pool.best();
+    }
+    if (algorithm == "maximal_spaces") {
+        TreeSearchMaximalSpacesParameters parameters;
+        parameters.verbosity_level = 0;
+        parameters.optimization_mode = OptimizationMode::NotAnytimeSequential;
+        parameters.not_anytime_tree_search_queue_size = queue_size;
+        oracle["queue_size"] = queue_size;
+        return tree_search_maximal_spaces(instance, parameters).solution_pool.best();
+    }
+    if (algorithm == "hypergraph") {
+        TreeSearchHypergraphInfiniteCopiesParameters parameters;
+        parameters.verbosity_level = 0;
+        parameters.maximum_array_size = OptimizeParameters()
+            .not_anytime_tree_search_hypergraph_infinite_copies_maximum_array_size;
+        oracle["maximum_array_size"] = parameters.maximum_array_size;
+        return tree_search_hypergraph_infinite_copies(instance, parameters).solution_pool.best();
+    }
+    if (algorithm == "sequential_single_knapsack")
+        return sequential_single_knapsack(instance, oracle);
+    if (algorithm == "sequential_value_correction")
+        return sequential_value_correction(instance, oracle);
+    if (algorithm == "auto") {
+        OptimizeParameters parameters = deterministic_parameters();
+        json labels = json::array();
+        // The callback also fires on bound updates, with the current best
+        // label: only new labels are improvements.
+        parameters.new_solution_callback = [&labels](const rectangleguillotine::Output& output)
+        {
+            const std::string& label = output.solution_pool.best_label();
+            if (!label.empty() && (labels.empty() || labels.back() != label))
+                labels.push_back(label);
+        };
+        Solution solution = optimize(instance, parameters).solution_pool.best();
+        oracle["improvements"] = labels;
+        return solution;
+    }
+    fail("unknown algorithm \"" + algorithm + "\"");
 }
 
 }
@@ -287,22 +487,32 @@ int main(int argc, char* argv[])
     try {
         if (argc < 3) {
             std::cerr << "usage: sheetsolver_oracle INSTANCE.json OUTPUT.json"
-                " [--queue-size N] [--benchmark R]" << std::endl;
+                " [--algorithm A] [--queue-size N] [--benchmark R]" << std::endl;
             return 2;
         }
         std::string instance_path = argv[1];
         std::string output_path = argv[2];
-        NodeId queue_size = default_queue_size;
+        std::string algorithm = "tree_search";
+        NodeId queue_size = -1;
         int benchmark_repeats = 0;
         for (int i = 3; i < argc; ++i) {
             std::string arg = argv[i];
             if (arg == "--queue-size" && i + 1 < argc) {
                 queue_size = std::stoll(argv[++i]);
+            } else if (arg == "--algorithm" && i + 1 < argc) {
+                algorithm = argv[++i];
+            } else if (arg == "--reduce-subproblems") {
+                reduce_subproblems = true;
             } else if (arg == "--benchmark" && i + 1 < argc) {
                 benchmark_repeats = std::stoi(argv[++i]);
             } else {
                 fail("unknown argument \"" + arg + "\"");
             }
+        }
+        if (queue_size == -1) {
+            queue_size = (algorithm == "maximal_spaces")?
+                default_maximal_spaces_queue_size:
+                default_queue_size;
         }
 
         std::ifstream instance_file(instance_path);
@@ -314,54 +524,38 @@ int main(int argc, char* argv[])
         std::vector<std::string> part_ids;
         Instance instance = read_instance(instance_json, panel_ids, part_ids);
 
+        Solution solution(instance);
+        json oracle;
         if (benchmark_repeats > 0) {
-            TreeSearchParameters ts_parameters;
-            ts_parameters.verbosity_level = 0;
-            ts_parameters.optimization_mode = OptimizationMode::NotAnytimeSequential;
-            ts_parameters.not_anytime_tree_search_queue_size = queue_size;
+            // Times the algorithm alone: no bounds, no JSON.
             double fastest = std::numeric_limits<double>::infinity();
-            Solution solution(instance);
             for (int repeat = 0; repeat < benchmark_repeats; ++repeat) {
                 auto start = std::chrono::steady_clock::now();
-                const TreeSearchOutput ts_output = tree_search(instance, ts_parameters);
+                if (algorithm == "tree_search") {
+                    TreeSearchParameters ts_parameters;
+                    ts_parameters.verbosity_level = 0;
+                    ts_parameters.optimization_mode = OptimizationMode::NotAnytimeSequential;
+                    ts_parameters.not_anytime_tree_search_queue_size = queue_size;
+                    solution = tree_search(instance, ts_parameters).solution_pool.best();
+                    oracle = {{"algorithm", algorithm}, {"queue_size", queue_size}};
+                } else {
+                    oracle = json::object();
+                    solution = run_algorithm(instance, algorithm, queue_size, oracle);
+                }
                 std::chrono::duration<double> elapsed
                     = std::chrono::steady_clock::now() - start;
                 fastest = std::min(fastest, elapsed.count());
-                solution = ts_output.solution_pool.best();
             }
             std::cout << fastest << std::endl;
-            std::ofstream output_file(output_path);
-            if (!output_file.good())
-                fail("unable to open \"" + output_path + "\"");
-            output_file << write_solution(solution, queue_size, panel_ids, part_ids).dump(2)
-                << std::endl;
-            return 0;
+        } else {
+            solution = run_algorithm(instance, algorithm, queue_size, oracle);
         }
 
-        OptimizeParameters parameters;
-        parameters.verbosity_level = 0;
-        parameters.optimization_mode = OptimizationMode::NotAnytimeSequential;
-        parameters.reduction_parameters.reduce = false;
-        parameters.use_tree_search = true;
-        parameters.not_anytime_tree_search_queue_size = queue_size;
-        // The tree search needs no LP solver, but upstream computes a
-        // one-dimensional bound with one before searching. The bound can
-        // only stop the search early once a solution matches it. We assume
-        // this does not change the best solution found (later solutions
-        // must be strictly better to replace it); Stage 3 verifies it.
-        parameters.linear_programming_solver_name
-            = columngenerationsolver::SolverName::Highs;
-        const rectangleguillotine::Output output = optimize(instance, parameters);
-
-        json solution_json = write_solution(
-                output.solution_pool.best(),
-                queue_size,
-                panel_ids,
-                part_ids);
         std::ofstream output_file(output_path);
         if (!output_file.good())
             fail("unable to open \"" + output_path + "\"");
-        output_file << solution_json.dump(2) << std::endl;
+        output_file << write_solution(solution, oracle, panel_ids, part_ids).dump(2)
+            << std::endl;
         return 0;
     } catch (const std::exception& e) {
         std::cerr << "error: " << e.what() << std::endl;

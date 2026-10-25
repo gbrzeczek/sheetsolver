@@ -1,0 +1,32 @@
+{
+  "objective": "bin_packing",
+  "saw": {
+    "kerf": 3.2,
+    "stages": "unlimited",
+    "cut_type": "homogenous",
+    "first_cuts": "either"
+  },
+  "panels": [
+    {
+      "id": "Panel 1",
+      "length": 2500,
+      "width": 1250,
+      "quantity": 1
+    }
+  ],
+  "parts": [
+    {
+      "id": "Part 1",
+      "length": 1000,
+      "width": 370.5,
+      "quantity": 2
+    },
+    {
+      "id": "Part 2",
+      "length": 970,
+      "width": 700,
+      "quantity": 2,
+      "grain": true
+    }
+  ]
+}

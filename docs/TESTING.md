@@ -35,10 +35,22 @@ Upstream packingsolver at the pinned commit is the reference.
   tree, same metrics), not just an equally good one. This catches subtle
   porting errors in branching order, tie-breaking and dominance.
 - Oracle outputs are generated once per pinned commit and committed as
-  golden files under `data/golden/<first 8 characters of commit>/`, named
-  `<instance>.q<queue size>.json`, at queue sizes 64 and 2048, so
+  golden files under `data/golden/<first 8 characters of commit>/`, so
   `cargo test` does not need a C++ toolchain. Regenerating them is a
-  separate step, documented in `tools/README.md`.
+  separate step, documented in `tools/README.md`. One set per algorithm
+  (`tools/oracle --algorithm`), each on the instances it applies to:
+  - `<instance>.q64.json`, `.q2048.json`: the tree search, every instance;
+  - `<instance>.maximal_spaces.q16.json`: unlimited stages, one panel;
+  - `<instance>.hypergraph.json`: unlimited stages, one panel, knapsack;
+  - `<instance>.sequential_single_knapsack.json`,
+    `.sequential_value_correction.json`: unlimited stages, several panels;
+  - `<instance>.auto.json`: upstream's own algorithm selection
+    (`optimize()`), unlimited stages, with the label of every improvement
+    (which names the algorithm that found it). `solve()` must give this
+    plan, and must have selected every algorithm a label names, except
+    column generation (Out): the 4 files whose best plan is column
+    generation's are skipped.
+  Each file's `oracle` header records the algorithm and its parameters.
 - `cargo run --release -p cli -- diff-oracle` runs the whole comparison
   and prints a report, one line per golden file; `cargo test` runs the
   same comparison in `crates/guillotine/tests/golden.rs`.
@@ -60,6 +72,24 @@ Upstream packingsolver at the pinned commit is the reference.
 - When the Rust port intentionally deviates (a bug fix, a scope
   difference), the test for that instance is marked with the reason and
   checked against the checker plus a quality bound instead.
+- **Deviations and mappings (Stage 5):**
+  - The sequential heuristics solve their subproblems without instance
+    reduction; the oracle does the same (`SCOPE.md`, decisions log).
+  - Open dimensions with unlimited stages: upstream cuts the plan on a
+    shorter panel and copies it onto the full one, leaving the rest of
+    the panel out of the cutting tree. The port reproduces that plan,
+    then `guillotine::complete_open_dimension` adds the cut and the
+    remainder as a leftover (with one more level when the first cuts run
+    along the open side). The differential tests apply the same
+    completion to the golden plan, so the comparison stays exact; the
+    checker's golden test accepts upstream's plans with only that defect.
+  - A last panel cut several times keeps its leftover on the very last
+    copy only: the oracle and the port write it as two patterns. This is
+    a mapping of upstream's meaning, not a deviation.
+  - `std::sort` is unstable: upstream's order of tied candidates depends
+    on its standard library. The port reproduces the libc++ the oracle is
+    built with (`crates/guillotine/src/cpp_sort.rs`); an oracle built with
+    another library could order ties differently.
 
 ## 3. Property-based and quality tests
 

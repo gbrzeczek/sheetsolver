@@ -1,0 +1,61 @@
+{
+  "oracle": {
+    "algorithm": "hypergraph",
+    "internal_length_unit": "0.1 mm",
+    "maximum_array_size": 1500000,
+    "optimization_mode": "not_anytime_sequential",
+    "upstream_commit": "9b656a0dcafd1e9019bf39a5910d4307af65579a"
+  },
+  "patterns": [
+    {
+      "first_cuts": "along_length",
+      "panel_id": "Panel 1",
+      "repeat": 1,
+      "root": {
+        "children": [
+          {
+            "children": [],
+            "kind": "part",
+            "length": 10,
+            "part_id": "Part 1",
+            "rotated": false,
+            "stage": 1,
+            "width": 5,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "children": [],
+            "kind": "part",
+            "length": 10,
+            "part_id": "Part 1",
+            "rotated": false,
+            "stage": 1,
+            "width": 5,
+            "x": 0,
+            "y": 5
+          }
+        ],
+        "kind": "piece",
+        "length": 10,
+        "stage": 0,
+        "width": 10,
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "upstream_metrics": {
+    "area": 10000,
+    "feasible": true,
+    "full_area": 10000,
+    "height": 100,
+    "item_area": 10000,
+    "number_of_bins": 1,
+    "number_of_items": 2,
+    "profit": 100.0,
+    "waste": 0,
+    "waste_percentage": 0.0,
+    "width": 100
+  }
+}

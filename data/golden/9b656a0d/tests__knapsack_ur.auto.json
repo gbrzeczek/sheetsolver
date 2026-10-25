@@ -1,0 +1,52 @@
+{
+  "oracle": {
+    "algorithm": "auto",
+    "improvements": [
+      "TSHIC"
+    ],
+    "internal_length_unit": "0.1 mm",
+    "optimization_mode": "not_anytime_sequential",
+    "upstream_commit": "9b656a0dcafd1e9019bf39a5910d4307af65579a"
+  },
+  "patterns": [
+    {
+      "first_cuts": "across_length",
+      "panel_id": "Panel 1",
+      "repeat": 1,
+      "root": {
+        "children": [
+          {
+            "children": [],
+            "kind": "part",
+            "length": 5,
+            "part_id": "Part 1",
+            "rotated": true,
+            "stage": 1,
+            "width": 10,
+            "x": 0,
+            "y": 0
+          }
+        ],
+        "kind": "piece",
+        "length": 5,
+        "stage": 0,
+        "width": 10,
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "upstream_metrics": {
+    "area": 5000,
+    "feasible": true,
+    "full_area": 5000,
+    "height": 100,
+    "item_area": 5000,
+    "number_of_bins": 1,
+    "number_of_items": 1,
+    "profit": 50.0,
+    "waste": 0,
+    "waste_percentage": 0.0,
+    "width": 50
+  }
+}

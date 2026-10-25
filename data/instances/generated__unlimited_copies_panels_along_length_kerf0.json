@@ -1,0 +1,38 @@
+{
+  "objective": "bin_packing",
+  "saw": {
+    "kerf": 0,
+    "stages": "unlimited",
+    "cut_type": "homogenous",
+    "first_cuts": "along_length"
+  },
+  "panels": [
+    {
+      "id": "Offcut",
+      "length": 316,
+      "width": 316,
+      "quantity": 3
+    }
+  ],
+  "parts": [
+    {
+      "id": "Part 1",
+      "length": 79.5,
+      "width": 79,
+      "quantity": 50
+    },
+    {
+      "id": "Part 2",
+      "length": 109,
+      "width": 79,
+      "quantity": 30,
+      "grain": true
+    },
+    {
+      "id": "Part 3",
+      "length": 109.5,
+      "width": 99,
+      "quantity": 30
+    }
+  ]
+}

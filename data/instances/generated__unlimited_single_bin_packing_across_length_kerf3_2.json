@@ -1,0 +1,64 @@
+{
+  "objective": "bin_packing",
+  "saw": {
+    "kerf": 3.2,
+    "stages": "unlimited",
+    "cut_type": "non_exact",
+    "first_cuts": "across_length"
+  },
+  "panels": [
+    {
+      "id": "Panel 1",
+      "length": 2500,
+      "width": 1250,
+      "quantity": 1
+    }
+  ],
+  "parts": [
+    {
+      "id": "Part 1",
+      "length": 380,
+      "width": 140.5,
+      "quantity": 3,
+      "grain": true
+    },
+    {
+      "id": "Part 2",
+      "length": 570,
+      "width": 200,
+      "quantity": 1,
+      "grain": true
+    },
+    {
+      "id": "Part 3",
+      "length": 300,
+      "width": 120.5,
+      "quantity": 1
+    },
+    {
+      "id": "Part 4",
+      "length": 250,
+      "width": 200.5,
+      "quantity": 2,
+      "grain": true
+    },
+    {
+      "id": "Part 5",
+      "length": 1110.5,
+      "width": 610,
+      "quantity": 1
+    },
+    {
+      "id": "Part 6",
+      "length": 600.5,
+      "width": 570,
+      "quantity": 3
+    },
+    {
+      "id": "Part 7",
+      "length": 250,
+      "width": 130,
+      "quantity": 1
+    }
+  ]
+}

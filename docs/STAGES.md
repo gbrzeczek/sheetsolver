@@ -210,6 +210,31 @@ Exit criteria:
 
 **Goal:** real unlimited-stage plans, solved the way upstream solves them.
 
+Plan (sub-steps, each ends with `diff-oracle` clean):
+1. Oracle `--algorithm` (tree search, maximal spaces, hypergraph with
+   infinite copies, sequential single knapsack, sequential value
+   correction, and `auto` for upstream's own selection) and golden files
+   per algorithm, replacing the placeholder unlimited-stage ones;
+   `diff-oracle` learns them.
+2. More generated unlimited-stage instances: single panel, several
+   panels, many copies of few parts.
+3. Checker tests: unlimited-stage plans deeper than 3 levels, with mixed
+   cut directions, are accepted.
+4. Port of treesearchsolver's `iterative_beam_search` and of
+   `tree_search_maximal_spaces`.
+5. Port of `tree_search_hypergraph_infinite_copies`.
+6. Sequential single knapsack and sequential value correction, plus the
+   tree search on unlimited stages (upstream's 3-level behaviour), which
+   upstream runs next to them for several panels.
+7. Upstream's algorithm selection in `solve()`; measure what the two
+   decisions below cost (reduction, multi-panel heuristics on 2/3 stages).
+
+Decisions (2026-10-25, see `SCOPE.md`): the sequential heuristics solve
+their single-panel subproblems without instance reduction (upstream
+reduces them; the oracle turns it off so golden files compare like with
+like), and they run for unlimited stages only; 2- and 3-stage instances
+stay on the tree search alone.
+
 Upstream gives "unlimited" its own meaning: exact cuts, in either
 direction at every stage, with no limit on depth. It solves single-panel
 instances with the maximal-spaces search, or with the hypergraph search

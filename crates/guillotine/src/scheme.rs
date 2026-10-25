@@ -37,10 +37,10 @@ use std::cell::Cell;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
-use model::{CutType, Objective};
+use model::CutType;
 use treesearch::{BranchingScheme, Guide};
 
-use crate::problem::{Orientation, Problem};
+use crate::problem::{Objective, Orientation, Problem};
 
 /// Which guide orders the nodes in a queue.
 ///
@@ -785,6 +785,7 @@ impl BranchingScheme for Scheme<'_> {
                 }
                 bins_needed >= incumbent.number_of_bins
             }
+            Objective::Feasibility => unreachable!("feasibility subproblems use other searches"),
             Objective::OpenDimensionX | Objective::OpenDimensionY => {
                 if !self.full(incumbent) {
                     return false;

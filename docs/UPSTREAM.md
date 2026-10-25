@@ -28,8 +28,10 @@ copyright notice in this repository's `LICENSE`/`NOTICE` alongside ours.
 
 | Upstream | Purpose | Target crate |
 |---|---|---|
-| `src/rectangleguillotine/tree_search_maximal_spaces.hpp`, `.cpp` | Single-panel search for unlimited stages | `guillotine` |
-| `src/rectangleguillotine/tree_search_hypergraph_infinite_copies.hpp`, `.cpp` | Single-panel dynamic programming for many copies | `guillotine` |
+| `src/rectangleguillotine/tree_search_maximal_spaces.hpp`, `.cpp`, `block.cpp`, `sequential_feasibility.cpp` | Single-panel search for unlimited stages, its blocks, and its bin packing and open-dimension driver | `guillotine` (`maximal_spaces.rs`) |
+| treesearchsolver `iterative_beam_search.hpp` (global history only) | Beam search generating children one at a time | `treesearch` (`child_by_child.rs`) |
+| `src/rectangleguillotine/tree_search_hypergraph_infinite_copies.hpp`, `.cpp`; `post_process.cpp` `minimize_number_of_stages` (which it calls) | Single-panel dynamic programming for many copies | `guillotine` (`hypergraph.rs`, `restage.rs`) |
+| libc++ `__algorithm/sort.h` (`std::sort`) | Upstream's order of tied candidates | `guillotine` (`cpp_sort.rs`) |
 | `src/algorithms/sequential_value_correction.hpp`, `optimize.cpp` `optimize_sequential_single_knapsack` | Several panels, one at a time | `guillotine` |
 | `src/rectangleguillotine/optimize.cpp` `optimize()` | Automatic algorithm selection | `guillotine` |
 

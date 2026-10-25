@@ -1,0 +1,854 @@
+{
+  "oracle": {
+    "algorithm": "sequential_value_correction",
+    "internal_length_unit": "0.1 mm",
+    "iterations": 32,
+    "optimization_mode": "not_anytime_sequential",
+    "subproblem_maximal_spaces_queue_size": 16,
+    "subproblem_queue_size": 128,
+    "subproblem_reduction": false,
+    "upstream_commit": "9b656a0dcafd1e9019bf39a5910d4307af65579a"
+  },
+  "patterns": [
+    {
+      "first_cuts": "across_length",
+      "panel_id": "Panel 2",
+      "repeat": 1,
+      "root": {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [],
+                                                            "kind": "part",
+                                                            "length": 400,
+                                                            "part_id": "Part 4",
+                                                            "rotated": false,
+                                                            "stage": 13,
+                                                            "width": 200,
+                                                            "x": 0,
+                                                            "y": 0
+                                                          },
+                                                          {
+                                                            "children": [],
+                                                            "kind": "part",
+                                                            "length": 400,
+                                                            "part_id": "Part 4",
+                                                            "rotated": false,
+                                                            "stage": 13,
+                                                            "width": 200,
+                                                            "x": 400,
+                                                            "y": 0
+                                                          }
+                                                        ],
+                                                        "kind": "piece",
+                                                        "length": 800,
+                                                        "stage": 12,
+                                                        "width": 200,
+                                                        "x": 0,
+                                                        "y": 0
+                                                      },
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [],
+                                                            "kind": "part",
+                                                            "length": 790.5,
+                                                            "part_id": "Part 3",
+                                                            "rotated": false,
+                                                            "stage": 13,
+                                                            "width": 250,
+                                                            "x": 0,
+                                                            "y": 200
+                                                          },
+                                                          {
+                                                            "children": [],
+                                                            "kind": "offcut",
+                                                            "length": 9.5,
+                                                            "stage": 13,
+                                                            "width": 250,
+                                                            "x": 790.5,
+                                                            "y": 200
+                                                          }
+                                                        ],
+                                                        "kind": "piece",
+                                                        "length": 800,
+                                                        "stage": 12,
+                                                        "width": 250,
+                                                        "x": 0,
+                                                        "y": 200
+                                                      }
+                                                    ],
+                                                    "kind": "piece",
+                                                    "length": 800,
+                                                    "stage": 11,
+                                                    "width": 450,
+                                                    "x": 0,
+                                                    "y": 0
+                                                  },
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [],
+                                                        "kind": "part",
+                                                        "length": 200,
+                                                        "part_id": "Part 4",
+                                                        "rotated": true,
+                                                        "stage": 12,
+                                                        "width": 400,
+                                                        "x": 800,
+                                                        "y": 0
+                                                      },
+                                                      {
+                                                        "children": [],
+                                                        "kind": "offcut",
+                                                        "length": 200,
+                                                        "stage": 12,
+                                                        "width": 50,
+                                                        "x": 800,
+                                                        "y": 400
+                                                      }
+                                                    ],
+                                                    "kind": "piece",
+                                                    "length": 200,
+                                                    "stage": 11,
+                                                    "width": 450,
+                                                    "x": 800,
+                                                    "y": 0
+                                                  }
+                                                ],
+                                                "kind": "piece",
+                                                "length": 1000,
+                                                "stage": 10,
+                                                "width": 450,
+                                                "x": 0,
+                                                "y": 0
+                                              }
+                                            ],
+                                            "kind": "piece",
+                                            "length": 1000,
+                                            "stage": 9,
+                                            "width": 450,
+                                            "x": 0,
+                                            "y": 0
+                                          },
+                                          {
+                                            "children": [],
+                                            "kind": "offcut",
+                                            "length": 21,
+                                            "stage": 9,
+                                            "width": 450,
+                                            "x": 1000,
+                                            "y": 0
+                                          }
+                                        ],
+                                        "kind": "piece",
+                                        "length": 1021,
+                                        "stage": 8,
+                                        "width": 450,
+                                        "x": 0,
+                                        "y": 0
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [],
+                                                    "kind": "part",
+                                                    "length": 360.5,
+                                                    "part_id": "Part 6",
+                                                    "rotated": false,
+                                                    "stage": 11,
+                                                    "width": 300,
+                                                    "x": 0,
+                                                    "y": 450
+                                                  },
+                                                  {
+                                                    "children": [],
+                                                    "kind": "part",
+                                                    "length": 360.5,
+                                                    "part_id": "Part 6",
+                                                    "rotated": false,
+                                                    "stage": 11,
+                                                    "width": 300,
+                                                    "x": 360.5,
+                                                    "y": 450
+                                                  }
+                                                ],
+                                                "kind": "piece",
+                                                "length": 721,
+                                                "stage": 10,
+                                                "width": 300,
+                                                "x": 0,
+                                                "y": 450
+                                              }
+                                            ],
+                                            "kind": "piece",
+                                            "length": 721,
+                                            "stage": 9,
+                                            "width": 300,
+                                            "x": 0,
+                                            "y": 450
+                                          },
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [],
+                                                "kind": "part",
+                                                "length": 300,
+                                                "part_id": "Part 2",
+                                                "rotated": false,
+                                                "stage": 10,
+                                                "width": 290,
+                                                "x": 721,
+                                                "y": 450
+                                              },
+                                              {
+                                                "children": [],
+                                                "kind": "offcut",
+                                                "length": 300,
+                                                "stage": 10,
+                                                "width": 10,
+                                                "x": 721,
+                                                "y": 740
+                                              }
+                                            ],
+                                            "kind": "piece",
+                                            "length": 300,
+                                            "stage": 9,
+                                            "width": 300,
+                                            "x": 721,
+                                            "y": 450
+                                          }
+                                        ],
+                                        "kind": "piece",
+                                        "length": 1021,
+                                        "stage": 8,
+                                        "width": 300,
+                                        "x": 0,
+                                        "y": 450
+                                      }
+                                    ],
+                                    "kind": "piece",
+                                    "length": 1021,
+                                    "stage": 7,
+                                    "width": 750,
+                                    "x": 0,
+                                    "y": 0
+                                  },
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [],
+                                        "kind": "part",
+                                        "length": 790.5,
+                                        "part_id": "Part 3",
+                                        "rotated": false,
+                                        "stage": 8,
+                                        "width": 250,
+                                        "x": 1021,
+                                        "y": 0
+                                      },
+                                      {
+                                        "children": [],
+                                        "kind": "part",
+                                        "length": 790.5,
+                                        "part_id": "Part 3",
+                                        "rotated": false,
+                                        "stage": 8,
+                                        "width": 250,
+                                        "x": 1021,
+                                        "y": 250
+                                      },
+                                      {
+                                        "children": [],
+                                        "kind": "part",
+                                        "length": 790.5,
+                                        "part_id": "Part 3",
+                                        "rotated": false,
+                                        "stage": 8,
+                                        "width": 250,
+                                        "x": 1021,
+                                        "y": 500
+                                      }
+                                    ],
+                                    "kind": "piece",
+                                    "length": 790.5,
+                                    "stage": 7,
+                                    "width": 750,
+                                    "x": 1021,
+                                    "y": 0
+                                  }
+                                ],
+                                "kind": "piece",
+                                "length": 1811.5,
+                                "stage": 6,
+                                "width": 750,
+                                "x": 0,
+                                "y": 0
+                              },
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [],
+                                                        "kind": "part",
+                                                        "length": 360.5,
+                                                        "part_id": "Part 1",
+                                                        "rotated": false,
+                                                        "stage": 12,
+                                                        "width": 110,
+                                                        "x": 0,
+                                                        "y": 750
+                                                      },
+                                                      {
+                                                        "children": [],
+                                                        "kind": "part",
+                                                        "length": 360.5,
+                                                        "part_id": "Part 1",
+                                                        "rotated": false,
+                                                        "stage": 12,
+                                                        "width": 110,
+                                                        "x": 0,
+                                                        "y": 860
+                                                      }
+                                                    ],
+                                                    "kind": "piece",
+                                                    "length": 360.5,
+                                                    "stage": 11,
+                                                    "width": 220,
+                                                    "x": 0,
+                                                    "y": 750
+                                                  },
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [],
+                                                            "kind": "part",
+                                                            "length": 610.5,
+                                                            "part_id": "Part 7",
+                                                            "rotated": false,
+                                                            "stage": 13,
+                                                            "width": 220,
+                                                            "x": 360.5,
+                                                            "y": 750
+                                                          },
+                                                          {
+                                                            "children": [],
+                                                            "kind": "part",
+                                                            "length": 610.5,
+                                                            "part_id": "Part 7",
+                                                            "rotated": false,
+                                                            "stage": 13,
+                                                            "width": 220,
+                                                            "x": 971,
+                                                            "y": 750
+                                                          }
+                                                        ],
+                                                        "kind": "piece",
+                                                        "length": 1221,
+                                                        "stage": 12,
+                                                        "width": 220,
+                                                        "x": 360.5,
+                                                        "y": 750
+                                                      }
+                                                    ],
+                                                    "kind": "piece",
+                                                    "length": 1221,
+                                                    "stage": 11,
+                                                    "width": 220,
+                                                    "x": 360.5,
+                                                    "y": 750
+                                                  }
+                                                ],
+                                                "kind": "piece",
+                                                "length": 1581.5,
+                                                "stage": 10,
+                                                "width": 220,
+                                                "x": 0,
+                                                "y": 750
+                                              },
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [],
+                                                            "kind": "part",
+                                                            "length": 790.5,
+                                                            "part_id": "Part 3",
+                                                            "rotated": false,
+                                                            "stage": 13,
+                                                            "width": 250,
+                                                            "x": 0,
+                                                            "y": 970
+                                                          },
+                                                          {
+                                                            "children": [],
+                                                            "kind": "part",
+                                                            "length": 790.5,
+                                                            "part_id": "Part 3",
+                                                            "rotated": false,
+                                                            "stage": 13,
+                                                            "width": 250,
+                                                            "x": 790.5,
+                                                            "y": 970
+                                                          }
+                                                        ],
+                                                        "kind": "piece",
+                                                        "length": 1581,
+                                                        "stage": 12,
+                                                        "width": 250,
+                                                        "x": 0,
+                                                        "y": 970
+                                                      }
+                                                    ],
+                                                    "kind": "piece",
+                                                    "length": 1581,
+                                                    "stage": 11,
+                                                    "width": 250,
+                                                    "x": 0,
+                                                    "y": 970
+                                                  },
+                                                  {
+                                                    "children": [],
+                                                    "kind": "offcut",
+                                                    "length": 0.5,
+                                                    "stage": 11,
+                                                    "width": 250,
+                                                    "x": 1581,
+                                                    "y": 970
+                                                  }
+                                                ],
+                                                "kind": "piece",
+                                                "length": 1581.5,
+                                                "stage": 10,
+                                                "width": 250,
+                                                "x": 0,
+                                                "y": 970
+                                              }
+                                            ],
+                                            "kind": "piece",
+                                            "length": 1581.5,
+                                            "stage": 9,
+                                            "width": 470,
+                                            "x": 0,
+                                            "y": 750
+                                          },
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [],
+                                                "kind": "part",
+                                                "length": 200,
+                                                "part_id": "Part 4",
+                                                "rotated": true,
+                                                "stage": 10,
+                                                "width": 400,
+                                                "x": 1581.5,
+                                                "y": 750
+                                              },
+                                              {
+                                                "children": [],
+                                                "kind": "offcut",
+                                                "length": 200,
+                                                "stage": 10,
+                                                "width": 70,
+                                                "x": 1581.5,
+                                                "y": 1150
+                                              }
+                                            ],
+                                            "kind": "piece",
+                                            "length": 200,
+                                            "stage": 9,
+                                            "width": 470,
+                                            "x": 1581.5,
+                                            "y": 750
+                                          }
+                                        ],
+                                        "kind": "piece",
+                                        "length": 1781.5,
+                                        "stage": 8,
+                                        "width": 470,
+                                        "x": 0,
+                                        "y": 750
+                                      }
+                                    ],
+                                    "kind": "piece",
+                                    "length": 1781.5,
+                                    "stage": 7,
+                                    "width": 470,
+                                    "x": 0,
+                                    "y": 750
+                                  },
+                                  {
+                                    "children": [],
+                                    "kind": "offcut",
+                                    "length": 30,
+                                    "stage": 7,
+                                    "width": 470,
+                                    "x": 1781.5,
+                                    "y": 750
+                                  }
+                                ],
+                                "kind": "piece",
+                                "length": 1811.5,
+                                "stage": 6,
+                                "width": 470,
+                                "x": 0,
+                                "y": 750
+                              }
+                            ],
+                            "kind": "piece",
+                            "length": 1811.5,
+                            "stage": 5,
+                            "width": 1220,
+                            "x": 0,
+                            "y": 0
+                          }
+                        ],
+                        "kind": "piece",
+                        "length": 1811.5,
+                        "stage": 4,
+                        "width": 1220,
+                        "x": 0,
+                        "y": 0
+                      },
+                      {
+                        "children": [],
+                        "kind": "offcut",
+                        "length": 1811.5,
+                        "stage": 4,
+                        "width": 20,
+                        "x": 0,
+                        "y": 1220
+                      }
+                    ],
+                    "kind": "piece",
+                    "length": 1811.5,
+                    "stage": 3,
+                    "width": 1240,
+                    "x": 0,
+                    "y": 0
+                  },
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [],
+                                        "kind": "part",
+                                        "length": 370.5,
+                                        "part_id": "Part 5",
+                                        "rotated": true,
+                                        "stage": 8,
+                                        "width": 470,
+                                        "x": 1811.5,
+                                        "y": 0
+                                      },
+                                      {
+                                        "children": [],
+                                        "kind": "part",
+                                        "length": 370.5,
+                                        "part_id": "Part 5",
+                                        "rotated": true,
+                                        "stage": 8,
+                                        "width": 470,
+                                        "x": 1811.5,
+                                        "y": 470
+                                      }
+                                    ],
+                                    "kind": "piece",
+                                    "length": 370.5,
+                                    "stage": 7,
+                                    "width": 940,
+                                    "x": 1811.5,
+                                    "y": 0
+                                  }
+                                ],
+                                "kind": "piece",
+                                "length": 370.5,
+                                "stage": 6,
+                                "width": 940,
+                                "x": 1811.5,
+                                "y": 0
+                              },
+                              {
+                                "children": [
+                                  {
+                                    "children": [],
+                                    "kind": "part",
+                                    "length": 360.5,
+                                    "part_id": "Part 6",
+                                    "rotated": false,
+                                    "stage": 7,
+                                    "width": 300,
+                                    "x": 1811.5,
+                                    "y": 940
+                                  },
+                                  {
+                                    "children": [],
+                                    "kind": "offcut",
+                                    "length": 10,
+                                    "stage": 7,
+                                    "width": 300,
+                                    "x": 2172,
+                                    "y": 940
+                                  }
+                                ],
+                                "kind": "piece",
+                                "length": 370.5,
+                                "stage": 6,
+                                "width": 300,
+                                "x": 1811.5,
+                                "y": 940
+                              }
+                            ],
+                            "kind": "piece",
+                            "length": 370.5,
+                            "stage": 5,
+                            "width": 1240,
+                            "x": 1811.5,
+                            "y": 0
+                          },
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [],
+                                                "kind": "part",
+                                                "length": 300,
+                                                "part_id": "Part 2",
+                                                "rotated": false,
+                                                "stage": 10,
+                                                "width": 290,
+                                                "x": 2182,
+                                                "y": 0
+                                              },
+                                              {
+                                                "children": [],
+                                                "kind": "part",
+                                                "length": 300,
+                                                "part_id": "Part 2",
+                                                "rotated": false,
+                                                "stage": 10,
+                                                "width": 290,
+                                                "x": 2182,
+                                                "y": 290
+                                              }
+                                            ],
+                                            "kind": "piece",
+                                            "length": 300,
+                                            "stage": 9,
+                                            "width": 580,
+                                            "x": 2182,
+                                            "y": 0
+                                          }
+                                        ],
+                                        "kind": "piece",
+                                        "length": 300,
+                                        "stage": 8,
+                                        "width": 580,
+                                        "x": 2182,
+                                        "y": 0
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [],
+                                                "kind": "part",
+                                                "length": 300,
+                                                "part_id": "Part 2",
+                                                "rotated": false,
+                                                "stage": 10,
+                                                "width": 290,
+                                                "x": 2182,
+                                                "y": 580
+                                              },
+                                              {
+                                                "children": [],
+                                                "kind": "part",
+                                                "length": 300,
+                                                "part_id": "Part 6",
+                                                "rotated": true,
+                                                "stage": 10,
+                                                "width": 360.5,
+                                                "x": 2182,
+                                                "y": 870
+                                              }
+                                            ],
+                                            "kind": "piece",
+                                            "length": 300,
+                                            "stage": 9,
+                                            "width": 650.5,
+                                            "x": 2182,
+                                            "y": 580
+                                          }
+                                        ],
+                                        "kind": "piece",
+                                        "length": 300,
+                                        "stage": 8,
+                                        "width": 650.5,
+                                        "x": 2182,
+                                        "y": 580
+                                      }
+                                    ],
+                                    "kind": "piece",
+                                    "length": 300,
+                                    "stage": 7,
+                                    "width": 1230.5,
+                                    "x": 2182,
+                                    "y": 0
+                                  }
+                                ],
+                                "kind": "piece",
+                                "length": 300,
+                                "stage": 6,
+                                "width": 1230.5,
+                                "x": 2182,
+                                "y": 0
+                              },
+                              {
+                                "children": [],
+                                "kind": "offcut",
+                                "length": 300,
+                                "stage": 6,
+                                "width": 9.5,
+                                "x": 2182,
+                                "y": 1230.5
+                              }
+                            ],
+                            "kind": "piece",
+                            "length": 300,
+                            "stage": 5,
+                            "width": 1240,
+                            "x": 2182,
+                            "y": 0
+                          }
+                        ],
+                        "kind": "piece",
+                        "length": 670.5,
+                        "stage": 4,
+                        "width": 1240,
+                        "x": 1811.5,
+                        "y": 0
+                      }
+                    ],
+                    "kind": "piece",
+                    "length": 670.5,
+                    "stage": 3,
+                    "width": 1240,
+                    "x": 1811.5,
+                    "y": 0
+                  }
+                ],
+                "kind": "piece",
+                "length": 2482,
+                "stage": 2,
+                "width": 1240,
+                "x": 0,
+                "y": 0
+              },
+              {
+                "children": [],
+                "kind": "offcut",
+                "length": 2482,
+                "stage": 2,
+                "width": 10,
+                "x": 0,
+                "y": 1240
+              }
+            ],
+            "kind": "piece",
+            "length": 2482,
+            "stage": 1,
+            "width": 1250,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "children": [],
+            "kind": "leftover",
+            "length": 18,
+            "stage": 1,
+            "width": 1250,
+            "x": 2482,
+            "y": 0
+          }
+        ],
+        "kind": "piece",
+        "length": 2500,
+        "stage": 0,
+        "width": 1250,
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "upstream_metrics": {
+    "area": 310250000,
+    "feasible": true,
+    "full_area": 312500000,
+    "height": 12500,
+    "item_area": 298255000,
+    "number_of_bins": 1,
+    "number_of_items": 24,
+    "profit": 2982550.0,
+    "waste": 11995000,
+    "waste_percentage": 0.038662369057211925,
+    "width": 24820
+  }
+}
