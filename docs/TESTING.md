@@ -39,6 +39,9 @@ Upstream packingsolver at the pinned commit is the reference.
   `<instance>.q<queue size>.json`, at queue sizes 64 and 2048, so
   `cargo test` does not need a C++ toolchain. Regenerating them is a
   separate step, documented in `tools/README.md`.
+- `cargo run --release -p cli -- diff-oracle` runs the whole comparison
+  and prints a report, one line per golden file; `cargo test` runs the
+  same comparison in `crates/guillotine/tests/golden.rs`.
 - Golden files keep upstream's own metrics under `upstream_metrics`; the
   checker's metrics are compared against them in Stage 1.
 - A golden file with no patterns means upstream found no solution; the

@@ -180,7 +180,25 @@ Exit criteria:
 - All solutions pass the checker.
 - Benchmarks within ~1.2× of the oracle for the same queue sizes.
 
-## Stage 4 — Developer CLI
+## Stage 4 — Developer CLI ✅ done 2026-10-25
+
+Result:
+- `cli` crate (clap, anyhow): `solve` (plan JSON to stdout or
+  `--output`, `--queue-size`, `--time-limit`, `--progress`; the summary
+  on stderr is checked by the checker), `check` (metrics and every
+  violation; exit status 1 if infeasible), `diff-oracle` and `bench-set`
+  (fastest and median of `--repeat` runs per queue size, by default on
+  `crates/guillotine/benches/instances.txt`). Defaults point into the
+  checkout the binary was built from, so they work from any directory.
+- `cargo run --release -p cli -- diff-oracle` is the full differential
+  suite: every golden file in `data/golden/9b656a0d/`, one line each
+  (`--quiet` for failures only) and a summary, exit status 1 on any
+  difference, checker violation or error. Today: 278 golden files in
+  about 6 s, 216 same, 0 differ, 62 skipped (the 31 unlimited-stage
+  instances, until Stage 5). `--filter` and `--queue-size` narrow it.
+- `crates/cli/tests/commands.rs` runs the binary: each subcommand passes
+  on good input and fails on a broken plan or golden file.
+- `AGENTS.md` now names a real instance in its `solve` example.
 
 Deliverables:
 - `cli` crate: `solve`, `check`, `diff-oracle`, `bench-set` subcommands.

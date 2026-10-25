@@ -14,3 +14,8 @@ workspace = true
 model = { path = "../model" }
 checker = { path = "../checker" }
 guillotine = { path = "../guillotine" }
+treesearch = { path = "../treesearch" }
+anyhow = "1.0"
+clap = { version = "4.6.7", features = ["derive"] }
+serde = "1.0.229"
+serde_json = "1.0.154"

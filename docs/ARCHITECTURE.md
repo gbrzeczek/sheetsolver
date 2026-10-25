@@ -11,7 +11,7 @@ sheetsolver/
 │   ├── checker/           # independent feasibility checker + metrics
 │   ├── treesearch/        # generic iterative beam search
 │   ├── guillotine/        # guillotine branching scheme + solve()
-│   ├── cli/               # developer CLI (solve, check, diff-oracle)
+│   ├── cli/               # developer CLI (solve, check, diff-oracle, bench-set)
 │   └── api/               # axum web API
 ├── tools/                 # see tools/README.md
 │   ├── oracle/            # C++ harness around upstream packingsolver

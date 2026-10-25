@@ -81,7 +81,8 @@ cargo build --workspace
 cargo test --workspace
 cargo test -p checker
 cargo bench -p guillotine
-cargo run -p cli -- solve data/instances/example.json --time-limit 5
+cargo run -p cli -- solve data/instances/tests__bin_packing_3nvo.json --time-limit 5
+cargo run --release -p cli -- diff-oracle
 cargo run -p api
 ```
 
