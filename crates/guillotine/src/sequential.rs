@@ -59,11 +59,14 @@ impl Variant {
 /// upstream: `SequentialValueCorrectionParameters::bin_packing_goal`.
 const BIN_PACKING_GOAL: u32 = 2;
 
-/// Runs the algorithm and returns its best plan.
+/// Runs the algorithm and returns its best plan. `on_plan` sees each
+/// better plan at the end of an iteration, so that the caller can stop
+/// the next iterations once one reaches a bound.
 pub(crate) fn sequential_value_correction(
     problem: &Problem,
     variant: Variant,
     stop: &Stop,
+    on_plan: &mut dyn FnMut(&Plan),
 ) -> Plan {
     let settings = variant.settings();
     let mut best = Plan::empty(problem);
@@ -210,6 +213,7 @@ pub(crate) fn sequential_value_correction(
 
         if solution.is_better_than(&best, problem.objective) {
             best = solution.clone();
+            on_plan(&best);
         }
         let all_cut = best.number_of_items == problem.number_of_items;
         if !knapsack && all_cut && best.number_of_bins <= BIN_PACKING_GOAL.max(2) {

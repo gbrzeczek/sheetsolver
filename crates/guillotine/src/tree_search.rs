@@ -15,9 +15,8 @@ use crate::scheme::{GuideKind, Scheme};
 /// better than every plan before it. `on_plan` is called with each such
 /// plan. Returns the best plan and the nodes expanded.
 ///
-/// Upstream also computes bounds first and stops once a plan reaches one;
-/// that can only skip work that would find nothing strictly better, so it
-/// is left out (see `docs/TESTING.md`).
+/// The caller's bound stops it through `stop`, once `on_plan` has seen a
+/// plan that reaches the bound (see `bounds.rs`).
 pub(crate) fn tree_search(
     problem: &Problem,
     queue_size: u64,
