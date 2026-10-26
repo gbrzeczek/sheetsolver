@@ -9,7 +9,13 @@ Rules:
 - The **Help text** column is the exact copy shown in the UI. It also
   becomes the doc comment on the Rust field, from which `utoipa` puts it
   into `openapi.json` and the UI reads it (see `ARCHITECTURE.md`).
-  Change it here first, then in code.
+  Change it here first, then in code. It uses only two kinds of markup:
+  `**bold**` for the name of an option and `*italic*` for the name of
+  another field.
+- The **UI label** becomes the property's `title` in `openapi.json`, and
+  the **Default** and bounds its `default`, `minimum` and `maximum`
+  (`crates/api/src/fields.rs`); tests in `crates/api` compare them with
+  this page and with what the server accepts.
 - Help text says what the field means, in woodworking terms, what it does
   to the plan, and a typical value. No solver jargon.
 - Only fields marked **In** in `SCOPE.md` are listed under "Fields". Later
@@ -23,10 +29,17 @@ Rules:
 - All lengths are in **millimetres with at most one decimal** (e.g. 720,
   3.2, 18.5). More decimals are rejected with a clear message, never
   silently rounded. Internally lengths are whole tenths of a millimetre.
+- Sizes are **shown** with a narrow space between thousands (1 040.5,
+  2 440 × 1 220; a no-break space, so a size never splits across lines).
+  They are typed without it, though a pasted "1 040.5" is accepted.
 - Areas shown to the user are in mm² (or m² where more readable).
 - A panel is drawn with its **length horizontal** and its **width
   vertical**. The panel's length is along its X axis, its width along its
   Y axis (upstream `width` = our length, upstream `height` = our width).
+- **Names are optional.** A part or panel left without a name gets the
+  default of its *Name* row ("Part 1", "Panel 1", …, by its row number,
+  skipping names already used): the UI shows it greyed in the empty
+  cell and sends it with the job, so the API always receives a name.
 - A part's **length** is laid along the panel's length unless the part is
   rotated. For a part with grain, enter the length along the grain, and
   enter the panel's length along its grain too.
@@ -37,6 +50,7 @@ Rules:
 
 | Field | UI label | Help text | Unit / values | Default | Upstream |
 |---|---|---|---|---|---|
+| `name` | Job name | Your name for this job, shown at the top of the job and its cutting plan (e.g. "Kitchen units"). Optional. | text, one line, at most 100 characters; spaces at either end are removed | empty: shown as "Untitled job" | — |
 | `objective` | Goal | What the plan should optimise. **Use as few panels as possible**: cut every part, using the fewest panels; panels are used in the order listed. **Best use of the panels I have**: the panels can't fit every part, so choose which parts to cut to get the most out of them (by part value — see *Value*). **Shortest length from one panel**: you have one panel of fixed width and any length you need (e.g. a long board or a roll); cut every part using the shortest possible length. **Shortest width from one panel**: the same, but the length is fixed and the width is minimised. | `bin_packing`, `knapsack`, `open_dimension_x`, `open_dimension_y` | `bin_packing` | `objective` |
 | `time_limit` | Time limit | How long the solver may search for a better plan. The first plan usually appears within a second; longer searches find plans with less waste. You can stop the search at any time and keep the best plan so far. | seconds, 1–600 | 10 | `timer.set_time_limit` |
 
@@ -73,6 +87,28 @@ use a single bin).
 | `stages` | Cutting stages | How many times a piece is turned and cut again. **Stage 1**: full-length cuts across the whole panel, splitting it into strips. **Stage 2**: each strip is cut across into pieces. **Stage 3**: each piece is cut once more, across stage-2 cuts. More stages let parts nest more tightly, so less waste, but mean more handling at the saw. 2 suits simple strip cutting; 3 suits most panel-saw work; "Unlimited" gives the least waste with the most handling: cuts may then go either way at every stage, and the last-stage trimming setting does not apply. | `2`, `3`, `unlimited` | `3` | `number_of_stages` |
 | `cut_type` | Last-stage trimming | Whether a part may be cut free from a small offcut after the last stage. **Allowed** (recommended): a strip may hold parts of different sizes; a final trimming cut separates each part from its offcut. **Not allowed**: at the last stage every part must fill its strip exactly, with no offcut — fewer cuts, more waste. **One part per strip**: every part in a last-stage strip is the same part — the simplest plans to cut, the most waste. | `non_exact`, `exact`, `homogenous` | `non_exact` | `cut_type` |
 | `first_cuts` | First cuts | Which way the first, full-panel cuts run. **Either** (recommended): the solver tries both and keeps the better plan. With one panel size, every panel in the plan is cut the same way; with several sizes, each panel may be cut differently. The search time is shared between the two directions. **Along the length**: rip the panel into long strips first, then cut the strips across — for saws or workflows that always rip first. **Across the length**: cut the panel across into shorter strips first. Parts with grain keep their direction whichever you choose. With unlimited stages, cuts may always go either way. | `either`, `along_length`, `across_length` | `either` | `first_stage_orientation` (`any`, `horizontal`, `vertical`) |
+
+## Option names
+
+The name the UI shows for each value of a field with options: the bold
+words of its help text. In `openapi.json` each value is a `const` in the
+field type's `oneOf`, with this name as its `title`.
+
+| Field | Value | Option name |
+|---|---|---|
+| `objective` | `bin_packing` | Use as few panels as possible |
+| `objective` | `knapsack` | Best use of the panels I have |
+| `objective` | `open_dimension_x` | Shortest length from one panel |
+| `objective` | `open_dimension_y` | Shortest width from one panel |
+| `stages` | `2` | 2 |
+| `stages` | `3` | 3 |
+| `stages` | `unlimited` | Unlimited |
+| `cut_type` | `non_exact` | Allowed |
+| `cut_type` | `exact` | Not allowed |
+| `cut_type` | `homogenous` | One part per strip |
+| `first_cuts` | `either` | Either |
+| `first_cuts` | `along_length` | Along the length |
+| `first_cuts` | `across_length` | Across the length |
 
 ## Later fields (help text to be written when they move to In)
 

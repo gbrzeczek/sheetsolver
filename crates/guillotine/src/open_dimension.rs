@@ -51,6 +51,15 @@ pub fn complete_open_dimension(instance: &Instance, solution: &mut Solution) {
             continue;
         }
 
+        // A previous leftover is no longer the last piece. Turn it into
+        // an offcut before the old plan may be wrapped below, which would
+        // move it one stage deeper.
+        if let Some(last) = root.children.last_mut() {
+            if matches!(last.kind, NodeKind::Leftover) {
+                last.kind = NodeKind::Offcut;
+            }
+        }
+
         // First cuts across the open side are already side by side along
         // it: the remainder is one more first-stage piece. Otherwise the
         // old plan is wrapped in a piece first.
@@ -80,12 +89,6 @@ pub fn complete_open_dimension(instance: &Instance, solution: &mut Solution) {
             stage: 1,
             children: Vec::new(),
         };
-        // A previous leftover is no longer the last piece.
-        if let Some(last) = root.children.last_mut() {
-            if matches!(last.kind, NodeKind::Leftover) {
-                last.kind = NodeKind::Offcut;
-            }
-        }
         root.children.push(leftover);
     }
 }

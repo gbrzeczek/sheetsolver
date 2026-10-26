@@ -1,8 +1,9 @@
 /target
 **/*.rs.bk
-/tools/oracle/build
+/tools/oracle/build*/
 .DS_Store
 /web/node_modules
 /web/dist
 /tools/oracle/*.log
 __pycache__/
+.claude/worktrees/

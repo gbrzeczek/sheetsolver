@@ -206,7 +206,57 @@ Deliverables:
 Exit criteria:
 - One command runs the full differential suite and prints a report.
 
-## Stage 5 — Unlimited stages
+## Stage 5 — Unlimited stages ✅ done 2026-10-25
+
+Result:
+- Ported: treesearchsolver's `iterative_beam_search` (global history),
+  the maximal-spaces search (blocks, scheme, plan replay, sequential
+  feasibility), the hypergraph search with infinite copies (with
+  `minimize_number_of_stages`), sequential single knapsack and sequential
+  value correction, the tree search on unlimited stages, upstream's
+  automatic selection and run order, libc++'s `std::sort` (upstream's ties
+  depend on it), and upstream's area bounds with the stop once a plan
+  reaches one (`bounds.rs`).
+- Oracle `--algorithm` for each algorithm and `auto`; 42 new generated
+  `generated__unlimited_*` instances. `diff-oracle`: 562 golden files,
+  558 identical, 0 different, 4 skipped (their best plan is column
+  generation's, which is Out); every plan passes the checker. `solve()`
+  selects every algorithm upstream's own selection used (checked against
+  the `auto` files' improvement labels).
+- Checker: deep plans with turning cuts and pass-through pieces are
+  accepted (`crates/checker/tests/unlimited.rs`).
+- Benchmarks against the oracle built with libc++ (port's median over
+  upstream's fastest of 10): tree search 0.59–0.72× (0.35× on bin
+  packing with a kerf, where the bound now ends the search early),
+  maximal spaces 0.95–1.05×, hypergraph 1.02–1.17×, sequential single
+  knapsack 0.65–0.72×, sequential value correction 0.76–1.10×. Two
+  speed-ups were needed: the hypergraph's raster-point tables (1.8× →
+  1.0–1.2×), and the bounds, without which the sequential heuristics'
+  one-panel subproblems searched on after cutting every part (1.55× →
+  0.72×).
+- Deviations: open-dimension plans get the uncut rest of the panel as a
+  cut and a leftover (`open_dimension.rs`; the differential tests apply
+  the same completion to the golden plans); upstream's bounds from its
+  1D solver and dual feasible functions are not ported (same plans,
+  `TESTING.md`).
+- The oracle builds in the cloud environment with a git clone of HiGHS
+  and must use libc++ on Linux: with libstdc++, 10 of the 35 sequential
+  single knapsack golden files differ (`tools/README.md`).
+- The two decisions, measured with `tools/measure_decisions.py`:
+  - Subproblems without reduction (35 unlimited-stage instances with
+    several panels): the same panel count on every bin-packing
+    instance; on knapsack, reduction cuts more value on 4 instances
+    (+0.4 % to +1.4 %), never less. Without reduction is faster on most
+    instances (up to 2.7× on value correction). Kept.
+  - Sequential heuristics on 2 and 3 stages (59 instances with several
+    panels): upstream runs them next to the tree search and keeps the
+    better plan. They would save a panel on 1 instance
+    (`generated__panels_bin_packing_2_either_exact_kerf3_2`, 3 → 2
+    panels) and cut 1.7 % more value on 1, at up to 5 s more time;
+    elsewhere the tree search's plan is as good or better. Owner to
+    decide whether to revisit (`SCOPE.md`).
+- The owner approved Stages 6 and 7 in parallel with the end of this
+  stage, since neither changes the solver.
 
 **Goal:** real unlimited-stage plans, solved the way upstream solves them.
 
@@ -269,7 +319,61 @@ Exit criteria:
   instance.
 - All solutions pass the checker; benchmarks within ~1.2× of the oracle.
 
-## Stage 6 — Web API
+## Stage 6 — Web API ✅ done 2026-10-25
+
+Result:
+- `api` crate (axum, tokio; library plus binary): `POST /jobs`,
+  `GET /jobs/{id}`, `GET /jobs/{id}/events` (SSE), `DELETE /jobs/{id}`,
+  `GET /openapi.json`, as in `docs/API.md`, which the implementation
+  sharpened in a few places (its "Changes" section lists them; no field
+  or shape changed). `cargo run -p api -- --help` lists the limits.
+- Each job's state is a `watch` channel: the solver thread writes it,
+  `GET` reads it, each event stream sends the latest plan and then the
+  state from one snapshot, so a plan always precedes the state after it
+  and the last plan is never skipped. A FIFO semaphore with one permit
+  per solver bounds the running jobs (`--max-running-jobs`, default the
+  CPU cores) on a blocking pool of that size; `DELETE` sets the solver's
+  `Stop` cancellation flag (a queued job is cancelled at once).
+- Every plan passes the checker before it is served, and its `metrics`
+  are the checker's; a plan that broke a rule would stop the job as
+  `failed` instead. Empty plans are never served.
+- `openapi.json` from `utoipa`: `model` derives `ToSchema` behind its
+  `openapi` feature, with hand-written schemas for `Length`, `Area`,
+  `Stages` and `NodeKind` (whose serde code is custom or whose tag a
+  derived schema leaves undescribed). Descriptions are joined into
+  paragraphs, so instance fields read exactly as in `FIELDS.md`.
+- `422` lists every mistyped or missing field at once (a field-by-field
+  walk of the body, used only to find problems; the instance itself is
+  always read by serde) and then every `Instance::validate` problem with
+  its field path, from the new `Instance::validate_fields`.
+- Tests (`cargo test -p api`, about a second): every property and path
+  parameter in `openapi.json` has a description; instance field
+  descriptions equal `FIELDS.md`; submit and poll to a checked plan;
+  the event stream (plans numbered upwards, all checked, final state
+  last, replay after the end); cancelling a running and a queued job;
+  `503 busy`; `422` with every problem; `400`, `404`, `413`; expiry;
+  CORS. A test also walks all test instances to make sure the problem
+  walk accepts everything serde accepts.
+- Follow-up for the UI (its requests in `web/DESIGN.md` §8, as
+  triaged): input properties carry `title` (UI label), `default`,
+  `minimum`/`maximum`, and the option types name each value
+  (`oneOf` `{const, title}`), from one table (`crates/api/src/fields.rs`)
+  that tests hold to `FIELDS.md` and to what the server accepts; fields
+  with a `FIELDS.md` default may be left out. The job status gains
+  `ended_by` (also in `state` events), `queue_position` and `instance`;
+  `503 busy` gains `Retry-After`. `ARCHITECTURE.md` now states the plan
+  tree rules clients rely on (child order, alternating directions,
+  wrapper pieces, trimming at stage `stages + 1`, sub-kerf offcuts), each
+  checked against the checker and the golden plans.
+- Deployment (owner's decision: one container): `--web-dir` serves the
+  built UI at `/`, with `index.html` for client-side routes, the API's
+  paths keeping priority (tests in `crates/api/tests/web.rs`); every
+  option is also a `SHEETSOLVER_*` variable. A multi-stage `Dockerfile`
+  (cargo-chef for cached dependencies, a placeholder for the Node stage
+  until `web/` builds, a non-root Debian runtime), a workflow that
+  pushes the image to GHCR, and `deploy/docker-compose.yml`; the deploy
+  job waits for the server's details. See `ARCHITECTURE.md`,
+  *Deployment*.
 
 **Goal:** solver as a service.
 
@@ -286,20 +390,64 @@ Exit criteria:
 - Integration tests: submit, stream, cancel, invalid instance → 422.
 - Solutions served by the API pass the checker.
 
-## Stage 7 — Web UI
+## Stage 7 — Web UI ✅ done 2026-10-25
+
+Result:
+- Design first (`web/DESIGN.md`, static mockups and screenshots in
+  `web/mockups/`), following the owner's design handoff: *Guided setup*
+  for the job, *Workbench* for the plan. Help text sits behind a (?)
+  button on every label and column header (owner's decision), and names
+  are optional: an empty part or panel name is sent as its generated
+  default ("Part 9"), and the job name goes to the API (`name`, #21).
+- `web/`: Vite + Svelte 5 + TypeScript (versions pinned, at least two
+  weeks old). The client types come from `openapi.json` (checked in; CI
+  fails if it differs from what the Rust types print), and every input's
+  label, help, default and bounds from the same file
+  (`scripts/gen-fields.mjs`), so an input without help does not compile.
+- Job setup: parts and panels tables, Goal and kerf, the other settings
+  collapsed with a summary; local checks with the API's paths and
+  wording, and `422` problems next to their field; the draft kept in
+  the browser. Cutting plan: the live search (time bar, figures, plans
+  found, Stop), then the headline ("All 21 parts fit"), figures, a
+  status line that tells a finished search from a time limit, all
+  panels with a parts checklist, and one panel drawn to scale with
+  rulers, numbered cuts, the current cut (in the URL) and the cut order;
+  no-plan, failed, expired and busy states.
+- The cut order, cut directions (inferred from geometry, §8 #13) and
+  per-panel figures are computed in `src/lib/plan`; unit tests check
+  them against all 562 golden plans (Vitest, 23 tests).
+- Exit criteria, covered by `npm run e2e` (Playwright, desktop and
+  tablet, against the real API serving the built UI; 16 tests): enter a
+  job → solve → a plan the checker passed, followed cut by cut, reloaded
+  without the browser's storage; every `FIELDS.md` field has its (?)
+  button with the exact text, and every input points at its help; stop
+  a running search; the no-plan cause; field problems; the draft
+  survives a reload; New job with Undo; one print page per panel.
+- The Dockerfile's Node stage builds `web/` into the image; CI has a
+  `web` job (`openapi.json` in sync, `svelte-check`, Vitest, Playwright).
+- Owner's decisions on the open questions (`web/DESIGN.md` §9): the
+  draft stays in the browser, with "New job"; a print stylesheet (one
+  A4 page per panel: drawing, cut order, parts checklist); sizes shown
+  with thin-space thousands (1 040.5); turned parts labelled as drawn.
+
+Design (screens, flows, visual language, front-end stack, and what the UI
+needs from the API): `web/DESIGN.md`, with static mockups in
+`web/mockups/`.
 
 Deliverables (in `web/`, see `ARCHITECTURE.md`):
 - Instance editor (parts, panels, saw settings), job submission, live
   progress, cutting-plan viewer (SVG, one panel at a time + overview,
   dimensions on every part and offcut).
-- Every input shows its help text from `openapi.json` (i.e. from
-  `FIELDS.md`) next to the field, not only on hover, so it also works on
-  touch screens in the workshop.
+- Every input has its help text from `openapi.json` (i.e. from
+  `FIELDS.md`) one tap away: a help (?) button next to its label opens
+  the full text, by tap or click, never on hover only, so it works on
+  touch screens in the workshop (decided 2026-10-25; see
+  `web/DESIGN.md` §5).
 - TypeScript client generated from `openapi.json`.
 
 Exit criteria:
 - End-to-end test: enter instance → solve → see a valid plan.
-- No input without help text; UI wording matches `FIELDS.md`.
+- No input without a help button and its help text; UI wording matches `FIELDS.md`.
 
 ## Later (only after scope decisions)
 

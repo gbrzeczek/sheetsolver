@@ -16,6 +16,7 @@
 //! - `open_dimension`: completing open-dimension plans (a deviation).
 //! - `cpp_sort`: `std::sort` as upstream's standard library runs it.
 
+mod bounds;
 mod cpp_sort;
 mod hypergraph;
 mod maximal_spaces;
@@ -72,7 +73,8 @@ pub struct SolveOutput {
     /// The best plan found. Empty if none was found that cuts every part
     /// (the knapsack objective accepts any plan).
     pub solution: Solution,
-    /// The algorithms that ran, in order.
+    /// The algorithms selected for the instance, in the order they run.
+    /// Once a plan reaches a bound, the later ones stop at once.
     pub algorithms: Vec<Algorithm>,
     /// Nodes expanded by the tree search, over all its searches.
     pub nodes_expanded: u64,
@@ -146,7 +148,13 @@ pub fn solve_with_algorithm(
         return Err(SolveError::NotApplicable { algorithm, reason });
     }
     let mut nodes_expanded = 0;
-    let plan: Plan = selection::run(&problem, algorithm, params, &mut nodes_expanded, |_| {});
+    let plan: Plan = selection::run(
+        &problem,
+        algorithm,
+        params,
+        &mut nodes_expanded,
+        &mut |_| {},
+    );
     Ok(SolveOutput {
         solution: plan.to_solution(&problem, instance),
         algorithms: vec![algorithm],

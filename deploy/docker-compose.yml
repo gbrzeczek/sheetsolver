@@ -1,0 +1,33 @@
+# sheetsolver on the server. The deploy job of .github/workflows/docker.yml
+# copies this file to the server's deploy directory and runs
+# `docker compose pull && docker compose up -d` there (docs/DEPLOY.md).
+#
+# The app joins the external `web` network, shared with the reverse proxy
+# that handles TLS and the domain, and publishes no port on the host: the
+# proxy reaches it at http://sheetsolver:8080. Create the network once
+# with `docker network create web` if the proxy has not already.
+#
+# Jobs live in the server's memory, so there is no volume: a restart
+# forgets every job (see docs/API.md, "Limits").
+
+services:
+  sheetsolver:
+    image: ghcr.io/gbrzeczek/sheetsolver:latest
+    restart: unless-stopped
+    expose:
+      - "8080"
+    networks:
+      - web
+    environment:
+      # Every `api` option is also a variable (`api --help`).
+      SHEETSOLVER_LISTEN: "0.0.0.0:8080"
+      # SHEETSOLVER_MAX_RUNNING_JOBS: "4"   # default: the CPU cores
+      # SHEETSOLVER_MAX_QUEUED_JOBS: "32"
+      # SHEETSOLVER_KEEP_JOBS_FOR: "3600"
+    # The solvers use one CPU each; cap the container if the server does
+    # other work.
+    # cpus: 4
+
+networks:
+  web:
+    external: true

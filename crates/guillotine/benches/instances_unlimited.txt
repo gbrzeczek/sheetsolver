@@ -1,0 +1,12 @@
+# Unlimited-stage benchmarks for solve.rs and tools/bench_oracle.py, one
+# `<algorithm> <file stem of data/instances/>` per line, the algorithm as
+# the oracle's --algorithm names it: for each, one moderate instance and
+# one of the slower ones that still runs in seconds.
+maximal_spaces generated__unlimited_single_knapsack_across_length_kerf0
+maximal_spaces generated__open_dimension_x_unlimited_exact_kerf0
+hypergraph generated__unlimited_single_knapsack_along_length_kerf0
+hypergraph generated__knapsack_unlimited_non_exact_kerf0
+sequential_single_knapsack generated__bin_packing_unlimited_homogenous_kerf3_2
+sequential_single_knapsack generated__unlimited_panels_small_parts_along_length_kerf0
+sequential_value_correction generated__unlimited_panels_small_parts_along_length_kerf0
+sequential_value_correction generated__unlimited_panels_bin_packing_along_length_kerf3_2

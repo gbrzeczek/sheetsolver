@@ -82,6 +82,8 @@ Upstream names are given so the port can be traced back.
 | Edge banding allowance, grain matching across parts, labels | Open |
 | Persistence of jobs/instances (database) | Open |
 | Authentication / multi-tenant | Open |
+| Printing a plan (print stylesheet: one panel per page with its cut order and parts) | **In** (2026-10-25) |
+| Keeping the job being edited in the browser (no server storage) | **In** (2026-10-25) |
 | Export (PDF, DXF, CSV cut lists) | Open |
 
 ## Decisions log
@@ -110,6 +112,15 @@ Record every scope decision here with a date, so agents can see why.
   tree search alone, although upstream would add them there too (with
   column generation, which is Out). Both choices are measured at the end
   of Stage 5 so they can be revisited with numbers.
+  Measured at the end of Stage 5 (`STAGES.md`): without reduction, the
+  same panel counts and at most 1.4 % less value on 4 of 35 instances,
+  and faster; kept. The heuristics on 2 and 3 stages would save one
+  panel on 1 of 59 instances and 1.7 % value on another; open for the
+  owner.
+- 2026-10-25 — Stage 5 ports upstream's area bounds and the stop once a
+  plan reaches one (a speed-up only: plans cannot change). Its bounds
+  from the 1D solver and dual feasible functions stay Out (they need
+  its 1D solver, partly column generation).
 - 2026-10-25 — Stage 5 ports upstream's `minimize_number_of_stages`
   (`post_process.cpp`) only because the hypergraph search calls it on
   every plan it finds; post-processing as a separate step stays Open.
@@ -124,3 +135,16 @@ Record every scope decision here with a date, so agents can see why.
 - 2026-10-25 — Lengths have 0.1 mm precision (decimal millimetres in
   JSON, integer tenths inside), so kerfs like 3.2 mm can be entered
   exactly. A part's default value is its area in mm².
+- 2026-10-25 — Optional names (owner): a job may have an optional name;
+  part and panel names are optional, and the UI fills an empty one with
+  its default ("Part 3", "Panel 1"; `FIELDS.md`, *Conventions*). The job
+  name lives in the browser until the API carries it (`web/DESIGN.md`
+  §8, #21).
+- 2026-10-25 — The job name is now carried by the API (`name` on
+  `POST /jobs`, echoed in the job status); the UI's browser-only
+  fallback is gone.
+- 2026-10-25 — Owner's answers to the UI's open questions
+  (`web/DESIGN.md` §9): the job being edited stays in the browser, with
+  a "New job" button; printing is In as a print stylesheet (one panel
+  per page), file exports stay Open; shown sizes group thousands with a
+  narrow space (1 040.5); turned parts are labelled as drawn.

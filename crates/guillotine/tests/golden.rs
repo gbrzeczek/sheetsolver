@@ -171,3 +171,34 @@ fn sequential_value_correction() {
 fn automatic_selection() {
     check("auto");
 }
+
+/// Every open-dimension golden plan, completed as the port completes its
+/// own, passes the checker. This needs no solving, so it also covers the
+/// open-dimension searches that only run in release builds above.
+#[test]
+fn completed_open_dimension_plans_pass_the_checker() {
+    let mut checked = 0;
+    let mut failures = Vec::new();
+    for entry in fs::read_dir(data_dir().join("golden/9b656a0d")).unwrap() {
+        let path = entry.unwrap().path();
+        let name = path.file_name().unwrap().to_str().unwrap().to_string();
+        let stem = name.split_once('.').unwrap().0;
+        let instance: Instance =
+            read_json(&data_dir().join("instances").join(format!("{stem}.json")));
+        if !instance.objective.is_open_dimension() {
+            continue;
+        }
+        let mut plan: Solution = read_json(&path);
+        if plan.patterns.is_empty() {
+            continue;
+        }
+        complete_open_dimension(&instance, &mut plan);
+        checked += 1;
+        let report = checker::check(&instance, &plan);
+        if !report.is_feasible() {
+            failures.push(format!("{name}: {:?}", report.violations));
+        }
+    }
+    assert!(checked > 0, "nothing checked");
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}

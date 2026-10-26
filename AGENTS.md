@@ -24,6 +24,7 @@ Read these before starting any task:
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Repository layout, crates, data flow, API shape |
 | [docs/TESTING.md](docs/TESTING.md) | Feasibility checker, differential testing against upstream |
 | [docs/UPSTREAM.md](docs/UPSTREAM.md) | Pinned upstream commit and the map of upstream files to port |
+| [docs/API.md](docs/API.md) | The web API contract: endpoints, job states, events, errors, limits |
 
 ## Ground rules
 
@@ -84,6 +85,9 @@ cargo bench -p guillotine
 cargo run -p cli -- solve data/instances/tests__bin_packing_3nvo.json --time-limit 5
 cargo run --release -p cli -- diff-oracle
 cargo run -p api
+cd web && npm ci            # the web UI (Stage 7), see web/README.md
+npm run check && npm test   # types, unit tests
+npm run e2e                 # end-to-end against the real API
 ```
 
 ## Definition of done for any change
