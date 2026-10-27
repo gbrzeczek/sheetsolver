@@ -16,11 +16,11 @@
   const names = $derived(namesFor(rows, "Part"));
   let focusedCol = $state<string | null>(null);
 
-  type Col = { name: "id" | "length" | "width" | "quantity" | "value"; cls: string; unit?: string; numeric: boolean };
+  type Col = { name: "id" | "length" | "width" | "quantity" | "value"; cls: string; numeric: boolean };
   const cols = $derived<Col[]>([
     { name: "id", cls: "w-name", numeric: false },
-    { name: "length", cls: "w-len num", unit: "mm", numeric: true },
-    { name: "width", cls: "w-len num", unit: "mm", numeric: true },
+    { name: "length", cls: "w-len num", numeric: true },
+    { name: "width", cls: "w-len num", numeric: true },
     { name: "quantity", cls: "w-qty num", numeric: true },
     ...(showValue ? [{ name: "value", cls: "w-qty num", numeric: true } as Col] : []),
   ]);
@@ -46,9 +46,9 @@
       <tr>
         <th><span class="visually-hidden">Row</span></th>
         {#each cols as col (col.name)}
-          <ColumnHeader key={`Part.${col.name}` as FieldKey} unit={col.unit} class={col.cls} focused={focusedCol === col.name} />
+          <ColumnHeader key={`Part.${col.name}` as FieldKey} class={col.cls} focused={focusedCol === col.name} />
         {/each}
-        <ColumnHeader key="Part.grain" short="Keep grain ↔" class="w-chk c" align="right" focused={focusedCol === "grain"} />
+        <ColumnHeader key="Part.grain" short="Keep grain" class="w-chk c" align="right" focused={focusedCol === "grain"} />
         <th class="w-del"><span class="visually-hidden">Remove</span></th>
       </tr>
     </thead>
@@ -111,5 +111,4 @@
 </div>
 <div class="table-foot">
   <button class="link" type="button" onclick={add}>+ Add part</button>
-  <small>↔ The part keeps the panel’s grain direction.</small>
 </div>

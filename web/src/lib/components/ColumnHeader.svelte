@@ -5,14 +5,13 @@
 
   interface Props {
     key: FieldKey;
-    /** Shown instead of the label, e.g. "Keep grain ↔"; the label stays the accessible name. */
+    /** Shown instead of the label, e.g. "Keep grain"; the label stays the accessible name. */
     short?: string;
-    unit?: string;
     align?: "left" | "right";
     class?: string;
     focused?: boolean;
   }
-  let { key, short, unit, align = "left", class: cls = "", focused = false }: Props = $props();
+  let { key, short, align = "left", class: cls = "", focused = false }: Props = $props();
 
   const f = $derived(field(key));
   const id = $derived(`help-${key.replace(".", "-")}`);
@@ -30,7 +29,7 @@
 <svelte:window onpointerdown={outside} onkeydown={key_} />
 
 <th class="{cls}{focused ? ' focus-col' : ''}" scope="col" bind:this={root}>
-  <span aria-hidden={short ? "true" : undefined}>{short ?? f.label}</span>{#if short}<span class="visually-hidden">{f.label}</span>{/if}{#if unit}{" "}<span class="unit">{unit}</span>{/if}{#if hasHelpButton(key)}<button
+  <span aria-hidden={short ? "true" : undefined}>{short ?? f.label}</span>{#if short}<span class="visually-hidden">{f.label}</span>{/if}{#if hasHelpButton(key)}<button
       class="help-btn"
       type="button"
       aria-expanded={open}

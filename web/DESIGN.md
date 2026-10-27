@@ -187,9 +187,11 @@ fills a centred column about 1080 px wide.
   straight past the Name column. Row 9 in `editor.html` is left
   unnamed and appears as "Part 9" in the plan mockups.
 - *Parts to make*: a compact table with Name, Length, Width, Quantity
-  and Keep grain direction (headed "Keep grain ↔"). Value appears only
+  and Keep grain direction (headed "Keep grain"). Value appears only
   when the goal is "Best use of the panels I have". Numbers are
-  right-aligned. Each column header has a **(?) help button**
+  right-aligned. Length and Width headers carry no "mm": the line under
+  the page title already says sizes are in millimetres (owner's
+  decision, 2026-10-27). Each column header has a **(?) help button**
   (§5). Rows are numbered, because 422 problems point at positions.
   *+ Add part* appends a row and focuses its Name.
 - *Panels you have*: the same table with Name, Length, Width, Quantity
@@ -574,9 +576,11 @@ works on touch screens, unlike hover tooltips:
   input still points at the exact text.
 - **Short visible hints stay** where they prevent mistakes:
   - "Sizes in millimetres, at most one decimal" under the page title;
-  - "↔ The part keeps the panel's grain direction" under the parts
-    table;
   - "Leave Quantity empty for as many as needed" under the panels.
+
+  The parts table has no hint: "Keep grain" and its (?) say enough,
+  and the ↔ glyph is explained by the plan's legend (owner's decision,
+  2026-10-27).
 - **Source**: labels come from each property's `title` and help from its
   `description` in `openapi.json`. Option names come from the `oneOf`
   titles (§8, #1–#2). Help markup is rendered (`**bold**` →

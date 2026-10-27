@@ -19,8 +19,8 @@
 
   const cols = [
     { name: "id", cls: "w-name", numeric: false, placeholder: "" },
-    { name: "length", cls: "w-len num", unit: "mm", numeric: true, placeholder: "" },
-    { name: "width", cls: "w-len num", unit: "mm", numeric: true, placeholder: "" },
+    { name: "length", cls: "w-len num", numeric: true, placeholder: "" },
+    { name: "width", cls: "w-len num", numeric: true, placeholder: "" },
     { name: "quantity", cls: "w-qty-wide num", numeric: true, placeholder: "Unlimited" },
     { name: "cost", cls: "w-qty num", numeric: true, placeholder: "Area" },
   ] as const;
@@ -41,7 +41,6 @@
         {#each cols as col (col.name)}
           <ColumnHeader
             key={`Panel.${col.name}` as FieldKey}
-            unit={"unit" in col ? col.unit : undefined}
             class={col.cls}
             align={col.name === "cost" || col.name === "quantity" ? "right" : "left"}
             focused={focusedCol === col.name}
