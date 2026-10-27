@@ -59,6 +59,17 @@
   const current = $derived(order ? Math.min(Math.max(cut ?? 1, 1), Math.max(order.cuts.length, 1)) : 1);
   const currentCut = $derived(order?.cuts[current - 1] ?? null);
 
+  // A link to a panel the plan does not have: show all panels, and say why.
+  $effect(() => {
+    if (best && panel !== null && panelIndex === null) {
+      session.missingPanel = { id, panel };
+      router.go({ name: "plan", id, panel: null, cut: null }, true);
+    } else if (panel !== null) {
+      session.missingPanel = null;
+    }
+  });
+  const missing = $derived(session.missingPanel?.id === id ? session.missingPanel.panel : null);
+
   let selected = $state<PlanNode | null>(null);
   // A selection belongs to the panel it was made on: another panel, or a
   // better plan replacing this one, starts without one.
@@ -151,6 +162,14 @@
   </main>
 {/snippet}
 
+{#snippet missingNote()}
+  {#if missing !== null}
+    <p class="statusline" role="status" style="margin:0 0 12px">
+      Panel {missing} is not in this plan: it uses {patterns.length} {patterns.length === 1 ? "panel" : "panels"}{searching ? " since a better plan was found" : ""}.
+    </p>
+  {/if}
+{/snippet}
+
 {#snippet figures()}
   {#if best && instance}
     {@const m = best.metrics}
@@ -230,6 +249,7 @@
   <!-- Searching: progress, figures, the best plan so far. -->
   <main class:pane-main={pane} class:is-stale={stale}>
     {@render staleBar()}
+    {@render missingNote()}
     <div class="heading">
       <div>
         <div class="eyebrow">{name || "Cutting plan"} · {job.state === "queued" ? "waiting" : "searching"}</div>
@@ -287,6 +307,7 @@
   {@const total = totalParts(instance)}
   <main class:pane-main={pane} class:is-stale={stale}>
     {@render staleBar()}
+    {@render missingNote()}
     <div class="heading">
       <div>
         <div class="eyebrow">{name || "Cutting plan"} · plan {best.number}</div>

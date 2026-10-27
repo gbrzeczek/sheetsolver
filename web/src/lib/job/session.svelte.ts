@@ -38,6 +38,11 @@ class Session {
   connected = $state(true);
   trouble = $state<JobTrouble | null>(null);
   stopping = $state(false);
+  /**
+   * A panel link for a panel the shown plan does not have (a better plan
+   * can need fewer panels), so the plan view can say why it shows them all.
+   */
+  missingPanel = $state<{ id: string; panel: number } | null>(null);
   /** When `job.elapsed` was last received, for the time bar between events. */
   elapsedAt = $state(0);
 

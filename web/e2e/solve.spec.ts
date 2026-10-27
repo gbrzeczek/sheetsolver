@@ -164,3 +164,16 @@ test("Ctrl+Enter sends one job, and none while the solver is busy", async ({ pag
   await page.waitForTimeout(300);
   expect(posts).toBe(2);
 });
+
+test("a link to a panel the plan does not have shows all panels and says why", async ({ page }) => {
+  await enterJob(page, [{ name: "Door", length: "1200", width: "1000", quantity: "2" }, { name: "Shelf", length: "900", width: "300", quantity: "2" }], { length: "2440", width: "1220" }, "1");
+  await findPlan(page);
+  await expect(page.locator(".headline")).toHaveText("All 4 parts fit", { timeout: 20_000 });
+  const overview = page.url();
+  // As when a better plan, found while panel 3 was open, needs only two.
+  await page.goto(`${overview}/panels/3`);
+  await expect(page.getByText("Panel 3 is not in this plan: it uses 2 panels.")).toBeVisible();
+  expect(page.url()).toBe(overview);
+  await page.getByRole("link", { name: "Cut order →" }).first().click();
+  await expect(page.getByText(/is not in this plan/)).toBeHidden();
+});
