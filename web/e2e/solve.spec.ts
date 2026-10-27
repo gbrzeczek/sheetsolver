@@ -137,3 +137,30 @@ test("a part selected on one panel is not shown as selected on the next", async 
   await expect(page.getByText("Selected part")).toBeHidden();
   await expect(page.getByText(/^Cut 1 of \d+$/)).toBeVisible();
 });
+
+test("Ctrl+Enter sends one job, and none while the solver is busy", async ({ page }) => {
+  let posts = 0;
+  page.on("request", (r) => {
+    if (r.method() === "POST" && new URL(r.url()).pathname === "/jobs") posts++;
+  });
+  await enterJob(page, [{ length: "500", width: "400" }], { length: "2440", width: "1220" }, "1");
+  // Three presses before the first answer: one job.
+  await page.locator("#part-0-length").evaluate((field) => {
+    for (let i = 0; i < 3; i++) field.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", ctrlKey: true, bubbles: true }));
+  });
+  await expect(page).toHaveURL(/#\/jobs\//);
+  expect(posts).toBe(1);
+
+  // A busy server: the wait it asks for holds for the shortcut too.
+  await page.route("**/jobs", (route) =>
+    route.fulfill({ status: 503, headers: { "Retry-After": "30" }, json: { error: "busy", message: "Every solver is busy; try again in 30 s.", problems: [] } }),
+  );
+  await page.goto("/#/");
+  await page.locator("#part-0-length").fill("600");
+  await page.locator("#part-0-length").press("Control+Enter");
+  await expect(page.getByRole("button", { name: /try again in \d+ s/i }).last()).toBeVisible();
+  await page.locator("#part-0-length").press("Control+Enter");
+  await page.locator("#part-0-length").press("Meta+Enter");
+  await page.waitForTimeout(300);
+  expect(posts).toBe(2);
+});

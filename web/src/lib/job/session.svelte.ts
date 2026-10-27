@@ -82,6 +82,8 @@ class Session {
   }
 
   async #send(request: JobRequest): Promise<boolean> {
+    // One job at a time: a second one would search unseen, holding a solver.
+    if (this.submitting) return false;
     this.submitting = true;
     this.submitTrouble = null;
     const result = await submitJob(request);

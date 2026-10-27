@@ -70,6 +70,8 @@
 
   async function submit(event: SubmitEvent) {
     event.preventDefault();
+    // ⌘/Ctrl + Enter submits even while the button is disabled.
+    if (session.submitting || retryIn > 0) return;
     const ok = await session.submit();
     if (!ok && session.problems.length) {
       document.querySelector(".alert")?.scrollIntoView({ behavior: "smooth", block: "center" });
