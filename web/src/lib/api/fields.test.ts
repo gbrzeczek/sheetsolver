@@ -12,6 +12,8 @@ describe("field help", () => {
     for (const [key, f] of Object.entries(API_FIELDS)) {
       expect(f.label, key).not.toBe("");
       expect(f.help.length, key).toBeGreaterThan(20);
+      expect(FIELDS_MD, `${key} short help`).toContain(` | ${f.short} | `);
+      expect(f.short.length, key).toBeLessThan(f.help.length);
     }
   });
 

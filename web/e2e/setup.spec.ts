@@ -5,19 +5,23 @@ import { enterJob, fieldsMd } from "./helpers";
 // Fields whose label says it all have no (?) button (web/DESIGN.md §5).
 const SELF_EXPLANATORY = ["JobRequest.name", "Part.id", "Panel.id", "Part.width", "Panel.quantity"];
 
-test("every input has a help button whose text is the FIELDS.md help text", async ({ page }) => {
+test("every input has a help button with the short help first and More for the full text", async ({ page }) => {
   const help = fieldsMd();
   await page.goto("/#/");
-  // Show every field: the Value column needs the goal "Best use of the panels I have".
+  // Show every field: the Value column needs the goal "Best use of the panels
+  // I have", the Cost column two panel sizes, the rest the collapsed settings.
   await page.locator("#objective").selectOption("knapsack");
-  await page.locator("summary", { hasText: "More cutting settings" }).click();
+  await page.getByRole("button", { name: "+ Add panel size" }).click();
+  await page.locator("summary", { hasText: "More settings" }).click();
 
+  const text = (el: Element) => el.textContent!.replace(/\s+/g, " ").trim();
   const buttons = page.locator("button.help-btn");
   const count = await buttons.count();
   const seen = new Set<string>();
   for (let i = 0; i < count; i++) {
     const button = buttons.nth(i);
     const id = (await button.getAttribute("aria-controls"))!;
+    if (!id.startsWith("help-")) continue; // not a field's help (the cut order's)
     const key = id.replace(/^help-/, "").replace("-", ".");
     const expected = help.get(key);
     expect(expected, `FIELDS.md has help for ${key}`).toBeDefined();
@@ -25,13 +29,14 @@ test("every input has a help button whose text is the FIELDS.md help text", asyn
     await button.click();
     const target = page.locator(`#${id}`);
     await expect(target).toBeVisible();
-    // The popover's title row repeats the label; compare the help text itself.
-    const shown = await target.evaluate((el) => {
-      const copy = el.cloneNode(true) as HTMLElement;
-      copy.querySelector(".pop-title")?.remove();
-      return copy.textContent!.replace(/\s+/g, " ").trim();
-    });
-    expect(shown, key).toBe(expected!.help);
+    // First the short help, then More gives the full text in its place.
+    await expect(page.locator(`#${id}-short`)).toBeVisible();
+    expect(await page.locator(`#${id}-short`).evaluate(text), `${key} short`).toBe(expected!.short);
+    await expect(page.locator(`#${id}-full`)).toBeHidden();
+    await target.getByRole("button", { name: `More about ${expected!.label}` }).click();
+    await expect(page.locator(`#${id}-full`)).toBeVisible();
+    await expect(page.locator(`#${id}-short`)).toBeHidden();
+    expect(await page.locator(`#${id}-full`).evaluate(text), key).toBe(expected!.help);
     await button.click({ force: true });
     await expect(target).toBeHidden();
     seen.add(key);
@@ -40,14 +45,16 @@ test("every input has a help button whose text is the FIELDS.md help text", asyn
   expect([...help.keys()].filter((k) => !seen.has(k)).sort()).toEqual([...SELF_EXPLANATORY].sort());
   expect([...seen].filter((k) => SELF_EXPLANATORY.includes(k))).toEqual([]);
 
-  // And every input points at its help, the self-explanatory ones too.
+  // And every input points at its help: the short help, or for the
+  // self-explanatory ones the full text.
   for (const input of await page.locator("main input, form input, select").all()) {
     const described = await input.getAttribute("aria-describedby");
     expect(described, await input.evaluate((e) => e.outerHTML)).toBeTruthy();
+    expect(await page.locator(`#${described}`).count(), described!).toBe(1);
   }
+  await expect(page.locator("#kerf")).toHaveAttribute("aria-describedby", "help-Saw-kerf-short");
   for (const key of SELF_EXPLANATORY) {
-    const text = await page.locator(`#help-${key.replace(".", "-")}`).evaluate((el) => el.textContent!.replace(/\s+/g, " ").trim());
-    expect(text, key).toBe(help.get(key)!.help);
+    expect(await page.locator(`#help-${key.replace(".", "-")}`).evaluate(text), key).toBe(help.get(key)!.help);
   }
 });
 

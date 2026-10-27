@@ -45,13 +45,16 @@ fn component<'a>(document: &'a mut Value, name: &str) -> &'a mut Map<String, Val
         .unwrap_or_else(|| panic!("no schema {name}"))
 }
 
-/// Adds each input field's label, default and bounds (see `fields.rs`).
+/// Adds each input field's label, short help, default and bounds (see
+/// `fields.rs`). The short help is an extension keyword, `x-short-help`:
+/// JSON Schema has no short description of its own.
 fn annotate_input_fields(document: &mut Value) {
     for field in INPUT_FIELDS {
         let property = component(document, field.schema)["properties"][field.property]
             .as_object_mut()
             .unwrap_or_else(|| panic!("no property {}.{}", field.schema, field.property));
         property.insert("title".into(), json!(field.title));
+        property.insert("x-short-help".into(), json!(field.short_help));
         if let Some(default) = field.default {
             let default: Value = serde_json::from_str(default).expect("defaults are JSON");
             property.insert("default".into(), default);

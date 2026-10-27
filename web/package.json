@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Sheetsolver web UI (Stage 7). See DESIGN.md.",
+  "description": "Sheetsolver web UI. See DESIGN.md.",
   "scripts": {
     "openapi": "cargo run -q -p api -- --print-openapi > openapi.json",
     "gen": "openapi-typescript openapi.json -o src/lib/api/schema.d.ts && node scripts/gen-fields.mjs",
@@ -11,7 +11,8 @@
     "build": "npm run gen && vite build",
     "check": "npm run gen && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "test": "npm run gen && vitest run",
-    "e2e": "npm run build && playwright test"
+    "e2e": "npm run build && playwright test",
+    "screens": "npm run build && SCREENS_DIR=mockups/screenshots playwright test screens.spec --project=desktop"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

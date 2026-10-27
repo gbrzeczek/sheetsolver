@@ -6,10 +6,20 @@ it maps to.
 
 Rules:
 
-- The **Help text** column is the exact copy shown in the UI. It also
-  becomes the doc comment on the Rust field, from which `utoipa` puts it
-  into `openapi.json` and the UI reads it (see `ARCHITECTURE.md`).
-  Change it here first, then in code. It uses only two kinds of markup:
+- Every field has **two levels of help**, both exact copies of what the
+  UI shows (owner's decision, 2026-10-27; `STAGES.md`, Stage 8):
+  - **Short help**: one sentence of at most 15 words, shown first when
+    the field's (?) is tapped. It says what the field is for, not every case.
+  - **Help text**: the full text, shown under *More*. It is complete:
+    every option, every case, a typical value. The short help never
+    says something the full text does not.
+
+  The help text becomes the doc comment on the Rust field, from which
+  `utoipa` puts it into `openapi.json` as the property's `description`;
+  the short help goes into `openapi.json` as `x-short-help`, from
+  `crates/api/src/fields.rs`. The UI reads both (see
+  `ARCHITECTURE.md`), and its build fails if either is missing. Change
+  them here first, then in code. They use only two kinds of markup:
   `**bold**` for the name of an option and `*italic*` for the name of
   another field.
 - The **UI label** becomes the property's `title` in `openapi.json`, and
@@ -20,7 +30,8 @@ Rules:
   to the plan, and a typical value. No solver jargon.
 - Only fields that are implemented are listed under "Fields". Fields
   that are In but not yet built are listed at the end, under *Planned
-  fields*, without help text yet; their stage writes it here first.
+  fields*, without help text yet; their stage writes both levels here
+  first.
 - Help text describes upstream behaviour as confirmed against upstream's
   code and the oracle's solutions (Stage 1). The precise rules are in
   `crates/checker`.
@@ -49,21 +60,21 @@ Rules:
 
 ### Job
 
-| Field | UI label | Help text | Unit / values | Default | Upstream |
-|---|---|---|---|---|---|
-| `name` | Job name | Your name for this job, shown at the top of the job and its cutting plan (e.g. "Kitchen units"). Optional. | text, one line, at most 100 characters; spaces at either end are removed | empty: shown as "Untitled job" | — |
-| `objective` | Goal | What the plan should optimise. **Use as few panels as possible**: cut every part, using the fewest panels; panels are used in the order listed. **Best use of the panels I have**: the panels can't fit every part, so choose which parts to cut to get the most out of them (by part value — see *Value*). **Shortest length from one panel**: you have one panel of fixed width and any length you need (e.g. a long board or a roll); cut every part using the shortest possible length. **Shortest width from one panel**: the same, but the length is fixed and the width is minimised. | `bin_packing`, `knapsack`, `open_dimension_x`, `open_dimension_y` | `bin_packing` | `objective` |
-| `time_limit` | Time limit | How long the solver may search for a better plan. The first plan usually appears within a second; longer searches find plans with less waste. You can stop the search at any time and keep the best plan so far. | seconds, 1–600 | 10 | `timer.set_time_limit` |
+| Field | UI label | Short help | Help text | Unit / values | Default | Upstream |
+|---|---|---|---|---|---|---|
+| `name` | Job name | Your name for this job, shown above its cutting plan. | Your name for this job, shown at the top of the job and its cutting plan (e.g. "Kitchen units"). Optional. | text, one line, at most 100 characters; spaces at either end are removed | empty: shown as "Untitled job" | — |
+| `objective` | Goal | The plan's aim: fewest panels, most from your panels, or shortest length or width. | What the plan should optimise. **Use as few panels as possible**: cut every part, using the fewest panels; panels are used in the order listed. **Best use of the panels I have**: the panels can't fit every part, so choose which parts to cut to get the most out of them (by part value — see *Value*). **Shortest length from one panel**: you have one panel of fixed width and any length you need (e.g. a long board or a roll); cut every part using the shortest possible length. **Shortest width from one panel**: the same, but the length is fixed and the width is minimised. | `bin_packing`, `knapsack`, `open_dimension_x`, `open_dimension_y` | `bin_packing` | `objective` |
+| `time_limit` | Time limit | How long to search for a better plan; you can stop it at any time. | How long the solver may search for a better plan. The first plan usually appears within a second; longer searches find plans with less waste. You can stop the search at any time and keep the best plan so far. | seconds, 1–600 | 10 | `timer.set_time_limit` |
 
 ### Panels (stock sheets)
 
-| Field | UI label | Help text | Unit / values | Default | Upstream |
-|---|---|---|---|---|---|
-| `id` | Name | Your name for this panel, shown on the cutting plan (e.g. "Birch ply 18 mm"). | text | "Panel 1", … | — |
-| `length` | Length | The panel's long side, as delivered, in millimetres. For a panel with grain, the side along the grain. For "Shortest length from one panel", this is the maximum length available. | mm (0.1 mm steps), 0.1–100 000 | — | `width` |
-| `width` | Width | The panel's short side, as delivered, in millimetres. For "Shortest width from one panel", this is the maximum width available. | mm (0.1 mm steps), 0.1–100 000 | — | `height` |
-| `quantity` | Quantity | How many panels of this size you have. Leave empty for "as many as needed". | count ≥ 1, or empty = unlimited | empty | `copies` (−1 = unlimited) |
-| `cost` | Cost | Used only to compare panel sizes when several are listed: a lower total cost is preferred. Leave empty to use the panel's area. | number ≥ 0 | area | `cost` |
+| Field | UI label | Short help | Help text | Unit / values | Default | Upstream |
+|---|---|---|---|---|---|---|
+| `id` | Name | Your name for this panel size, shown on the cutting plan. | Your name for this panel, shown on the cutting plan (e.g. "Birch ply 18 mm"). | text | "Panel 1", … | — |
+| `length` | Length | The panel's long side in millimetres, along the grain if it has one. | The panel's long side, as delivered, in millimetres. For a panel with grain, the side along the grain. For "Shortest length from one panel", this is the maximum length available. | mm (0.1 mm steps), 0.1–100 000 | — | `width` |
+| `width` | Width | The panel's short side in millimetres. | The panel's short side, as delivered, in millimetres. For "Shortest width from one panel", this is the maximum width available. | mm (0.1 mm steps), 0.1–100 000 | — | `height` |
+| `quantity` | Quantity | How many panels of this size you have; empty means as many as needed. | How many panels of this size you have. Leave empty for "as many as needed". | count ≥ 1, or empty = unlimited | empty | `copies` (−1 = unlimited) |
+| `cost` | Cost | Compares panel sizes when several are listed: a lower total cost is preferred. | Used only to compare panel sizes when several are listed: a lower total cost is preferred. Leave empty to use the panel's area. | number ≥ 0 | area | `cost` |
 
 Only one panel type is allowed with the "Shortest length/width" goals,
 and its quantity must be 1 or empty (upstream: open-dimension objectives
@@ -71,23 +82,23 @@ use a single bin).
 
 ### Parts
 
-| Field | UI label | Help text | Unit / values | Default | Upstream |
-|---|---|---|---|---|---|
-| `id` | Name | Your name for this part, shown on the cutting plan and labels (e.g. "Side left"). | text | "Part 1", … | — |
-| `length` | Length | The part's finished length in millimetres, before edge banding. For a part with grain, the side along the grain. | mm (0.1 mm steps), 0.1–100 000 | — | `width` |
-| `width` | Width | The part's finished width in millimetres, before edge banding. | mm (0.1 mm steps), 0.1–100 000 | — | `height` |
-| `quantity` | Quantity | How many identical parts you need. With "Best use of the panels I have", this is the most that will be cut; fewer may be cut if they don't fit. | count ≥ 1 | 1 | `copies` |
-| `grain` | Keep grain direction | Tick if the part must keep the panel's grain direction (veneer, solid wood, wood-look melamine); it is then never turned. Leave unticked for MDF or chipboard: turning parts saves material. | yes / no | no | `oriented` (`true` = no rotation) |
-| `value` | Value | Only used with "Best use of the panels I have": how much you want this part, compared with the others. The plan maximises the total value of the parts it cuts. Leave empty to value parts by their area in mm² (the plan then uses as much of the panel as possible). Set every part to 1 to cut as many parts as possible. | number ≥ 0 | area (mm²) | `profit` |
+| Field | UI label | Short help | Help text | Unit / values | Default | Upstream |
+|---|---|---|---|---|---|---|
+| `id` | Name | Your name for this part, shown on the cutting plan. | Your name for this part, shown on the cutting plan and labels (e.g. "Side left"). | text | "Part 1", … | — |
+| `length` | Length | The part's finished length in millimetres, along the grain if it keeps it. | The part's finished length in millimetres, before edge banding. For a part with grain, the side along the grain. | mm (0.1 mm steps), 0.1–100 000 | — | `width` |
+| `width` | Width | The part's finished width in millimetres. | The part's finished width in millimetres, before edge banding. | mm (0.1 mm steps), 0.1–100 000 | — | `height` |
+| `quantity` | Quantity | How many identical parts you need. | How many identical parts you need. With "Best use of the panels I have", this is the most that will be cut; fewer may be cut if they don't fit. | count ≥ 1 | 1 | `copies` |
+| `grain` | Keep grain direction | Tick for veneer, solid wood or wood-look panels: the part is then never turned. | Tick if the part must keep the panel's grain direction (veneer, solid wood, wood-look melamine); it is then never turned. Leave unticked for MDF or chipboard: turning parts saves material. | yes / no | no | `oriented` (`true` = no rotation) |
+| `value` | Value | How much you want this part when not every part fits; empty means its area. | Only used with "Best use of the panels I have": how much you want this part, compared with the others. The plan maximises the total value of the parts it cuts. Leave empty to value parts by their area in mm² (the plan then uses as much of the panel as possible). Set every part to 1 to cut as many parts as possible. | number ≥ 0 | area (mm²) | `profit` |
 
 ### Saw and cutting
 
-| Field | UI label | Help text | Unit / values | Default | Upstream |
-|---|---|---|---|---|---|
-| `kerf` | Saw blade thickness (kerf) | The width of material each cut removes, in millimetres — the thickness of your saw blade's teeth, not the blade body. Every cut between two parts uses this much material, so parts are spaced by it. Typical values: 3.2–4.4 mm for panel and table saws, 2.2–2.8 mm for track saws. Leave it at 0 only if your dimensions already include it. | mm (0.1 mm steps), 0–100 000 | 0 | `cut_thickness` |
-| `stages` | Cutting stages | How many times a piece is turned and cut again. **Stage 1**: full-length cuts across the whole panel, splitting it into strips. **Stage 2**: each strip is cut across into pieces. **Stage 3**: each piece is cut once more, across stage-2 cuts. More stages let parts nest more tightly, so less waste, but mean more handling at the saw. 2 suits simple strip cutting; 3 suits most panel-saw work; "Unlimited" gives the least waste with the most handling: cuts may then go either way at every stage, and the last-stage trimming setting does not apply. | `2`, `3`, `unlimited` | `3` | `number_of_stages` |
-| `cut_type` | Last-stage trimming | Whether a part may be cut free from a small offcut after the last stage. **Allowed** (recommended): a strip may hold parts of different sizes; a final trimming cut separates each part from its offcut. **Not allowed**: at the last stage every part must fill its strip exactly, with no offcut — fewer cuts, more waste. **One part per strip**: every part in a last-stage strip is the same part — the simplest plans to cut, the most waste. | `non_exact`, `exact`, `homogenous` | `non_exact` | `cut_type` |
-| `first_cuts` | First cuts | Which way the first, full-panel cuts run. **Either** (recommended): the solver tries both and keeps the better plan. With one panel size, every panel in the plan is cut the same way; with several sizes, each panel may be cut differently. The search time is shared between the two directions. **Along the length**: rip the panel into long strips first, then cut the strips across — for saws or workflows that always rip first. **Across the length**: cut the panel across into shorter strips first. Parts with grain keep their direction whichever you choose. With unlimited stages, cuts may always go either way. | `either`, `along_length`, `across_length` | `either` | `first_stage_orientation` (`any`, `horizontal`, `vertical`) |
+| Field | UI label | Short help | Help text | Unit / values | Default | Upstream |
+|---|---|---|---|---|---|---|
+| `kerf` | Saw blade thickness (kerf) | How much material each saw cut removes, in millimetres: usually 2.2–4.4 mm. | The width of material each cut removes, in millimetres — the thickness of your saw blade's teeth, not the blade body. Every cut between two parts uses this much material, so parts are spaced by it. Typical values: 3.2–4.4 mm for panel and table saws, 2.2–2.8 mm for track saws. Leave it at 0 only if your dimensions already include it. | mm (0.1 mm steps), 0–100 000 | 0 | `cut_thickness` |
+| `stages` | Cutting stages | How often pieces are turned and cut again: more stages, less waste, more handling. | How many times a piece is turned and cut again. **Stage 1**: full-length cuts across the whole panel, splitting it into strips. **Stage 2**: each strip is cut across into pieces. **Stage 3**: each piece is cut once more, across stage-2 cuts. More stages let parts nest more tightly, so less waste, but mean more handling at the saw. 2 suits simple strip cutting; 3 suits most panel-saw work; "Unlimited" gives the least waste with the most handling: cuts may then go either way at every stage, and the last-stage trimming setting does not apply. | `2`, `3`, `unlimited` | `3` | `number_of_stages` |
+| `cut_type` | Last-stage trimming | Whether a part may be trimmed free from a small offcut after the last stage. | Whether a part may be cut free from a small offcut after the last stage. **Allowed** (recommended): a strip may hold parts of different sizes; a final trimming cut separates each part from its offcut. **Not allowed**: at the last stage every part must fill its strip exactly, with no offcut — fewer cuts, more waste. **One part per strip**: every part in a last-stage strip is the same part — the simplest plans to cut, the most waste. | `non_exact`, `exact`, `homogenous` | `non_exact` | `cut_type` |
+| `first_cuts` | First cuts | Which way the first full-panel cuts run: either way, along or across the length. | Which way the first, full-panel cuts run. **Either** (recommended): the solver tries both and keeps the better plan. With one panel size, every panel in the plan is cut the same way; with several sizes, each panel may be cut differently. The search time is shared between the two directions. **Along the length**: rip the panel into long strips first, then cut the strips across — for saws or workflows that always rip first. **Across the length**: cut the panel across into shorter strips first. Parts with grain keep their direction whichever you choose. With unlimited stages, cuts may always go either way. | `either`, `along_length`, `across_length` | `either` | `first_stage_orientation` (`any`, `horizontal`, `vertical`) |
 
 ## Option names
 

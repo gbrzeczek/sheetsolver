@@ -9,6 +9,7 @@
   import SheetNav from "../lib/components/SheetNav.svelte";
   import Legend from "../lib/components/Legend.svelte";
   import PrintSheets from "../lib/components/PrintSheets.svelte";
+  import Section from "../lib/components/Section.svelte";
   import { session } from "../lib/job/session.svelte";
   import { router, href } from "../lib/router.svelte";
   import { cutOrder } from "../lib/plan/cutorder";
@@ -113,6 +114,36 @@
   }
   const keep = $derived(leftoverOf());
 
+  // The summary lines of the sections that can be collapsed (DESIGN.md §10).
+  const figuresSummary = $derived.by(() => {
+    if (!best || !instance) return "";
+    const m = best.metrics;
+    const panels = `${m.panels_used} ${m.panels_used === 1 ? "panel" : "panels"}`;
+    const extra = keep
+      ? "1 leftover to keep"
+      : instance.objective === "open_dimension_x"
+        ? `${mm(m.used_length)} mm used`
+        : instance.objective === "open_dimension_y"
+          ? `${mm(m.used_width)} mm used`
+          : null;
+    return [`${m.parts_cut} / ${totalParts(instance)} parts`, panels, `${percent(m.waste_fraction)} waste`, extra].filter(Boolean).join(" · ");
+  });
+  const searchSummary = $derived.by(() => {
+    if (!job || !best || !instance) return "";
+    const kind = best.metrics.parts_cut >= totalParts(instance) ? "✓ Complete plan" : "✓ Checked plan";
+    if (job.state === "failed") return `${kind} · the search then stopped with an error`;
+    if (job.ended_by === "complete") return `${kind} · the search finished`;
+    if (job.ended_by === "time_limit") return `${kind} · time limit reached after ${job.time_limit} s`;
+    if (job.ended_by === "cancelled") return `${kind} · stopped after ${job.elapsed.toFixed(1)} s`;
+    return kind;
+  });
+  const plansSummary = $derived.by(() => {
+    const latest = session.history[0];
+    if (!job || !latest) return "";
+    return `${job.plans_found} ${job.plans_found === 1 ? "plan" : "plans"} · the latest after ${latest.foundAfter.toFixed(2)} s`;
+  });
+  let cutOrderHelp = $state(false);
+
   // The overview's parts checklist: parts not cut first.
   const checklistRows = $derived(
     instance && best ? checklist(instance, best.plan).sort((a, b) => Number(a.cut >= a.needed) - Number(b.cut >= b.needed)) : [],
@@ -178,6 +209,7 @@
   {#if best && instance}
     {@const m = best.metrics}
     {@const total = totalParts(instance)}
+    <Section title="Figures" summary={figuresSummary} class="figures">
     <div class="stats">
       <div class="stat"><strong>{m.panels_used}</strong>{m.panels_used === 1 ? "panel" : "panels"}
         <small>{patterns.length === 1 || new Set(patterns.map((p) => p.panel_id)).size === 1 ? `${size(patterns[0]!.root)} mm each` : "several sizes"}</small></div>
@@ -192,25 +224,39 @@
         <div class="stat"><strong>{mm(m.used_width)}</strong>mm used<small>of {mm(instance.panels[0]?.width ?? 0)} mm width</small></div>
       {/if}
     </div>
+    </Section>
   {/if}
 {/snippet}
 
-{#snippet details()}
+{#snippet search()}
   {#if job && instance && best}
-    <details class="more">
-      <summary>Cutting settings and search details</summary>
+    {@const total = totalParts(instance)}
+    <!-- Open when it matters: a search that failed after this plan. -->
+    <Section title="Search" summary={searchSummary} open={job.state === "failed"} class="search">
+      <p aria-live="polite">
+        {#if job.ended_by === "complete"}
+          The search ran to its end: this is the best plan it can find, and a longer time limit would give the same plan.
+        {:else if job.ended_by === "time_limit"}
+          The time limit was reached, so a longer search may still save material: reaching it does not prove that fewer panels or less waste is impossible.
+        {:else if job.ended_by === "cancelled"}
+          The search was stopped; this is the best plan found before the stop.
+        {:else if job.state === "failed"}
+          <span style="color:var(--bad)">The search stopped with an error after this plan was found; the plan was checked and is kept.</span>
+        {/if}
+        {#if best.metrics.parts_cut < total}{" "}Not every part is cut: the plan makes the most of the panels listed.{/if}
+      </p>
+      {#if job.ended_by === "time_limit" && job.time_limit < 600}
+        <button class="link" type="button" onclick={() => void session.again(longerSearch)}>Search for {longerSearch} s</button>
+      {:else if job.ended_by === "cancelled"}
+        <button class="link" type="button" onclick={() => void session.again()}>Search again</button>
+      {/if}
+      <p>This is plan {best.number}, found after {best.found_after.toFixed(1)} s of a {job.time_limit} s search.</p>
       <p>
         Kerf {mm(kerf)} mm · {instance.saw.stages === "unlimited" ? "unlimited" : instance.saw.stages} cutting stages ·
         first cuts {instance.saw.first_cuts === "either" ? "either way" : instance.saw.first_cuts.replace("_", " the ")} ·
         last-stage trimming {instance.saw.cut_type === "non_exact" ? "allowed" : instance.saw.cut_type === "exact" ? "not allowed" : "one part per strip"}.
       </p>
-      <p>
-        This is plan {best.number}, found after {best.found_after.toFixed(1)} s of a {job.time_limit} s search.
-        {job.ended_by === "complete"
-          ? "The search ran to its end: a longer time limit would give the same plan."
-          : "Reaching the time limit does not prove that fewer panels or less waste is impossible."}
-      </p>
-    </details>
+    </Section>
   {/if}
 {/snippet}
 
@@ -258,15 +304,14 @@
       <div>
         <div class="eyebrow">{name || "Cutting plan"} · {job.state === "queued" ? "waiting" : "searching"}</div>
         <svelte:element this={headingTag} class="headline">{best ? `${headline(instance, best.metrics)} so far` : job.state === "queued" ? "Waiting for a free solver" : "No plan yet"}</svelte:element>
-        <p class="muted">
-          {#if job.state === "queued"}
+        {#if job.state === "queued"}
+          <p class="muted">
             {job.queue_position ? `${job.queue_position === 1 ? "Your job runs next" : `${job.queue_position - 1} ${job.queue_position === 2 ? "job" : "jobs"} ahead of yours`}. ` : ""}The time limit only counts once your search starts.
-          {:else}
-            Looking for a plan with less waste. The best plan so far is shown and replaced as soon as a better one is found.
-          {/if}
-        </p>
+          </p>
+        {/if}
       </div>
       <div class="actions">
+        {#if best}<a class="button primary" href={href({ name: "plan", id, panel: 1, cut: null })}>Open plan</a>{/if}
         <button class="button" type="button" onclick={() => void session.stop()} disabled={session.stopping}>
           {session.stopping ? "Stopping…" : job.state === "queued" ? "Cancel" : best ? "Stop and keep this plan" : "Stop"}
         </button>
@@ -280,31 +325,28 @@
     <div class="progress" role="progressbar" aria-label="Search time" aria-valuenow={Math.round(elapsed)} aria-valuemin={0} aria-valuemax={job.time_limit}>
       <span style="width:{(elapsed / job.time_limit) * 100}%"></span>
     </div>
-    {@render figures()}
     {#if best}
-      <div class="live-grid">
-        <div class="overview">
-          {#each patterns as p, i (i)}
-            {@const s = patternStats(p)}
-            <section class="viewer">
-              <div class="viewer-head"><div><h3>Panel {i + 1} <small>/ {patterns.length}</small>{#if p.repeat > 1}{" "}<small>× {p.repeat}</small>{/if}</h3>
-                <small>{s.parts} parts · {percent(s.wasteFraction)} waste</small></div></div>
-              <PanelDrawing pattern={p} {kerf} grain={grainOf} width={470} labels="names" nameSize={11} title="Panel {i + 1} of the best plan so far" />
-            </section>
-          {/each}
-        </div>
-        <aside class="side">
-          <div class="side-head"><h3>Plans found</h3><small>{job.plans_found}</small></div>
-          <ul class="plans" style="padding:0 16px 8px" aria-live="polite">
+      <div class="folds">
+        {@render figures()}
+        <Section title="Plans found" summary={plansSummary} class="plans-found">
+          <ul class="plans" aria-live="polite">
             {#each session.history as h, i (h.number)}
               {@const older = session.history[i + 1]}
               <li><span><b>Plan {h.number}</b> · {h.panels} panels · {percent(h.waste)} waste</span>
                 {#if older}<span class="ok">−{((older.waste - h.waste) * 100).toFixed(1)} pt</span>{:else}<span class="muted num">{h.foundAfter.toFixed(2)} s</span>{/if}</li>
             {/each}
           </ul>
-          <p class="help" style="border-top:1px solid var(--line);padding-top:10px">You can open the plan now; it updates itself while the search runs.</p>
-          <div style="padding:0 16px 16px"><a class="button primary block" href={href({ name: "plan", id, panel: 1, cut: null })}>Open plan</a></div>
-        </aside>
+        </Section>
+      </div>
+      <div class="overview">
+        {#each patterns as p, i (i)}
+          {@const s = patternStats(p)}
+          <section class="viewer">
+            <div class="viewer-head"><div><h3>Panel {i + 1} <small>/ {patterns.length}</small>{#if p.repeat > 1}{" "}<small>× {p.repeat}</small>{/if}</h3>
+              <small>{s.parts} parts · {percent(s.wasteFraction)} waste</small></div></div>
+            <PanelDrawing pattern={p} {kerf} grain={grainOf} width={540} labels="names" nameSize={11} title="Panel {i + 1} of the best plan so far" />
+          </section>
+        {/each}
       </div>
     {/if}
   </main>
@@ -324,27 +366,19 @@
         {#if !pane}<button class="button" type="button" onclick={() => session.edit()}>Edit job</button>{/if}
       </div>
     </div>
-    {@render figures()}
-    <p class="statusline" style="margin:-8px 0 20px" aria-live="polite">
+    <div class="folds">
+      {@render figures()}
       {#if searching}
-        <span>Still searching · {elapsed.toFixed(1)} s of {job.time_limit} s; the plan updates itself.</span>
-        <button class="link" type="button" onclick={() => void session.stop()}>{session.stopping ? "Stopping…" : "Stop and keep this plan"}</button>
-        {#if session.stopTrouble}<span style="color:var(--bad)">Not stopped: {session.stopTrouble}</span>{/if}
+        <!-- Shown while it matters: the plan may still change. -->
+        <p class="statusline" style="margin:12px 0 0" aria-live="polite">
+          <span>Still searching · {elapsed.toFixed(1)} s of {job.time_limit} s; the plan updates itself.</span>
+          <button class="link" type="button" onclick={() => void session.stop()}>{session.stopping ? "Stopping…" : "Stop and keep this plan"}</button>
+          {#if session.stopTrouble}<span style="color:var(--bad)">Not stopped: {session.stopTrouble}</span>{/if}
+        </p>
       {:else}
-        <span class="ok">✓ {best.metrics.parts_cut >= total ? "Complete plan" : "Checked plan"}</span>
-        {#if job.ended_by === "complete"}
-          <span>· the search finished; this is the best plan it can find.</span>
-        {:else if job.ended_by === "time_limit"}
-          <span>· time limit reached after {job.time_limit} s, so a longer search may still save material.</span>
-          {#if job.time_limit < 600}<button class="link" type="button" onclick={() => void session.again(longerSearch)}>Search for {longerSearch} s</button>{/if}
-        {:else if job.ended_by === "cancelled"}
-          <span>· stopped after {job.elapsed.toFixed(1)} s; this is the best plan found before the stop.</span>
-          <button class="link" type="button" onclick={() => void session.again()}>Search again</button>
-        {:else if job.state === "failed"}
-          <span style="color:var(--bad)">· the search then stopped with an error; this plan was checked and is kept.</span>
-        {/if}
+        {@render search()}
       {/if}
-    </p>
+    </div>
 
     {#if pattern && order}
       {@const s = patternStats(pattern)}
@@ -385,29 +419,32 @@
         </div>
         <aside class="side wb-cuts" aria-label="Cut order">
           <div class="scroll">
-            <div class="side-head"><h3>Cut order</h3><small>{order.cuts.length} cuts</small></div>
-            <p class="help">Each size is the piece to cut off, measured from the edge you cut from: set the fence or stop to it.</p>
+            <div class="side-head">
+              <h3>Cut order<button class="help-btn" type="button" aria-expanded={cutOrderHelp} aria-controls="cut-order-help" aria-label="About the cut order"
+                onclick={() => (cutOrderHelp = !cutOrderHelp)}>?</button></h3>
+              <small>{order.cuts.length} cuts</small>
+            </div>
+            <p class="help" id="cut-order-help" hidden={!cutOrderHelp}>Each size is the piece to cut off, measured from the edge you cut from: set the fence or stop to it.</p>
             <CutList {order} {current} onselect={goCut} />
           </div>
         </aside>
         <div class="wb-below">
-          <div class="below" style="margin-top:0">
-            <section class="manifest"><h3>On this panel{#if pattern.repeat > 1}{" "}<small>· each of {pattern.repeat}</small>{/if}</h3>
+          <div class="folds">
+            <Section title="On this panel" summary="{s.parts} {s.parts === 1 ? 'part' : 'parts'}{pattern.repeat > 1 ? ` · each of ${pattern.repeat} panels` : ''}" class="manifest">
               {#each onPanel as [pid, n] (pid)}
                 {@const part = instance.parts.find((p) => p.id === pid)}
                 <div class="manifest-row"><div>{pid} <span>{part ? size(part) : ""}</span></div><strong>× {n}</strong></div>
               {/each}
-            </section>
-            <section class="manifest"><h3>Offcuts <small>· largest first</small></h3>
+            </Section>
+            <Section title="Offcuts" summary={offs.length ? `${offs.length} · the largest ${size(offs[0]!)}` : "none"} class="manifest">
               {#each offs.slice(0, 5) as o, i (i)}
                 <div class="manifest-row"><div>{size(o)}</div><span>{(area(o) / 1e6).toFixed(3)} m²</span></div>
               {:else}
-                <p class="help" style="margin-top:8px">No offcuts on this panel.</p>
+                <p class="help">No offcuts on this panel.</p>
               {/each}
               {#if offs.length > 5}<p class="help" style="margin-top:8px">{offs.length - 5} smaller offcuts not listed. Slivers thinner than the kerf count as saw dust.</p>{/if}
-            </section>
+            </Section>
           </div>
-          {@render details()}
         </div>
       </div>
     {:else}
@@ -425,8 +462,12 @@
                 <PanelDrawing pattern={p} {kerf} grain={grainOf} width={540} labels="full" nameSize={10.5} title="Panel {i + 1}: {p.panel_id}" />
               </section>
             {/each}
-            <section class="viewer">
-              <div class="viewer-head"><div><h3>Parts checklist</h3><small>{best.metrics.parts_cut} of {total} included</small></div></div>
+          </div>
+          <Legend {kerf} />
+          <!-- Open when it matters: parts left out of the plan. -->
+          <div class="folds" style="margin-top:20px">
+            <Section title="Parts checklist" summary={best.metrics.parts_cut >= total ? `all ${total} parts cut` : `${best.metrics.parts_cut} of ${total} parts cut · ${total - best.metrics.parts_cut} not cut`}
+              open={best.metrics.parts_cut < total} class="checklist">
               <div class="table-wrap">
                 <table>
                   <thead><tr><th>Part</th><th class="num">Length, mm</th><th class="num">Width, mm</th><th class="c">Grain</th><th class="num">Needed</th><th class="num">Cut</th><th>Panels</th></tr></thead>
@@ -442,10 +483,8 @@
                   </tbody>
                 </table>
               </div>
-            </section>
+            </Section>
           </div>
-          <Legend {kerf} />
-          {@render details()}
         </div>
       </div>
     {/if}

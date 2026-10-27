@@ -126,12 +126,15 @@ These shapes are the API contract; Stage 1 finalises them.
 the UI through the types, so it cannot drift:
 
 ```
-FIELDS.md  →  /// doc comment on the model field  →  utoipa  →  openapi.json (description)  →  UI tooltip / help
+FIELDS.md  →  /// doc comment on the model field  →  utoipa  →  openapi.json (description)  →  UI help, under "More"
+FIELDS.md  →  short help in api/src/fields.rs           →  openapi.json (x-short-help)  →  UI help, shown first
 ```
 
 A test in the `api` crate fails if any field in `openapi.json` has no
-description, or if an instance field's description differs from its
-help text in `FIELDS.md`.
+description, or if an input field's description, label or short help
+differs from `FIELDS.md`, or a short help is longer than one sentence of
+15 words. `web/scripts/gen-fields.mjs` fails the UI build if an input
+field lacks either level.
 
 User-supplied `id` strings are carried through to the solution; internal
 code uses dense integer indices.

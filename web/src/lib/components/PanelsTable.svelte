@@ -2,28 +2,31 @@
 <script lang="ts">
   import ColumnHeader from "./ColumnHeader.svelte";
   import { emptyPanel, namesFor, type PanelRow } from "../job/draft";
-  import { field, type FieldKey } from "../api/fields";
+  import { describedBy, field, type FieldKey } from "../api/fields";
 
   interface Props {
     rows: PanelRow[];
     problems: Map<string, string>;
     /** "Shortest length/width" goals take exactly one panel. */
     single: boolean;
+    /** Cost only compares panel sizes, so it shows with two or more (DESIGN.md §10). */
+    showCost: boolean;
     onedit(path: string): void;
     onremove(index: number): void;
   }
-  let { rows = $bindable(), problems, single, onedit, onremove }: Props = $props();
+  let { rows = $bindable(), problems, single, showCost, onedit, onremove }: Props = $props();
 
   const names = $derived(namesFor(rows, "Panel"));
   let focusedCol = $state<string | null>(null);
 
-  const cols = [
+  type Col = { name: "id" | "length" | "width" | "quantity" | "cost"; cls: string; numeric: boolean; placeholder: string };
+  const cols = $derived<Col[]>([
     { name: "id", cls: "w-name", numeric: false, placeholder: "" },
     { name: "length", cls: "w-len num", numeric: true, placeholder: "" },
     { name: "width", cls: "w-len num", numeric: true, placeholder: "" },
     { name: "quantity", cls: "w-qty-wide num", numeric: true, placeholder: "Unlimited" },
-    { name: "cost", cls: "w-qty num", numeric: true, placeholder: "Area" },
-  ] as const;
+    ...(showCost ? [{ name: "cost", cls: "w-qty num", numeric: true, placeholder: "Area" } as Col] : []),
+  ]);
 
   const path = (i: number, name: string) => `instance.panels[${i}].${name}`;
 
@@ -63,7 +66,7 @@
                 class:text={!col.numeric}
                 class:invalid={problem}
                 aria-invalid={problem ? "true" : undefined}
-                aria-describedby={problem ? `err-panel-${i}-${col.name}` : `help-Panel-${col.name}`}
+                aria-describedby={problem ? `err-panel-${i}-${col.name}` : describedBy(`Panel.${col.name}` as FieldKey)}
                 aria-label="{field(`Panel.${col.name}` as FieldKey).label}, panel {i + 1}"
                 inputmode={col.numeric ? (col.name === "quantity" ? "numeric" : "decimal") : undefined}
                 autocomplete="off"

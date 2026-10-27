@@ -1,9 +1,11 @@
 <!-- A settings field: label, help (?) button, the control, and the help
-     text expanded inline under it (DESIGN.md §5). A self-explanatory field
-     has no button; its help is only read by screen readers. -->
+     expanded inline under it: the short help, then *More* (DESIGN.md §5). A
+     self-explanatory field has no button; its help is only read by screen
+     readers. -->
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import { field, hasHelpButton, helpHtml, type FieldKey } from "../api/fields";
+  import HelpText from "./HelpText.svelte";
+  import { describedBy, field, hasHelpButton, helpHtml, helpId, type FieldKey } from "../api/fields";
 
   interface Props {
     key: FieldKey;
@@ -18,7 +20,7 @@
   let { key, current, optional = false, error, for: forId, children }: Props = $props();
 
   const f = $derived(field(key));
-  const helpId = $derived(`help-${key.replace(".", "-")}`);
+  const id = $derived(helpId(key));
   let open = $state(false);
 </script>
 
@@ -30,17 +32,19 @@
         class="help-btn"
         type="button"
         aria-expanded={open}
-        aria-controls={helpId}
+        aria-controls={id}
         aria-label="About {f.label}"
         onclick={() => (open = !open)}>?</button
       >
     {/if}
   </div>
-  {@render children({ helpId, label: f.label })}
+  {@render children({ helpId: describedBy(key), label: f.label })}
   {#if error}<div class="cell-error" role="alert"><span>{error}</span></div>{/if}
   <!-- Always in the page, so screen readers read it with the field. -->
-  <div class="help-box" id={helpId} hidden={!open}>
+  {#if hasHelpButton(key)}
+    <div class="help-box" {id} hidden={!open}><HelpText {key} {id} {current} /></div>
+  {:else}
     <!-- eslint-disable-next-line svelte/no-at-html-tags -- helpHtml escapes everything but its own tags -->
-    {@html helpHtml(f.help, current)}
-  </div>
+    <div class="help-box" {id} hidden>{@html helpHtml(f.help)}</div>
+  {/if}
 </div>

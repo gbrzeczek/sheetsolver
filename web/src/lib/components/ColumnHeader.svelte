@@ -1,7 +1,9 @@
-<!-- A table column header with its help (?) button and popover, or, for a
+<!-- A table column header with its help (?) button and popover (short
+     help, then *More*), or, for a
      self-explanatory column, its help only for screen readers (DESIGN.md §5). -->
 <script lang="ts">
-  import { field, hasHelpButton, helpHtml, type FieldKey } from "../api/fields";
+  import HelpText from "./HelpText.svelte";
+  import { field, hasHelpButton, helpHtml, helpId, type FieldKey } from "../api/fields";
 
   interface Props {
     key: FieldKey;
@@ -14,7 +16,7 @@
   let { key, short, align = "left", class: cls = "", focused = false }: Props = $props();
 
   const f = $derived(field(key));
-  const id = $derived(`help-${key.replace(".", "-")}`);
+  const id = $derived(helpId(key));
   let open = $state(false);
   let root: HTMLElement | undefined = $state();
 
@@ -42,8 +44,7 @@
         <span>{f.label}</span>
         <button class="icon-btn" style="width:18px;height:18px" aria-label="Close" onclick={() => (open = false)}>×</button>
       </div>
-      <!-- eslint-disable-next-line svelte/no-at-html-tags -- helpHtml escapes everything but its own tags -->
-      {@html helpHtml(f.help)}
+      <HelpText {key} {id} />
     </div>
   {:else}
     <!-- eslint-disable-next-line svelte/no-at-html-tags -- helpHtml escapes everything but its own tags -->

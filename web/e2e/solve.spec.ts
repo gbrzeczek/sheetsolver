@@ -22,6 +22,9 @@ test("enter a job, solve it, and follow the plan cut by cut", async ({ page, req
   await expect(page.locator(".headline")).toHaveText("All 6 parts fit", { timeout: 20_000 });
   await expect(page.getByText("✓ Complete plan")).toBeVisible();
   await expect(page.getByText("Test cabinet · plan")).toBeVisible();
+  // The figures are one tap away, summed up in their section's title line.
+  await expect(page.locator("summary", { hasText: "Figures" })).toContainText("6 / 6 parts");
+  await page.locator("summary", { hasText: "Figures" }).click();
   await expect(page.getByText("✓ No missing parts")).toBeVisible();
 
   // The served plan passed the API's checker; it cuts every part, and the
@@ -34,7 +37,8 @@ test("enter a job, solve it, and follow the plan cut by cut", async ({ page, req
   expect(job.name).toBe("Test cabinet");
 
   // Checklist: every part, cut as often as needed.
-  const checklist = page.locator("section", { hasText: "Parts checklist" });
+  const checklist = page.locator("details", { hasText: "Parts checklist" });
+  await checklist.locator("summary").click();
   await expect(checklist.getByRole("row")).toHaveCount(4);
   await expect(checklist.getByRole("cell", { name: "Part 2" })).toBeVisible();
 

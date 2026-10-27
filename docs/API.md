@@ -241,6 +241,8 @@ another field; a test compares them). For these input fields,
 
 - `title`: the field's UI label from `FIELDS.md` ("Saw blade thickness
   (kerf)").
+- `x-short-help`: the field's short help from `FIELDS.md`, one sentence
+  shown before the full `description` (same markup).
 - `default`: the value the server uses when the field is left out (kerf
   0, stages 3, cut type `non_exact`, first cuts `either`, objective
   `bin_packing`, part quantity 1, grain `false`, time limit 10).
@@ -416,6 +418,9 @@ for reconciling the UI. None changes a field name or a JSON shape.
   `FIELDS.md` (`title`, `description` and `maxLength: 100` in
   `openapi.json`); the "UI-only fields" row for `job_name` on the UI
   branch is replaced by it and should be dropped there.
+- 2026-10-27, Stage 8 (two levels of help): every input property
+  carries `x-short-help`, its one-sentence short help from `FIELDS.md`;
+  `description` keeps the full help text.
 - 2026-10-27, bug fix:
   - Lengths, widths and `saw.kerf` are at most 100 000 mm, a `422`
     problem beyond (`maximum` in `openapi.json`). Without a bound a huge

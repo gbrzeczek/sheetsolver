@@ -2,7 +2,7 @@
 <script lang="ts">
   import ColumnHeader from "./ColumnHeader.svelte";
   import { emptyPart, namesFor, type PartRow } from "../job/draft";
-  import { field, type FieldKey } from "../api/fields";
+  import { describedBy, field, type FieldKey } from "../api/fields";
 
   interface Props {
     rows: PartRow[];
@@ -66,7 +66,7 @@
                 class:text={!col.numeric}
                 class:invalid={problem}
                 aria-invalid={problem ? "true" : undefined}
-                aria-describedby={problem ? `err-part-${i}-${col.name}` : `help-Part-${col.name}`}
+                aria-describedby={problem ? `err-part-${i}-${col.name}` : describedBy(`Part.${col.name}` as FieldKey)}
                 aria-label="{field(`Part.${col.name}` as FieldKey).label}, row {i + 1}"
                 inputmode={col.numeric ? (col.name === "quantity" ? "numeric" : "decimal") : undefined}
                 autocomplete="off"
@@ -83,7 +83,7 @@
             <input
               type="checkbox"
               aria-label="{field('Part.grain').label}, row {i + 1}"
-              aria-describedby="help-Part-grain"
+              aria-describedby={describedBy("Part.grain")}
               bind:checked={row.grain}
               onfocus={() => (focusedCol = "grain")}
               onblur={() => (focusedCol = null)}

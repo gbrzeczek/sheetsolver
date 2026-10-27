@@ -1,12 +1,15 @@
-# Web UI design (Stage 7)
+# Web UI design (Stages 7 and 8)
 
 The design for the Sheetsolver web UI: who it is for, its screens and
 flows, its visual language, and what it needs from the API. The static
-mockups in [`mockups/`](mockups/) show it with real data. Their
-screenshots are in [`mockups/screenshots/`](mockups/screenshots/), at
-desktop (1440 px) and tablet (820 px) widths, in light and dark.
+mockups in [`mockups/`](mockups/) show the Stage 7 design with real data;
+their screenshots are in
+[`mockups/screenshots/stage7-mockups/`](mockups/screenshots/stage7-mockups/).
+Since Stage 8 the screenshots in
+[`mockups/screenshots/`](mockups/screenshots/) are of the app itself, at
+1440, 820 and 360 px (`npm run screens`), and §10 holds the screen budget
+they are measured against.
 
-This is the design phase only: no app code yet, and no Rust changes.
 Scope follows `docs/SCOPE.md`. Every label and help text comes from
 `docs/FIELDS.md`, and the mockup generator reads them straight from that
 file.
@@ -44,8 +47,9 @@ up: the names ("Part 4" became "Side"), and the times at which plans
 were found (the golden files have no timings).
 
 **Regenerating.** `python3 web/mockups/build/build.py` writes the HTML
-files, and `node web/mockups/build/screenshot.cjs` writes the PNGs (with
-the preinstalled Playwright and Chromium). The HTML files are
+files, and `node web/mockups/build/screenshot.cjs` writes their PNGs (with
+the preinstalled Playwright and Chromium). `npm run screens` (in `web/`)
+writes the app's screenshots and `measures.json`. The HTML files are
 self-contained: inline CSS and SVG, no scripts, no network.
 
 ---
@@ -176,9 +180,9 @@ next to that device's own draft, marked out of date if the two differ.
 
 **Job setup** (`editor.html`). The page asks "What are you cutting?" and
 fills a centred column about 1080 px wide.
-- *Job name* (optional): one field above the parts, placeholder
-  "Untitled job". It names the job in the app bar and above the cutting
-  plan. It is sent with the job (`name`, §8 #21), so a plan link opened
+- *Job name* (optional): in *More settings* since Stage 8 (§10),
+  placeholder "Untitled job", and first in that section's summary. It
+  names the job in the app bar and above the cutting plan. It is sent with the job (`name`, §8 #21), so a plan link opened
   on another device shows it too.
 - **Names are optional** for parts and panels. An empty Name cell shows
   its generated name greyed ("Part 9", "Panel 1": the FIELDS.md default,
@@ -195,35 +199,37 @@ fills a centred column about 1080 px wide.
   (§5). Rows are numbered, because 422 problems point at positions.
   *+ Add part* appends a row and focuses its Name.
 - *Panels you have*: the same table with Name, Length, Width, Quantity
-  (placeholder "Unlimited") and Cost (placeholder "Area"). With the
+  (placeholder "Unlimited") and, with two or more panel sizes or a cost
+  typed, Cost (placeholder "Area"). With the
   "Shortest length/width" goals, *Add panel size* is disabled and
   Quantity accepts only 1 or empty, explained inline.
 - *Plan settings* (an aside, separated by a hairline):
   - **Goal** (a select) and **Saw blade thickness (kerf)**, always
     visible, because they change every plan;
-  - **More cutting settings**, collapsed, with a one-line summary of
-    their values ("3 stages · trimming allowed · along the length
-    first · 10 s"): Cutting stages, Last-stage trimming, First cuts
-    (segmented rows) and Time limit. With Unlimited stages, Last-stage
-    trimming is disabled, as its help text says it does not apply;
-  - a short summary (parts, panels) and **Find cutting plan →**, which
-    sits in a sticky bottom bar on tablets.
+  - **More settings**, collapsed, with a one-line summary of their
+    values ("Kitchen units · 3 stages · trimming allowed · along the
+    length first · 10 s"): Job name, Cutting stages, Last-stage
+    trimming, First cuts (segmented rows) and Time limit. With Unlimited
+    stages, Last-stage trimming is disabled, as its help text says it
+    does not apply. Every setting a later stage adds goes here too;
+  - **Find cutting plan →**, which sits in a sticky bottom bar on
+    tablets, with the parts and panel sizes counted beside it.
 
 **Cutting plan, searching** (`solving.html`)
 - Eyebrow "Cutting plan · searching"; headline "All 21 parts fit so far"
-  (or "No plan yet" before the first plan); one line saying the best
-  plan so far is replaced as soon as a better one is found.
+  (or "No plan yet" before the first plan); **Stop and keep this plan**
+  and **Open plan** beside it.
 - A thin time bar: `elapsed` of `time_limit`, animated between events.
   When queued: "Waiting for a free solver · 2 jobs ahead of yours"
   (`queue_position`).
-- The figures row (below) for the best plan so far.
+- *Figures* and *Plans found*, collapsed (§10): the figures row (below)
+  for the best plan so far, and the plans newest first, with panels,
+  waste and the improvement. When `number` jumps, the list shows only
+  the plans received.
 - Every panel of the best plan so far, with part names. A better plan
   replaces them with a short cross-fade (none under reduced motion).
-- *Plans found*: newest first, with panels, waste and the improvement.
-  When `number` jumps, the list shows only the plans received.
-- **Stop and keep this plan** (`DELETE /jobs/{id}`), and **Open plan**,
-  which shows the panel view while the search continues and updates
-  itself.
+- *Stop* is `DELETE /jobs/{id}`; *Open plan* shows the panel view while
+  the search continues, and it updates itself.
 
 **Cutting plan, done** (`plan-overview.html`, `plan-panel.html`)
 - Eyebrow "Kitchen units · plan 2" (the job name, or "Cutting plan"
@@ -232,14 +238,19 @@ fills a centred column about 1080 px wide.
   "18 of 21 parts fit"; with the "Shortest" goals it reads "Uses
   1850 mm of 2440 mm". The subline gives the panels: "3 panels of Birch
   ply 18 mm, 2440 × 1220 mm".
-- **Figures row** between two hairlines:
+- **Figures**, collapsed (§10), its summary "21 / 21 parts · 4 panels ·
+  39.9% waste · 1 leftover to keep"; open, the figures row:
   - *3 panels* (2440 × 1220 mm each);
   - *21 / 21 parts* (✓ No missing parts, or the missing count in red);
   - *18.6% waste* (m² of offcuts and saw dust);
   - *1 leftover to keep* (its size and panel). Reusable material is
     kept apart from waste.
-- **Status line** that separates a complete plan from a proven best
-  one: "✓ Complete plan · time limit reached after 10 s, so a longer
+- **Search**, collapsed (§10), its summary the status line's first part
+  ("✓ Complete plan · time limit reached after 10 s"); while the search
+  runs it is the visible "Still searching" line instead, and it opens by
+  itself when the search failed after a plan. Inside: why the search
+  ended, the action, when the plan was found and the cutting settings.
+  The status separates a complete plan from a proven best one: "✓ Complete plan · time limit reached after 10 s, so a longer
   search may still save material", with *Search for 60 s*
   (`ended_by: "time_limit"`). With `ended_by: "complete"` it reads
   "✓ Complete plan · the search finished; this is the best plan it can
@@ -249,9 +260,10 @@ fills a centred column about 1080 px wide.
   count, waste and "1 strip to keep". The selected card has an accent
   inset bar. `× n` marks a pattern cut on several panels.
 - **All panels**: every panel drawn with names and sizes and a
-  *Cut order →* link, then the **parts checklist** (part, length,
-  width, grain, needed, cut ✓, on which panels). With "Best use",
-  parts not cut come first, marked "not cut".
+  *Cut order →* link, the legend, then the **Parts checklist** (part,
+  length, width, grain, needed, cut ✓, on which panels), collapsed with
+  "all 21 parts cut" as its summary, and open when parts are not cut.
+  With "Best use", parts not cut come first, marked "not cut".
 - **One panel**: the drawing (§4.6) in a bordered viewer headed
   "Panel 1 / 3" with its material and figures and "Grain →". Under the
   drawing are the legend and the **current cut** bar: "Cut 7 of 19 ·
@@ -266,12 +278,12 @@ fills a centred column about 1080 px wide.
   - for the last cut of a piece, what is left (`leaves offcut 1040.5 ×
     10`).
 
-  Done cuts are dimmed and the current one has the accent bar. Below
-  the drawing are *On this panel* (parts × count) and *Offcuts*
-  (largest first, so usable ones can be set aside).
-- **Cutting settings and search details**: a disclosure at the bottom
-  (kerf, stages, first cuts, trimming; when the plan was found; that a
-  time limit does not prove the best result).
+  Done cuts are dimmed and the current one has the accent bar. How to
+  read a size ("the piece to cut off, measured from the edge you cut
+  from") is behind the (?) next to *Cut order*. Below the drawing are
+  *On this panel* (parts × count; summary "11 parts") and *Offcuts*
+  (largest first, so usable ones can be set aside; summary "10 · the
+  largest 2 440 × 200.4"), both collapsed.
 - Tapping a part in the drawing shows its name, size, grain and whether
   it was turned, in the detail bar. Tapping a cut badge or a list row
   makes that cut current. The current cut is kept in the URL, so a
@@ -483,10 +495,11 @@ current cut uses the accent.
 | Button | Primary (accent fill), Secondary (surface + line), Link (accent text) |
 | Table input | 1 px line, radius 3, right-aligned figures; error: red border and tint |
 | Help button (?) | 18 px circle next to every label and column header; `aria-expanded` (§5) |
-| Help popover | For table columns: label and full help text, close button, arrow to the header |
-| Inline help | For settings: a soft box under the control |
+| Help popover | For table columns: label, short help and *More*, close button, arrow to the header |
+| Inline help | For settings: a soft box under the control, short help and *More* |
 | Select, segmented row | Goal as a select; stages, trimming, first cuts as segmented rows (selected: soft accent fill and an accent underline) |
-| Disclosure | "More cutting settings", "Cutting settings and search details": ▸/▾ with a summary of values |
+| Disclosure | "More settings" in Job setup: ▸/▾ with a summary of values |
+| Section that can be collapsed | Figures, Search, Plans found, Parts checklist, On this panel, Offcuts: ▸/▾, a title and a one-line summary of the values inside (`Section.svelte`, §10) |
 | Alert | Red-bordered summary of 422 problems with links to fields |
 | Panel card | Thumbnail, "Panel n", parts and waste; selected: accent border and inset bar |
 | Viewer | Bordered surface with heading, drawing, legend, detail bar |
@@ -543,22 +556,30 @@ button next to its label**, a familiar pattern. It replaces the earlier
 always-visible text, which made the setup screen a wall of prose. It
 works on touch screens, unlike hover tooltips:
 
+- **Two levels** (owner's decision, 2026-10-27, Stage 8): the (?) opens
+  the field's **short help**, one sentence of at most 15 words, with
+  **More**, which puts the full help text in its place (and *Less*
+  brings the short help back). Both are exact copies of `FIELDS.md`
+  (*Short help* and *Help text*); `openapi.json` carries them as
+  `x-short-help` and `description`, and the build fails if either is
+  missing.
 - **Table columns** (parts, panels): the (?) in each column header opens
-  a **popover** under the header with the column's label and full help
-  text. Tap again, tap elsewhere, press Esc or tap × to close
+  a **popover** under the header with the column's label and its
+  help. Tap again, tap elsewhere, press Esc or tap × to close
   (`editor.html` shows "Keep grain direction" open). One popover at a
   time.
 - **Settings** (Goal, kerf, stages, trimming, first cuts, time limit):
   the (?) next to the label expands the help **inline, in a soft box
   under the control** (`editor.html` shows the kerf help open). It
   stays open until closed, so it can be read while choosing. For option
-  fields, the sentence about the selected option is emphasised; the
-  words never change.
+  fields, the sentence of the full text about the selected option is
+  emphasised; the words never change.
 - **Behaviour**:
   - the button is a real `<button>` with `aria-expanded` and
     `aria-controls`, labelled "About Saw blade thickness (kerf)";
-  - the help element is linked to its input by `aria-describedby`, so
-    screen readers read it with the field even when it is closed;
+  - the short help is linked to its input by `aria-describedby`, so
+    screen readers read it with the field even when it is closed; *More*
+    is a button with `aria-expanded`, named "More about …";
   - the hit area is 42 px.
 - **Self-explanatory fields have no (?)**: *Job name*, the part and panel
   *Name*, the part *Width* and the panel *Quantity* (owner's decision,
@@ -571,11 +592,13 @@ works on touch screens, unlike hover tooltips:
 - **No input without help**: every input component requires a `field`
   key, and its help comes from `fields.generated.ts` (§7). An input
   without help text does not compile, and an end-to-end test opens
-  every (?) and checks that its text matches FIELDS.md; for the
-  self-explanatory fields it checks there is no button and that the
-  input still points at the exact text.
+  every (?) and checks that its short help, then after *More* its full
+  text, match FIELDS.md; for the self-explanatory fields it checks there
+  is no button and that the input still points at the exact full text.
 - **One short visible hint stays**, where it prevents mistakes: "Sizes
-  in millimetres, at most one decimal" under the page title. The parts
+  in millimetres, at most one decimal (720, 3.2, 18.5)" under the page
+  title. ("Tap (?) for what a field means" went in Stage 8: the button
+  is familiar.) The parts
   and panels tables have none: "Keep grain" and its (?) say enough, the
   ↔ glyph is explained by the plan's legend, and the panel Quantity's
   "Unlimited" placeholder says what empty means (owner's decision,
@@ -894,3 +917,141 @@ mockups still show the tabbed layout.
 Later decision (2026-10-27): **no (?) for self-explanatory fields.** Job
 name, part and panel Name, part Width and panel Quantity lose their help
 button (§5); their help text stays in FIELDS.md and for screen readers.
+
+Later decision (2026-10-27): **less on screen at once** (Stage 8, §10).
+The owner found that the UI showed too much at once. Help has two
+levels (short help, then *More*), and each screen follows the budget of
+§10.
+
+---
+
+## 10. Less on screen at once (Stage 8)
+
+**Principle.** A screen shows what most jobs need to be decided or
+read, and the rest is one tap away. Nothing is removed: every field,
+figure and sentence is still in the page, and every one stays exact.
+Each piece of the UI is in one of three places:
+
+1. **Always visible**: what most jobs need, every time.
+2. **In a section that can be collapsed**, whose summary line shows its
+   current values ("3 stages · trimming allowed · 10 s",
+   "21 / 21 parts · 4 panels · 39.9% waste"), so a closed section still
+   answers "what is in it?". A section has a title, a summary of the
+   values inside and ▸/▾ (`Section.svelte`; *More settings* in the job
+   setup is the same pattern).
+3. **Only when it matters**: shown by the state of the job, not by a
+   tap. A column with no effect is absent; a section with something
+   wrong opens by itself.
+
+A new field or figure (Stages 9–16) goes into a section by default. It
+moves to "always visible" only by an owner's decision recorded here, and
+only within the budget below.
+
+### Job setup
+
+| Always visible | Collapsed, with a summary | Only when it matters |
+|---|---|---|
+| Title and the one-line size hint · *Parts to make* (Name, Length, Width, Quantity, Keep grain) · *Panels you have* (Name, Length, Width, Quantity) · Goal · Saw blade thickness (kerf), since it defaults to 0 and must be seen · *Find cutting plan* | *More settings*: Job name, Cutting stages, Last-stage trimming, First cuts, Time limit, and every setting Stages 9–16 add | *Value*, with "Best use of the panels I have" · *Cost*, with two or more panel sizes, or a cost typed (so nothing sent is out of sight) · the one-panel goals' note under the panels · *More settings* opens when a problem is in it · the problems count under the button |
+
+Help is in place 1 only as a (?) button: one tap gives the short help,
+*More* the full text (§5).
+
+### Cutting plan (all panels, and the workbench's right half)
+
+| Always visible | Collapsed, with a summary | Only when it matters |
+|---|---|---|
+| Eyebrow, headline ("All 21 parts fit") and the panels line · Print, Edit job · the panel list · every panel drawn · the legend | *Figures*: the figures row · *Search*: why it ended, *Search for 60 s*, when the plan was found, the cutting settings · *Parts checklist* | The out-of-date bar · "Still searching" with *Stop*, while the search runs · *Search* opens when the search failed after a plan · *Parts checklist* opens when parts are not cut |
+
+### Cutting plan, searching
+
+| Always visible | Collapsed, with a summary | Only when it matters |
+|---|---|---|
+| Headline ("… so far"), *Stop and keep this plan*, *Open plan* · the time bar · every panel of the best plan so far | *Figures* · *Plans found* ("3 plans · the latest after 0.91 s") | The queue position and its sentence, while waiting · "Reconnecting…" · "Not stopped: …" |
+
+### One panel (the saw)
+
+| Always visible | Collapsed, with a summary | Only when it matters |
+|---|---|---|
+| Headline · panel list · the drawing with rulers and cut badges · legend · the current cut with ‹ › · the cut order | *Figures*, *Search* (as above) · *On this panel* ("11 parts") · *Offcuts* ("10 · the largest 2 440 × 200.4") | How to read a size, behind the (?) next to *Cut order* · the selected part, in place of the current cut |
+
+### Measuring
+
+`e2e/screens.ts` opens each screen with the mockups' job (21 parts in 11
+sizes, one panel size; the plan is the API's at 2 s, the search a 60 s
+one caught after its first plan) at 1440, 820 and 360 px, and counts,
+over the whole page scrolled through (print pages excluded):
+
+- **Controls**: buttons, links, inputs, selects and section titles that
+  are visible, outside the rows of the parts and panels tables (those
+  are 6 or 7 per row and grow with the job).
+- **Prose lines**: lines of explanatory text, the blocks matching
+  `PROSE` in `e2e/screens.ts` (paragraphs, help boxes and popovers,
+  hints, notes).
+- **Text lines**: every line of text on screen, prose or not, outside
+  the drawings: what there is to read. Most of the one-panel screen's
+  lines are its cut order (20 cuts for this panel).
+
+The screens are `setup-new` (a new job), `setup` (the mockups' job in
+the editor; at 1440 the workbench with no plan beside it), `plan` (the
+finished plan; at 1440 beside the job), `panel` (panel 1, cut 7) and
+`searching`.
+
+Measured on 2026-10-27, before Stage 8 (commit `335a9d6`) → after:
+
+| Screen | Width | Controls | Prose lines | Text lines |
+|---|---|---|---|---|
+| `setup-new` | 1440 | 16 → 14 | 5 → 4 | 45 → 40 |
+| `setup` | 1440 | 16 → 14 | 5 → 4 | 65 → 60 |
+| `plan` | 1440 | 23 → 22 | 4 → 2 | 184 → 83 |
+| `panel` | 1440 | 13 → 16 | 5 → 1 | 169 → 129 |
+| `searching` | 1440 | 18 → 18 | 5 → 1 | 93 → 75 |
+| `setup-new` | 820 | 17 → 15 | 1 → 1 | 44 → 39 |
+| `setup` | 820 | 17 → 15 | 1 → 1 | 61 → 57 |
+| `plan` | 820 | 15 → 16 | 2 → 1 | 144 → 48 |
+| `panel` | 820 | 13 → 16 | 5 → 1 | 170 → 130 |
+| `searching` | 820 | 4 → 6 | 3 → 0 | 38 → 22 |
+| `setup-new` | 360 | 17 → 15 | 3 → 2 | 51 → 45 |
+| `setup` | 360 | 17 → 15 | 3 → 2 | 71 → 65 |
+| `plan` | 360 | 15 → 16 | 5 → 2 | 167 → 51 |
+| `panel` | 360 | 13 → 16 | 10 → 2 | 189 → 144 |
+| `searching` | 360 | 4 → 6 | 11 → 0 | 48 → 27 |
+
+The text to read fell by about half on the plan screens and by a
+quarter on the panel; controls stayed level (a section's title is a
+control, and replaces the lines it folds away). The setup was already
+the leanest screen: it lost the "Tap (?)" sentence, the repeated parts
+count, the "Empty names are filled in" hint, and the job name moved into
+*More settings*. At 360 px the drawings are now laid out at the width
+they are shown at (§4.6), so their labels keep their size; the page
+still never scrolls sideways.
+
+### The budget
+
+The most each screen may show with the mockups' job. `e2e/budget.spec.ts`
+reads this table and fails if any screen, at any width, goes over it or
+scrolls sideways. Raising a number is an owner's decision, recorded
+here with its reason.
+
+<!-- budget -->
+| Screen | Width | Controls | Prose lines | Text lines |
+|---|---|---|---|---|
+| `setup-new` | 1440 | 15 | 4 | 45 |
+| `setup` | 1440 | 15 | 4 | 65 |
+| `plan` | 1440 | 23 | 3 | 90 |
+| `panel` | 1440 | 17 | 2 | 135 |
+| `searching` | 1440 | 19 | 2 | 80 |
+| `setup-new` | 820 | 16 | 2 | 45 |
+| `setup` | 820 | 16 | 2 | 60 |
+| `plan` | 820 | 17 | 2 | 55 |
+| `panel` | 820 | 17 | 2 | 135 |
+| `searching` | 820 | 7 | 1 | 25 |
+| `setup-new` | 360 | 16 | 3 | 50 |
+| `setup` | 360 | 16 | 3 | 70 |
+| `plan` | 360 | 17 | 3 | 55 |
+| `panel` | 360 | 17 | 3 | 150 |
+| `searching` | 360 | 7 | 1 | 30 |
+<!-- /budget -->
+
+Screenshots of every screen at every width, after Stage 8:
+[`mockups/screenshots/`](mockups/screenshots/) (`<screen>.<width>.png`,
+light theme, the whole page).

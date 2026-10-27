@@ -28,7 +28,7 @@ const viewports = {
       for (const name of pages) {
         if (only.length && !only.includes(name)) continue;
         await page.goto("file://" + path.join(dir, name + ".html"));
-        const file = path.join(dir, "screenshots", `${name}.${vpName}.${scheme}.png`);
+        const file = path.join(dir, "screenshots", "stage7-mockups", `${name}.${vpName}.${scheme}.png`);
         // Grow the viewport to the whole page instead of fullPage, so
         // sticky bars sit where they would at the end of a scroll.
         await page.setViewportSize(viewport);

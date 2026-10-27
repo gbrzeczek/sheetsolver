@@ -25,6 +25,11 @@
     draft.parts.reduce((sum, p) => sum + (p.length.trim() || p.width.trim() ? Number(p.quantity) || 1 : 0), 0),
   );
   const sizes = $derived(draft.parts.filter((p) => p.length.trim() || p.width.trim()).length);
+  // A cost already typed, or a problem with one, keeps the column on screen,
+  // so nothing that is sent is out of sight.
+  const showCost = $derived(
+    draft.panels.length >= 2 || draft.panels.some((p, i) => p.cost.trim() || problems.has(`instance.panels[${i}].cost`)),
+  );
 
   // Remove a row with Undo instead of a confirmation.
   let undo = $state<{ list: "parts" | "panels"; index: number; row: PartRow | PanelRow; timer: number } | null>(null);
@@ -118,10 +123,7 @@
     <div>
       <div class="eyebrow">Job setup</div>
       <h1>What are you cutting?</h1>
-      <p class="muted">
-        Sizes in millimetres, at most one decimal (720, 3.2, 18.5). Tap <span class="help-btn" aria-hidden="true" style="display:inline-grid">?</span>
-        for what a field means.
-      </p>
+      <p class="muted">Sizes in millimetres, at most one decimal (720, 3.2, 18.5).</p>
     </div>
     <div class="actions"><button class="button" type="button" onclick={startOver}>New job</button></div>
   </div>
@@ -148,16 +150,6 @@
 
   <div class="setup-grid" class:stacked={pane}>
     <div>
-      <div class="job-name">
-        <Setting key="JobRequest.name" optional for="job-name" error={problems.get("name")}>
-          {#snippet children({ helpId })}
-            <input id="job-name" class="input" placeholder="Untitled job" autocomplete="off" aria-describedby={helpId}
-              class:invalid={problems.has("name")} maxlength={200}
-              bind:value={session.draft.name} oninput={() => edited("name")} />
-          {/snippet}
-        </Setting>
-      </div>
-
       <section class="form-block" aria-labelledby="parts-h">
         <div class="section-title">
           <h2 id="parts-h">Parts to make</h2>
@@ -183,6 +175,7 @@
           bind:rows={session.draft.panels}
           {problems}
           single={openDimension}
+          {showCost}
           onedit={edited}
           onremove={(i) => remove("panels", i)}
         />
@@ -191,15 +184,14 @@
 
     <aside class="setup-aside">
       <PlanSettings bind:draft={session.draft} {problems} onedit={edited} />
-      <div class="summary-row" style="margin-top:6px"><span>Parts</span><strong>{partCount} in {sizes} sizes</strong></div>
       {#if !pane}
         <div class="aside-cta hide-tablet">
           <button class="button primary big block" type="submit" disabled={session.submitting || retryIn > 0}>
             {session.submitting ? "Sending…" : retryIn > 0 ? `Solver busy, try again in ${retryIn} s` : "Find cutting plan →"}
           </button>
-          <p class="hint" style="margin-top:12px" class:bad={session.problems.length > 0}>
-            {session.problems.length ? `${session.problems.length} problems need attention.` : "Empty names are filled in for you."}
-          </p>
+          {#if session.problems.length}
+            <p class="hint bad" style="margin-top:12px">{session.problems.length} {session.problems.length === 1 ? "problem needs" : "problems need"} attention.</p>
+          {/if}
         </div>
       {/if}
     </aside>

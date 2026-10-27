@@ -1,5 +1,5 @@
-<!-- "Plan settings": Goal and kerf always visible, the rest collapsed with a
-     summary of their values (DESIGN.md §2). -->
+<!-- "Plan settings": Goal and kerf always visible, the rest, the job name
+     included, collapsed with a summary of their values (DESIGN.md §2, §10). -->
 <script lang="ts">
   import Setting from "./Setting.svelte";
   import Choice from "./Choice.svelte";
@@ -15,7 +15,7 @@
   let { draft = $bindable(), problems, onedit }: Props = $props();
 
   const advancedProblem = $derived(
-    ["instance.saw.stages", "instance.saw.cut_type", "instance.saw.first_cuts", "time_limit"].some((p) => problems.has(p)),
+    ["name", "instance.saw.stages", "instance.saw.cut_type", "instance.saw.first_cuts", "time_limit"].some((p) => problems.has(p)),
   );
   let advancedOpen = $state(false);
   $effect(() => {
@@ -24,6 +24,7 @@
 
   const summary = $derived(
     [
+      draft.name.trim() || "Untitled job",
       draft.stages === "unlimited" ? "unlimited stages" : `${draft.stages} stages`,
       draft.stages === "unlimited" ? null : `trimming ${optionTitle("Saw.cut_type", draft.cutType).toLowerCase()}`,
       draft.firstCuts === "either" ? "first cuts either way" : `${optionTitle("Saw.first_cuts", draft.firstCuts).toLowerCase()} first`,
@@ -71,8 +72,15 @@
 </Setting>
 
 <details class="advanced" bind:open={advancedOpen}>
-  <summary><span class="sum">More cutting settings <small>{summary}</small></span></summary>
+  <summary><span class="sum">More settings <small>{summary}</small></span></summary>
   <div class="inner">
+    <Setting key="JobRequest.name" optional for="job-name" error={problems.get("name")}>
+      {#snippet children({ helpId })}
+        <input id="job-name" class="input" placeholder="Untitled job" autocomplete="off" aria-describedby={helpId}
+          class:invalid={problems.has("name")} maxlength={200}
+          bind:value={draft.name} oninput={() => onedit("name")} />
+      {/snippet}
+    </Setting>
     <Setting key="Saw.stages" error={problems.get("instance.saw.stages")}>
       {#snippet children({ helpId })}
         <Choice key="Saw.stages" name="stages" value={draft.stages} describedby={helpId}

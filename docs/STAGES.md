@@ -482,7 +482,51 @@ Exit criteria shared by Stages 9–13 (each stage adds its own):
 - `cargo fmt --check`, clippy, `cargo test --workspace`, `npm run
   check`, `npm test` and `npm run e2e` pass.
 
-## Stage 8 — Less on screen at once
+## Stage 8 — Less on screen at once ✅ done 2026-10-27
+
+Result:
+- `web/DESIGN.md` §10: the principle (always visible, collapsed with a
+  summary of its values, only when it matters), per-screen tables for
+  job setup, the plan, the search and one panel, and the budget. Visible
+  controls, prose lines and all text lines were measured before and after
+  at 1440, 820 and 360 px with the mockups' job: the text to read on the
+  plan fell from 184/144/167 lines to 83/48/51, on one panel by about a
+  quarter (most of what is left is its cut order), and the prose from up
+  to 11 lines to at most 4 on any screen. `e2e/budget.spec.ts` reads the
+  budget table from `DESIGN.md` and fails a screen that goes over it, at
+  any width, or scrolls sideways.
+- Two levels of help: `FIELDS.md` has a *Short help* column (one
+  sentence, at most 15 words) and the rewritten rule; `openapi.json`
+  carries it as `x-short-help` (from `crates/api/src/fields.rs`, a
+  required argument of every input field), tests in `crates/api` hold it
+  to `FIELDS.md` and to one sentence of 15 words, and
+  `scripts/gen-fields.mjs` fails the build without it. The (?) shows the
+  short help, *More* the full text in its place; inputs are described by
+  the short help (the self-explanatory ones, which have no (?), by their
+  full text).
+- Job setup: always visible are the parts, the panels, Goal, kerf and
+  *Find cutting plan*. The job name moved into *More settings* (renamed
+  from "More cutting settings"), first in its summary. *Cost* shows with
+  two or more panel sizes, or while a cost is typed. Gone: the "Tap (?)"
+  sentence, the repeated parts count and the "Empty names are filled in"
+  hint (the problems count stays, when there are problems).
+- Cutting plan: the headline and the drawings first; *Figures*, *Search*
+  (why it ended, the longer search, when the plan was found, the
+  settings; it replaces the status line and the bottom disclosure),
+  *Plans found*, *Parts checklist*, *On this panel* and *Offcuts* are
+  sections with a summary line. All start closed, except *Search* after
+  a failure and *Parts checklist* when parts are not cut; while the
+  search runs, "Still searching" and *Stop* stay visible. The cut
+  order's explanation is behind a (?). While searching, *Open plan* sits
+  next to *Stop*, and the drawings use the full width.
+- Phones: the drawings are laid out at the width they are shown at, so
+  their labels stay legible at 360 px instead of shrinking with the
+  drawing.
+- Screenshots of the app at every width in `web/mockups/screenshots/`
+  (`npm run screens`); the Stage 7 mockups' ones moved to
+  `stage7-mockups/`. e2e (`sections.spec.ts`): every section opens, and
+  its summary matches what is inside; the help test opens every (?),
+  checks the short help, then *More* and the full text.
 
 Goal: each screen shows what most jobs need; the rest is one tap away.
 Today the setup and the plan show nearly everything flat.

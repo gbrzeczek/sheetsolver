@@ -66,6 +66,8 @@ struct FieldRow {
     field: String,
     /// The UI label.
     label: String,
+    /// The short help.
+    short_help: String,
     /// The help text.
     help: String,
 }
@@ -107,7 +109,8 @@ fn field_rows() -> Vec<FieldRow> {
                     schema,
                     field: cells[0].to_string(),
                     label: cells[1].to_string(),
-                    help: cells[2].to_string(),
+                    short_help: cells[2].to_string(),
+                    help: cells[3].to_string(),
                 });
             }
         }
@@ -149,6 +152,29 @@ fn input_fields_carry_the_help_text_and_label_of_fields_md() {
             property["title"].as_str(),
             Some(row.label.as_str()),
             "{name} label"
+        );
+        assert_eq!(
+            property["x-short-help"].as_str(),
+            Some(row.short_help.as_str()),
+            "{name} short help"
+        );
+    }
+}
+
+#[test]
+fn short_help_is_one_sentence_of_at_most_15_words() {
+    for row in field_rows() {
+        let name = format!("{}.{}", row.schema, row.field);
+        let words = row.short_help.split_whitespace().count();
+        assert!(words <= 15, "{name}: {words} words");
+        assert!(row.short_help.ends_with('.'), "{name} ends a sentence");
+        assert!(
+            !row.short_help.trim_end_matches('.').contains(". "),
+            "{name} is one sentence"
+        );
+        assert!(
+            row.short_help.len() < row.help.len(),
+            "{name} is shorter than its help text"
         );
     }
 }

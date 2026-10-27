@@ -8,7 +8,7 @@
     pattern: Pattern;
     kerf: number;
     grain(partId: string): boolean;
-    /** Width of the panel in px; the SVG then scales to its container. */
+    /** Width of the panel in px, at most; on a narrower screen it is laid out at the width it is shown at. */
     width: number;
     labels?: LabelMode;
     rulers?: boolean;
@@ -27,7 +27,11 @@
   }: Props = $props();
 
   const uid = $props.id();
-  const d = $derived(layout(pattern, { width, labels, rulers, cuts, kerf, grain, nameSize }));
+  // Laid out at the width it is shown at, so labels keep their size on a
+  // phone instead of shrinking with the drawing (DESIGN.md §4.6).
+  let shown = $state(0);
+  const fitted = $derived(shown > 0 ? Math.min(width, Math.round(shown)) : width);
+  const d = $derived(layout(pattern, { width: fitted, labels, rulers, cuts, kerf, grain, nameSize }));
   const currentBadge = $derived(d.badges.find((b) => b.number === current));
 
   function center(s: Shape) {
@@ -51,7 +55,7 @@
   {/if}
 {/snippet}
 
-<svg viewBox="0 0 {r(d.width)} {r(d.height)}" class="plan-svg" role="img" aria-labelledby="{uid}-t">
+<svg viewBox="0 0 {r(d.width)} {r(d.height)}" class="plan-svg" role="img" aria-labelledby="{uid}-t" bind:clientWidth={shown}>
   <title id="{uid}-t">{title}</title>
   <defs>
     <pattern id="{uid}-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">

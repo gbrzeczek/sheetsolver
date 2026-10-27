@@ -232,6 +232,24 @@ details.advanced > summary .sum { flex: 1; }
 details.advanced > summary small { display: block; margin-left: 14px; }
 details.advanced .inner { margin-top: 16px; }
 
+/* A section that can be collapsed, with a summary line of its values. */
+details.fold { border-top: 1px solid var(--line); padding: 12px 0; }
+details.fold + details.fold, .stats + details.fold { border-top: 1px solid var(--line); }
+details.fold:last-of-type { border-bottom: 1px solid var(--line); }
+details.fold > summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::before { content: "▸"; color: var(--muted); width: 10px; }
+details.fold[open] > summary::before { content: "▾"; }
+details.fold > summary .fold-title { font: var(--t-h3); }
+details.fold > summary .fold-sum { font: var(--t-small); color: var(--muted); font-variant-numeric: tabular-nums; min-width: 0; }
+@media (max-width: 640px) { details.fold > summary .fold-sum { flex-basis: 100%; padding-left: 20px; } }
+@media (max-width: 1099px), (pointer: coarse) { details.fold > summary { min-height: 32px; align-content: center; } }
+details.fold > .fold-body { margin-top: 12px; }
+details.fold .stats { border: 0; padding: 4px 0 4px; margin: 0; }
+details.fold .fold-body > p { font: var(--t-small); color: var(--muted); }
+details.fold .fold-body > p + p { margin-top: 6px; }
+.folds { margin: 0 0 20px; }
+
 .summary-row { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); font: var(--t-small); }
 .summary-row strong { font-weight: 500; text-align: right; }
 .aside-cta { margin-top: 18px; }
@@ -320,8 +338,6 @@ details.advanced .inner { margin-top: 16px; }
   .wb-cuts > .scroll { position: static; }
 }
 
-.below { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px; }
-@media (max-width: 720px) { .below { grid-template-columns: 1fr; } }
 .manifest-row { display: flex; justify-content: space-between; gap: 10px; border-top: 1px solid var(--line); padding: 9px 0; font: var(--t-small); font-variant-numeric: tabular-nums; }
 .manifest-row span { color: var(--muted); }
 .manifest h3 { padding-bottom: 8px; }
@@ -386,6 +402,10 @@ th { position: relative; }
 .pop.right::before { right: 14px; }
 .pop.left::before { left: 14px; }
 .hint { font: var(--t-small); color: var(--muted); }
+/* Two levels of help: the short help, then More for the full text. */
+.help-short, .help-full { margin: 0; }
+.help-more { padding: 2px 0 0; font: var(--t-small); font-weight: 500; }
+@media (max-width: 1099px), (pointer: coarse) { .help-more { min-height: 32px; } }
 
 /* Phones: the tables shrink to the screen instead of widening the page,
    which would let every row, field and bar scroll sideways. Headers may
@@ -409,9 +429,6 @@ th { position: relative; }
   .pop::before { display: none; }
 }
 
-.live-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start; }
-@media (max-width: 1099px) { .live-grid { grid-template-columns: minmax(0, 1fr); } }
-.job-name { max-width: 420px; margin-bottom: 28px; }
 
 /* ---------- Cutting-plan drawing ---------- */
 .plan-svg { font-family: var(--font); font-variant-numeric: tabular-nums; }
@@ -502,10 +519,9 @@ button.sheet-choice { width: 100%; font: inherit; cursor: pointer; }
 .bench-empty { margin: 28px; }
 .h1, .headline { font: var(--t-h1); letter-spacing: -0.7px; margin-bottom: 8px; }
 .workbench.two.bare { grid-template-columns: minmax(0, 1fr); }
-.bench-plan .overview, .bench-plan .live-grid { grid-template-columns: minmax(0, 1fr); }
+.bench-plan .overview { grid-template-columns: minmax(0, 1fr); }
 @container (min-width: 1000px) {
   .bench-plan .overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .bench-plan .live-grid { grid-template-columns: minmax(0, 1fr) 300px; }
 }
 .cta-bar kbd { font: var(--t-small); opacity: .75; margin-left: 4px; }
 

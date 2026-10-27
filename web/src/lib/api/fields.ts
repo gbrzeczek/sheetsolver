@@ -27,6 +27,20 @@ export function hasHelpButton(key: FieldKey): boolean {
   return !SELF_EXPLANATORY.has(key);
 }
 
+/** The id of the element that holds a field's help (DESIGN.md §5). */
+export function helpId(key: FieldKey): string {
+  return `help-${key.replace(".", "-")}`;
+}
+
+/**
+ * The id an input's `aria-describedby` names: the short help when the field
+ * has a (?) button, whose *More* gives the full text; else the full text,
+ * since nothing else would reach it.
+ */
+export function describedBy(key: FieldKey): string {
+  return hasHelpButton(key) ? `${helpId(key)}-short` : helpId(key);
+}
+
 /** The option names of a field with options, in order. */
 export function options(key: FieldKey): readonly { value: string | number; title: string }[] {
   return field(key).options ?? [];
