@@ -1,8 +1,9 @@
 <!-- A settings field: label, help (?) button, the control, and the help
-     text expanded inline under it (DESIGN.md §5). -->
+     text expanded inline under it (DESIGN.md §5). A self-explanatory field
+     has no button; its help is only read by screen readers. -->
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import { field, helpHtml, type FieldKey } from "../api/fields";
+  import { field, hasHelpButton, helpHtml, type FieldKey } from "../api/fields";
 
   interface Props {
     key: FieldKey;
@@ -24,14 +25,16 @@
 <div class="field">
   <div class="label-row">
     <label class="field-label" for={forId}>{f.label}{#if optional}{" "}<span class="unit">optional</span>{/if}</label>
-    <button
-      class="help-btn"
-      type="button"
-      aria-expanded={open}
-      aria-controls={helpId}
-      aria-label="About {f.label}"
-      onclick={() => (open = !open)}>?</button
-    >
+    {#if hasHelpButton(key)}
+      <button
+        class="help-btn"
+        type="button"
+        aria-expanded={open}
+        aria-controls={helpId}
+        aria-label="About {f.label}"
+        onclick={() => (open = !open)}>?</button
+      >
+    {/if}
   </div>
   {@render children({ helpId, label: f.label })}
   {#if error}<div class="cell-error" role="alert"><span>{error}</span></div>{/if}

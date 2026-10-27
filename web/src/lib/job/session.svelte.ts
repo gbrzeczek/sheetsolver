@@ -2,9 +2,10 @@
 import { cancelJob, getJob, submitJob } from "../api/client";
 import { followJob } from "../api/events";
 import { isFinal, type ErrorBody, type JobRequest, type JobStatus, type PlanReport } from "../api/types";
-import { fromInstance, newDraft, toRequest, type Draft, type Problem } from "./draft";
+import { draftMatches, fromInstance, newDraft, toRequest, type Draft, type Problem } from "./draft";
 import { loadDraft, saveDraft } from "./storage";
 import { router } from "../router.svelte";
+import { layout } from "../layout.svelte";
 
 /** A plan found, as the "Plans found" list shows it. */
 export interface PlanSummary {
@@ -40,6 +41,9 @@ class Session {
   /** When `job.elapsed` was last received, for the time bar between events. */
   elapsedAt = $state(0);
 
+  /** The draft that *Edit this plan's job* replaced, while its Undo is offered. */
+  replaced = $state<{ draft: Draft; timer: number } | null>(null);
+
   #unfollow: (() => void) | null = null;
   #poll: ReturnType<typeof setInterval> | null = null;
 
@@ -60,6 +64,8 @@ class Session {
     if (problems.length) {
       this.problems = problems;
       this.problemsMessage = "The job cannot be solved as entered.";
+      // "Find plan again" on the Cutting plan tab: show where the problems are.
+      if (!this.editorShown) router.go({ name: "setup" });
       return false;
     }
     if (timeLimit !== undefined) request.time_limit = timeLimit;
@@ -84,6 +90,7 @@ class Session {
       this.problems = [];
       this.problemsMessage = null;
       this.#show(result.job);
+      // The workbench, or below 1280 px the Cutting plan tab.
       router.go({ name: "plan", id: result.job.id, panel: null, cut: null });
       return true;
     }
@@ -95,7 +102,7 @@ class Session {
     if (status === 422) {
       this.problems = error.problems.map((p) => ({ field: p.field ?? null, message: p.message }));
       this.problemsMessage = error.message;
-      if (router.route.name !== "setup") router.go({ name: "setup" });
+      if (!this.editorShown) router.go({ name: "setup" });
     } else if (status === 503) {
       this.submitTrouble = { kind: "busy", retryAt: Date.now() + (retryAfter ?? 30) * 1000 };
     } else {
@@ -188,13 +195,44 @@ class Session {
     }
   }
 
-  /** Puts the shown job back into the editor ("Edit job"). */
+  /**
+   * Puts the shown job back into the editor ("Edit job", "Edit this plan's
+   * job"). The draft it replaces can be brought back while Undo is offered.
+   */
   edit(): void {
-    if (this.job) {
+    // A draft that already asks for this plan is kept, with its own job name
+    // and time limit.
+    if (this.job && this.stale) {
+      if (this.replaced) clearTimeout(this.replaced.timer);
+      this.replaced = { draft: $state.snapshot(this.draft) as Draft, timer: window.setTimeout(() => (this.replaced = null), 8000) };
       this.draft = fromInstance($state.snapshot(this.job.instance), this.job.time_limit, this.job.name ?? "");
+      this.problems = [];
       this.save();
     }
-    router.go({ name: "setup" });
+    if (!this.editorShown) router.go({ name: "setup" });
+  }
+
+  /** Brings back the draft that `edit` replaced. */
+  undoEdit(): void {
+    if (!this.replaced) return;
+    clearTimeout(this.replaced.timer);
+    this.draft = this.replaced.draft;
+    this.replaced = null;
+    this.save();
+  }
+
+  /**
+   * Whether the job in the editor asks for another plan than the job shown
+   * (DESIGN.md §2, "A plan for an older job").
+   */
+  get stale(): boolean {
+    return this.job !== null && !draftMatches(this.draft, this.job.instance);
+  }
+
+  /** Whether the current screen shows the editor: Job setup, or the workbench. */
+  get editorShown(): boolean {
+    const route = router.route;
+    return route.name === "setup" || (layout.wide && route.panel === null);
   }
 
   /** The name of the shown job, if it has one. */

@@ -419,8 +419,9 @@ Result:
 - Exit criteria, covered by `npm run e2e` (Playwright, desktop and
   tablet, against the real API serving the built UI; 16 tests): enter a
   job → solve → a plan the checker passed, followed cut by cut, reloaded
-  without the browser's storage; every `FIELDS.md` field has its (?)
-  button with the exact text, and every input points at its help; stop
+  without the browser's storage; every `FIELDS.md` field but the
+  self-explanatory ones has its (?) button with the exact text, and
+  every input points at its help; stop
   a running search; the no-plan cause; field problems; the draft
   survives a reload; New job with Undo; one print page per panel.
 - The Dockerfile's Node stage builds `web/` into the image; CI has a
@@ -442,12 +443,17 @@ Deliverables (in `web/`, see `ARCHITECTURE.md`):
   `FIELDS.md`) one tap away: a help (?) button next to its label opens
   the full text, by tap or click, never on hover only, so it works on
   touch screens in the workshop (decided 2026-10-25; see
-  `web/DESIGN.md` §5).
+  `web/DESIGN.md` §5). Fields whose label says it all (job name, part
+  and panel name, part width, panel quantity) have no button; their
+  help text stays in `FIELDS.md` and is read by screen readers (owner's
+  decision, 2026-10-27).
 - TypeScript client generated from `openapi.json`.
 
 Exit criteria:
 - End-to-end test: enter instance → solve → see a valid plan.
-- No input without a help button and its help text; UI wording matches `FIELDS.md`.
+- No input without its help text; every input but the self-explanatory
+  ones (`web/DESIGN.md` §5) has a help button. UI wording matches
+  `FIELDS.md`.
 
 ## Later (only after scope decisions)
 

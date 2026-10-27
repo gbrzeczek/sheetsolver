@@ -2,6 +2,9 @@
 import { expect, test } from "@playwright/test";
 import { enterJob, fieldsMd } from "./helpers";
 
+// Fields whose label says it all have no (?) button (web/DESIGN.md §5).
+const SELF_EXPLANATORY = ["JobRequest.name", "Part.id", "Panel.id", "Part.width", "Panel.quantity"];
+
 test("every input has a help button whose text is the FIELDS.md help text", async ({ page }) => {
   const help = fieldsMd();
   await page.goto("/#/");
@@ -33,13 +36,18 @@ test("every input has a help button whose text is the FIELDS.md help text", asyn
     await expect(target).toBeHidden();
     seen.add(key);
   }
-  // Every field of FIELDS.md has its help button on the page.
-  expect([...help.keys()].filter((k) => !seen.has(k))).toEqual([]);
+  // Every field of FIELDS.md but the self-explanatory ones has its help button on the page.
+  expect([...help.keys()].filter((k) => !seen.has(k)).sort()).toEqual([...SELF_EXPLANATORY].sort());
+  expect([...seen].filter((k) => SELF_EXPLANATORY.includes(k))).toEqual([]);
 
-  // And every input points at its help.
+  // And every input points at its help, the self-explanatory ones too.
   for (const input of await page.locator("main input, form input, select").all()) {
     const described = await input.getAttribute("aria-describedby");
     expect(described, await input.evaluate((e) => e.outerHTML)).toBeTruthy();
+  }
+  for (const key of SELF_EXPLANATORY) {
+    const text = await page.locator(`#help-${key.replace(".", "-")}`).evaluate((el) => el.textContent!.replace(/\s+/g, " ").trim());
+    expect(text, key).toBe(help.get(key)!.help);
   }
 });
 

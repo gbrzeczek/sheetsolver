@@ -1,4 +1,5 @@
-<!-- Job setup: "What are you cutting?" (DESIGN.md §2, mockups/editor.html). -->
+<!-- Job setup: "What are you cutting?" (DESIGN.md §2, mockups/editor.html).
+     A page of its own below 1280 px; the left column of the workbench above. -->
 <script lang="ts">
   import Setting from "../lib/components/Setting.svelte";
   import PartsTable from "../lib/components/PartsTable.svelte";
@@ -7,6 +8,12 @@
   import { session } from "../lib/job/session.svelte";
   import { byPath, place } from "../lib/job/problems";
   import { emptyPanel, emptyPart, newDraft, type Draft, type PanelRow, type PartRow } from "../lib/job/draft";
+
+  interface Props {
+    /** In the workbench: one column, with the plan beside it. */
+    pane?: boolean;
+  }
+  let { pane = false }: Props = $props();
 
   const problems = $derived(byPath(session.problems));
   const pageProblems = $derived(session.problems.filter((p) => place(p.field).section === "page"));
@@ -69,6 +76,15 @@
     }
   }
 
+  // ⌘/Ctrl + Enter finds the plan from any field of the job (DESIGN.md §2).
+  let form = $state<HTMLFormElement>();
+  function shortcut(event: KeyboardEvent) {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && form?.contains(event.target as Node)) {
+      event.preventDefault();
+      form.requestSubmit();
+    }
+  }
+
   function goTo(path: string | null) {
     const where = place(path);
     if (where.section === "parts" || where.section === "panels") {
@@ -93,7 +109,9 @@
   });
 </script>
 
-<form class="narrow" onsubmit={submit} novalidate>
+<svelte:window onkeydown={shortcut} />
+
+<form class={pane ? "pane-form" : "narrow"} bind:this={form} onsubmit={submit} novalidate>
   <div class="heading">
     <div>
       <div class="eyebrow">Job setup</div>
@@ -126,7 +144,7 @@
     <div class="alert" role="alert"><h3>The plan could not be requested.</h3><p>{session.submitTrouble.message}</p></div>
   {/if}
 
-  <div class="setup-grid">
+  <div class="setup-grid" class:stacked={pane}>
     <div>
       <div class="job-name">
         <Setting key="JobRequest.name" optional for="job-name" error={problems.get("name")}>
@@ -172,21 +190,24 @@
     <aside class="setup-aside">
       <PlanSettings bind:draft={session.draft} {problems} onedit={edited} />
       <div class="summary-row" style="margin-top:6px"><span>Parts</span><strong>{partCount} in {sizes} sizes</strong></div>
-      <div class="aside-cta hide-tablet">
-        <button class="button primary big block" type="submit" disabled={session.submitting || retryIn > 0}>
-          {session.submitting ? "Sending…" : retryIn > 0 ? `Solver busy, try again in ${retryIn} s` : "Find cutting plan →"}
-        </button>
-        <p class="hint" style="margin-top:12px" class:bad={session.problems.length > 0}>
-          {session.problems.length ? `${session.problems.length} problems need attention.` : "Empty names are filled in for you."}
-        </p>
-      </div>
+      {#if !pane}
+        <div class="aside-cta hide-tablet">
+          <button class="button primary big block" type="submit" disabled={session.submitting || retryIn > 0}>
+            {session.submitting ? "Sending…" : retryIn > 0 ? `Solver busy, try again in ${retryIn} s` : "Find cutting plan →"}
+          </button>
+          <p class="hint" style="margin-top:12px" class:bad={session.problems.length > 0}>
+            {session.problems.length ? `${session.problems.length} problems need attention.` : "Empty names are filled in for you."}
+          </p>
+        </div>
+      {/if}
     </aside>
   </div>
 
-  <div class="cta-bar show-tablet">
+  <div class="cta-bar" class:show-tablet={!pane}>
     <small>{partCount} parts · {draft.panels.length} panel {draft.panels.length === 1 ? "size" : "sizes"}</small>
     <button class="button primary big" type="submit" disabled={session.submitting || retryIn > 0}>
-      {retryIn > 0 ? `Try again in ${retryIn} s` : "Find cutting plan →"}
+      {session.submitting ? "Sending…" : retryIn > 0 ? `Try again in ${retryIn} s` : "Find cutting plan →"}
+      {#if pane && !session.submitting && retryIn === 0}<kbd aria-hidden="true">{navigator.platform.startsWith("Mac") ? "⌘" : "Ctrl"} ↵</kbd>{/if}
     </button>
   </div>
 </form>

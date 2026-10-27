@@ -87,34 +87,90 @@ means.
 
 ## 2. Information architecture
 
-Two tabs under the app bar, always visible: **Job setup** and
-**Cutting plan**. The search is not a separate step but a state of the
-Cutting plan tab: while it runs, the tab shows a live dot and the best
-plan so far. *Edit job* returns to Job setup; the last plan stays
-available until the job is solved again.
+The layout follows *where* the app is used (§1), not the steps of a job.
+
+**At the desk (window 1280 px or wider): one workbench.** The job and
+its plan are on one screen, side by side. Most searches end within
+seconds, and the main desk task is a loop: change a quantity, the kerf
+or the grain, find the plan again, compare. Tabs would hide the old
+plan during each edit and cost two switches a pass.
+
+- **Left, 600 px: the job** (640 px while the Value column shows), as
+  narrow as the parts table allows without scrolling sideways.
+  Everything of Job setup, in one column: job name, *Parts to make*, *Panels you have*, then *Plan
+  settings*. It scrolls on its own. **Find cutting plan** sits in a
+  sticky bar at its foot (⌘/Ctrl + Enter from any field).
+- **Right, the rest: the plan.** The *All panels* view of the Cutting
+  plan: headline, figures, status line, every panel drawn, and the parts
+  checklist. While the search runs it shows the progress and the best
+  plan so far, as the Cutting plan tab does. It scrolls on its own.
+  Before the first plan it says how to get one.
+- No tabs: both halves are on screen. *Edit job* is not needed, since
+  the job is already beside the plan.
+
+**At the saw, and below 1280 px: two tabs**, as before. **Job setup**
+and **Cutting plan** sit under the app bar. The search is not a
+separate step but a state of the Cutting plan tab: while it runs, the
+tab shows a live dot and the best plan so far. *Edit job* returns to
+Job setup; the last plan stays available until the job is solved again.
+
+**One panel (the saw view) is the same at every width.** Opening a panel
+(*Cut order →*, a panel card) leaves the workbench for the full-screen
+panel view: drawing, current cut, cut order. It has no inputs, so dusty
+fingers cannot change the job. *All panels* in its panel list returns to
+the workbench (or, below 1280 px, to the Cutting plan tab).
 
 ```
-App bar:  Sheetsolver · Kitchen units (job name, or "Untitled job")
-Tabs:     Job setup | Cutting plan •
-
-Job setup                          Cutting plan
-  Parts to make (table)              while searching: progress, live figures, panels so far
-  Panels you have (table)            when done: headline, figures, status
-  Plan settings (aside)                ├─ All panels: every panel + parts checklist
-    Goal, kerf, More cutting settings  └─ Panel n: drawing, current cut, cut order
-  Find cutting plan →
+Desk, ≥ 1280 px                           Below 1280 px, and the saw
+App bar:  Sheetsolver · Kitchen units      App bar + Tabs: Job setup | Cutting plan •
+┌───────────────────────┬──────────────┐
+│ Job name              │ ⚠ plan is for │  Job setup             Cutting plan
+│ Parts to make         │   an older job│    (the left column)     (the right column, with
+│ Panels you have       │ Headline      │                          the panel list), Edit job
+│ Plan settings         │ Figures       │
+│                       │ Panels, parts │  Panel n (every width): drawing, current cut,
+│ [Find cutting plan ⌘↵]│  checklist    │    cut order
+└───────────────────────┴──────────────┘
 ```
+
+### A plan for an older job
+
+A plan always belongs to the job that was sent; the job in the editor
+can move on. Whenever the two differ, the plan is marked **out of
+date**, on the workbench and on the Cutting plan tab alike:
+
+- a bar above the plan: "**The job has changed since this plan was
+  found.** The plan below is for the job as it was." with **Find plan
+  again** (sends the job in the editor) and *Edit this plan's job*
+  (puts the plan's job back in the editor, with Undo);
+- the plan below it is dimmed but still readable, so the old result can
+  be compared with what the new search finds.
+
+"Differ" compares the parts, panels and saw settings as they would be
+sent, after names are filled in. The job name and the time limit are
+not compared: they do not change the plan. A job in the editor that
+cannot be sent yet (a half-typed size) also counts as changed. The
+bar goes as soon as the editor matches the plan again (for example
+after Undo).
+
+The UI never searches by itself on an edit. A half-typed table is not a
+valid job, every search takes one of the server's few solver slots, and
+the woodworker decides when the plan they are looking at changes.
 
 ### URLs
 
 A single-page app with hash routes. Reloading a page or sending its link
 to the workshop tablet resumes it:
 
-| Route | Screen |
-|---|---|
-| `#/` | Job setup (draft kept in the browser) |
-| `#/jobs/{id}` | Cutting plan: progress while searching, then all panels |
-| `#/jobs/{id}/panels/{n}` | One panel, with `?cut={k}` for the current cut |
+| Route | Screen at the desk (≥ 1280 px) | Screen below 1280 px |
+|---|---|---|
+| `#/` | Workbench: the draft, and the last plan of this browser, if any | Job setup (draft kept in the browser) |
+| `#/jobs/{id}` | Workbench: the draft, and this job's plan | Cutting plan: progress while searching, then all panels |
+| `#/jobs/{id}/panels/{n}` | One panel, with `?cut={k}` for the current cut | The same |
+
+A link to `#/jobs/{id}` opened on another device shows that job's plan
+next to that device's own draft, marked out of date if the two differ.
+*Edit this plan's job* takes it over.
 
 ### Screens
 
@@ -282,9 +338,17 @@ The UI sends rows **in display order** and **never drops a row
 silently**. A wholly empty trailing row is not sent; any other row is
 sent as is, so positions in `problems` always match row numbers.
 
+**Adjusting a job at the desk.** On the workbench: change a field on
+the left → the plan on the right is marked out of date (§2) → *Find
+cutting plan* or ⌘/Ctrl + Enter → the new search streams into the right
+column while the left stays editable. Editing during the search marks
+the running search out of date too; it is not stopped, and a new
+*Find cutting plan* replaces it.
+
 **Searching.**
-1. `POST /jobs` → `201`, then switch to the Cutting plan tab
-   (`#/jobs/{id}`).
+1. `POST /jobs` → `201`, then show the job (`#/jobs/{id}`): below
+   1280 px this switches to the Cutting plan tab; on the workbench the
+   job stays on screen and the right column shows the search.
 2. Open `EventSource(/jobs/{id}/events)`:
    - each `plan` event replaces the best plan;
    - each `state` event updates the status, `elapsed` and
@@ -484,10 +548,20 @@ works on touch screens, unlike hover tooltips:
   - the help element is linked to its input by `aria-describedby`, so
     screen readers read it with the field even when it is closed;
   - the hit area is 42 px.
+- **Self-explanatory fields have no (?)**: *Job name*, the part and panel
+  *Name*, the part *Width* and the panel *Quantity* (owner's decision,
+  2026-10-27). Their help only restates the label: Width's "finished,
+  before edge banding" is also in Length's help, and the panel Quantity
+  already says "Unlimited" and has the hint under the table. Their help
+  text stays in FIELDS.md and in the page, hidden, linked by
+  `aria-describedby`, so screen readers still read it. The list is
+  `hasHelpButton` in `src/lib/api/fields.ts`.
 - **No input without help**: every input component requires a `field`
   key, and its help comes from `fields.generated.ts` (§7). An input
   without help text does not compile, and an end-to-end test opens
-  every (?) and checks that its text matches FIELDS.md.
+  every (?) and checks that its text matches FIELDS.md; for the
+  self-explanatory fields it checks there is no button and that the
+  input still points at the exact text.
 - **Short visible hints stay** where they prevent mistakes:
   - "Sizes in millimetres, at most one decimal" under the page title;
   - "↔ The part keeps the panel's grain direction" under the parts
@@ -795,3 +869,15 @@ label, opened by tap or click, instead of being always visible (§5;
 handoff (Guided setup + Workbench). Jobs have an optional name; part and
 panel names are optional and generated when empty (`docs/SCOPE.md`,
 `docs/FIELDS.md`).
+
+Later decision (2026-10-27): **job and plan side by side at the desk.**
+From 1280 px the two tabs become one workbench, the job on the left and
+its plan on the right (§2), because the desk task is a loop of edits and
+searches. A plan that no longer matches the editor is marked out of
+date, and searching again stays a deliberate click. Tablets keep the
+tabs, and the one-panel saw view is unchanged at every width. The
+mockups still show the tabbed layout.
+
+Later decision (2026-10-27): **no (?) for self-explanatory fields.** Job
+name, part and panel Name, part Width and panel Quantity lose their help
+button (§5); their help text stays in FIELDS.md and for screen readers.
