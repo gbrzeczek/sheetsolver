@@ -1,8 +1,8 @@
 <!-- Panel navigation: "All panels", then one card per pattern. -->
 <script lang="ts">
   import PanelDrawing from "./PanelDrawing.svelte";
-  import type { Pattern } from "../api/types";
-  import { patternStats, percent } from "../plan/tree";
+  import type { Instance, Pattern } from "../api/types";
+  import { panelTrims, patternStats, percent } from "../plan/tree";
   import { href } from "../router.svelte";
 
   interface Props {
@@ -12,8 +12,10 @@
     current: number | null;
     kerf: number;
     grain(partId: string): boolean;
+    /** The job, for each panel's trims. */
+    instance?: Instance;
   }
-  let { id, patterns, current, kerf, grain }: Props = $props();
+  let { id, patterns, current, kerf, grain, instance }: Props = $props();
 </script>
 
 <nav class="sheet-nav" aria-label="Panels">
@@ -22,9 +24,9 @@
     <strong>All panels</strong><small>Overview and parts</small>
   </a>
   {#each patterns as pattern, i (i)}
-    {@const s = patternStats(pattern)}
+    {@const s = patternStats(pattern, panelTrims(instance, pattern))}
     <a class="sheet-choice" href={href({ name: "plan", id, panel: i + 1, cut: null })} aria-current={current === i + 1 ? "page" : undefined}>
-      <PanelDrawing {pattern} {kerf} {grain} width={144} labels="none" title="Panel {i + 1}" />
+      <PanelDrawing {pattern} trims={panelTrims(instance, pattern)} {kerf} {grain} width={144} labels="none" title="Panel {i + 1}" />
       <strong>Panel {i + 1}{#if pattern.repeat > 1}{" "}<small style="display:inline">× {pattern.repeat}</small>{/if}</strong>
       <small>{s.parts} parts · {percent(s.wasteFraction)} waste</small>
       {#if s.leftovers.length}<small>1 strip to keep</small>{/if}

@@ -12,11 +12,13 @@
     align?: "left" | "right";
     class?: string;
     focused?: boolean;
+    /** Added to the help's id, for a column repeated on the page (a trims table per panel). */
+    suffix?: string;
   }
-  let { key, short, align = "left", class: cls = "", focused = false }: Props = $props();
+  let { key, short, align = "left", class: cls = "", focused = false, suffix = "" }: Props = $props();
 
   const f = $derived(field(key));
-  const id = $derived(helpId(key));
+  const id = $derived(helpId(key) + suffix);
   let open = $state(false);
   let root: HTMLElement | undefined = $state();
 

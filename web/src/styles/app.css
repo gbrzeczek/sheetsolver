@@ -438,6 +438,12 @@ th { position: relative; }
 .p-offcut-bg { fill: var(--offcut); }
 .p-hatch { stroke: var(--hatch); stroke-width: 1.2; }
 .p-offcut { stroke: none; }
+/* Trims: hatched the other way, darker than offcuts. A trim left on the
+   offcut is a band over it, edged with a dashed line. */
+.p-trim-bg { fill: var(--offcut); }
+.p-trim-hatch { stroke: var(--muted); stroke-width: 1.4; }
+.p-trim { stroke: none; }
+.p-trim-soft { opacity: 0.55; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
 .p-leftover { fill: var(--leftover); stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 3; }
 .p-part-text { fill: var(--ink); }
 .p-name { font-weight: 500; }
@@ -538,4 +544,22 @@ main.is-stale > :not(.stale-bar) { opacity: .5; transition: opacity .2s; }
   .bench { display: block; height: auto; }
   .bench-job { display: none !important; }
   .bench-plan { overflow: visible; }
+}
+
+/* A panel's trims, under its row of the panels table (DESIGN.md §10). */
+.trims-row > td { padding-top: 0; }
+details.trims > summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; font: var(--t-small); color: var(--muted); padding: 2px 0 6px; }
+details.trims > summary::-webkit-details-marker { display: none; }
+details.trims > summary::before { content: "▸"; width: 10px; }
+details.trims[open] > summary::before { content: "▾"; }
+details.trims .trims-title { color: var(--ink); font-weight: 500; }
+details.trims .trims-sum { font-variant-numeric: tabular-nums; min-width: 0; }
+.trims-body { padding: 4px 0 10px; }
+.trims-table { width: auto; }
+.trims-table th.edge { text-align: left; font-weight: 400; padding-right: 10px; white-space: nowrap; }
+.trims-table .input-wrap { width: 92px; }
+.trims-table .cell-select { min-width: 0; }
+@media (max-width: 640px) {
+  .trims-table .input-wrap { width: 72px; }
+  .trims-table th.edge { padding-right: 6px; }
 }

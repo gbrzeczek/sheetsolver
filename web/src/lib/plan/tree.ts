@@ -1,10 +1,25 @@
 // Walking the cutting tree of a plan (docs/ARCHITECTURE.md, "Solution").
-import type { Pattern, PlanNode } from "../api/types";
+import type { Instance, Pattern, PlanNode, Trims } from "../api/types";
 
 export type Kind = PlanNode["kind"];
 
 export function children(node: PlanNode): PlanNode[] {
   return node.children ?? [];
+}
+
+/**
+ * The piece the stage cuts start from: the panel, or with trims cut off
+ * first (docs/ARCHITECTURE.md), the trimmed panel after them.
+ */
+export function cuttingRoot(root: PlanNode): PlanNode {
+  const kids = children(root);
+  return kids[0]?.kind === "trim" ? kids[kids.length - 1]! : root;
+}
+
+/** Which edge a trim cut off first is at. */
+export function trimEdge(trim: PlanNode, panel: PlanNode): "left" | "right" | "bottom" | "top" {
+  if (trim.width === panel.width) return trim.x === 0 ? "left" : "right";
+  return trim.y === 0 ? "bottom" : "top";
 }
 
 export function* leaves(node: PlanNode): Generator<PlanNode> {
@@ -44,13 +59,41 @@ export interface PatternStats {
   partLeaves: PlanNode[];
 }
 
-export function patternStats(pattern: Pattern): PatternStats {
+/** The trims of the panel a pattern cuts, from the job. */
+export function panelTrims(instance: Instance | null | undefined, pattern: Pattern): Trims | undefined {
+  return instance?.panels.find((p) => p.id === pattern.panel_id)?.trims;
+}
+
+/** The width of each edge's trim, 0 where there is none. */
+export function trimWidths(trims: Trims | undefined): { left: number; right: number; bottom: number; top: number } {
+  return {
+    left: trims?.left?.width ?? 0,
+    right: trims?.right?.width ?? 0,
+    bottom: trims?.bottom?.width ?? 0,
+    top: trims?.top?.width ?? 0,
+  };
+}
+
+/**
+ * The panel's figures. As in the API's metrics (upstream's definition), the
+ * panel's area is the part inside its trims, cut off first or left on the
+ * offcut: no part can be in them.
+ */
+export function patternStats(pattern: Pattern, trims?: Trims): PatternStats {
   const all = [...leaves(pattern.root)];
   const partLeaves = all.filter((l) => l.kind === "part");
   const leftovers = all.filter((l) => l.kind === "leftover");
-  const panelArea = area(pattern.root);
+  const t = trimWidths(trims);
+  const root = pattern.root;
+  const inside = { x0: t.left, y0: t.bottom, x1: root.length - t.right, y1: root.width - t.top };
+  const panelArea = (inside.x1 - inside.x0) * (inside.y1 - inside.y0);
   const partArea = partLeaves.reduce((sum, l) => sum + area(l), 0);
-  const leftoverArea = leftovers.reduce((sum, l) => sum + area(l), 0);
+  // Only the part of the leftover inside the trims.
+  const leftoverArea = leftovers.reduce((sum, l) => {
+    const w = Math.min(l.x + l.length, inside.x1) - Math.max(l.x, inside.x0);
+    const h = Math.min(l.y + l.width, inside.y1) - Math.max(l.y, inside.y0);
+    return sum + (w > 0 && h > 0 ? w * h : 0);
+  }, 0);
   const wasteArea = panelArea - partArea - leftoverArea;
   return {
     parts: partLeaves.length,

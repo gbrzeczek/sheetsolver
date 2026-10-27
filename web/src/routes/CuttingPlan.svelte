@@ -13,7 +13,7 @@
   import { session } from "../lib/job/session.svelte";
   import { router, href } from "../lib/router.svelte";
   import { cutOrder } from "../lib/plan/cutorder";
-  import { area, mm, patternStats, percent, size, squareMetres, leaves } from "../lib/plan/tree";
+  import { area, mm, panelTrims, patternStats, percent, size, squareMetres, leaves } from "../lib/plan/tree";
   import { checklist, headline, oversizedParts, panelsLine, totalParts } from "../lib/plan/summary";
   import { isFinal, type PlanNode } from "../lib/api/types";
 
@@ -37,6 +37,8 @@
   const best = $derived(session.jobId === id ? session.best : null);
   const instance = $derived(job?.instance);
   const kerf = $derived(instance?.saw.kerf ?? 0);
+  /** Whether a panel of the job has trims, for the legend. */
+  const trims = $derived(instance?.panels.some((p) => p.trims && Object.values(p.trims).some((t) => t?.width)) ?? false);
   const grainOf = $derived.by(() => {
     const grains = new Map(instance?.parts.map((p) => [p.id, p.grain ?? false]));
     return (partId: string) => grains.get(partId) ?? false;
@@ -98,7 +100,10 @@
 
   const longerSearch = $derived(job ? Math.min(600, Math.max(60, job.time_limit * 6)) : 60);
 
-  function what(node: PlanNode): string {
+  const EDGE = { left: "left end", right: "right end", bottom: "bottom edge", top: "top edge" } as const;
+
+  function what(node: PlanNode, edge?: keyof typeof EDGE): string {
+    if (node.kind === "trim") return `${edge ? EDGE[edge] : "edge"} trim ${size(node)}`;
     if (node.kind === "part") return `${node.part_id} ${size(node)}`;
     if (node.kind === "leftover") return `leftover ${size(node)}`;
     if (node.kind === "offcut") return `offcut ${size(node)}`;
@@ -151,11 +156,11 @@
   // The panel view's lists: parts on this panel, and offcuts worth keeping (largest first).
   const onPanel = $derived.by(() => {
     const counts = new Map<string, number>();
-    if (pattern) for (const l of patternStats(pattern).partLeaves) if (l.kind === "part") counts.set(l.part_id, (counts.get(l.part_id) ?? 0) + 1);
+    if (pattern) for (const l of patternStats(pattern, panelTrims(instance, pattern)).partLeaves) if (l.kind === "part") counts.set(l.part_id, (counts.get(l.part_id) ?? 0) + 1);
     return [...counts];
   });
   const offs = $derived(
-    pattern ? patternStats(pattern).offcuts.filter((o) => Math.min(o.length, o.width) >= kerf).sort((a, b) => area(b) - area(a)) : [],
+    pattern ? patternStats(pattern, panelTrims(instance, pattern)).offcuts.filter((o) => Math.min(o.length, o.width) >= kerf).sort((a, b) => area(b) - area(a)) : [],
   );
 </script>
 
@@ -254,7 +259,7 @@
       <p>
         Kerf {mm(kerf)} mm · {instance.saw.stages === "unlimited" ? "unlimited" : instance.saw.stages} cutting stages ·
         first cuts {instance.saw.first_cuts === "either" ? "either way" : instance.saw.first_cuts.replace("_", " the ")} ·
-        last-stage trimming {instance.saw.cut_type === "non_exact" ? "allowed" : instance.saw.cut_type === "exact" ? "not allowed" : "one part per strip"}.
+        last-stage trimming {instance.saw.cut_type === "non_exact" ? "allowed" : instance.saw.cut_type === "exact" ? "not allowed" : "one part per strip"}{#if instance.saw.minimum_offcut_width}{" "}· offcuts at least {mm(instance.saw.minimum_offcut_width)} mm{/if}.
       </p>
     </Section>
   {/if}
@@ -340,11 +345,11 @@
       </div>
       <div class="overview">
         {#each patterns as p, i (i)}
-          {@const s = patternStats(p)}
+          {@const s = patternStats(p, panelTrims(instance, p))}
           <section class="viewer">
             <div class="viewer-head"><div><h3>Panel {i + 1} <small>/ {patterns.length}</small>{#if p.repeat > 1}{" "}<small>× {p.repeat}</small>{/if}</h3>
               <small>{s.parts} parts · {percent(s.wasteFraction)} waste</small></div></div>
-            <PanelDrawing pattern={p} {kerf} grain={grainOf} width={540} labels="names" nameSize={11} title="Panel {i + 1} of the best plan so far" />
+            <PanelDrawing pattern={p} trims={panelTrims(instance, p)} {kerf} grain={grainOf} width={540} labels="names" nameSize={11} title="Panel {i + 1} of the best plan so far" />
           </section>
         {/each}
       </div>
@@ -381,10 +386,10 @@
     </div>
 
     {#if pattern && order}
-      {@const s = patternStats(pattern)}
+      {@const s = patternStats(pattern, panelTrims(instance, pattern))}
       {@const panelInfo = instance.panels.find((p) => p.id === pattern.panel_id)}
       <div class="workbench">
-        <div class="wb-nav"><SheetNav {id} {patterns} current={panel} {kerf} grain={grainOf} /></div>
+        <div class="wb-nav"><SheetNav {id} {patterns} current={panel} {kerf} grain={grainOf} {instance} /></div>
         <div class="wb-main">
           <section class="viewer">
             <div class="viewer-head">
@@ -394,10 +399,10 @@
               </div>
               <small>Grain →</small>
             </div>
-            <PanelDrawing {pattern} {kerf} grain={grainOf} width={700} labels="full" rulers cuts={order.cuts} {current} nameSize={11.5}
+            <PanelDrawing {pattern} trims={panelTrims(instance, pattern)} {kerf} grain={grainOf} width={700} labels="full" rulers cuts={order.cuts} {current} nameSize={11.5}
               title="Panel {panel} of {patterns.length}: {pattern.panel_id}, {mm(pattern.root.length)} by {mm(pattern.root.width)} mm"
               oncut={goCut} onpart={(n) => (selected = selected === n ? null : n)} {selected} />
-            <Legend {kerf} />
+            <Legend {kerf} {trims} />
             <div class="detail" aria-live="polite">
               {#if selected && selected.kind === "part"}
                 {@const part = instance.parts.find((p) => p.id === (selected?.kind === "part" ? selected.part_id : ""))}
@@ -406,7 +411,7 @@
                 <button class="button" type="button" onclick={() => (selected = null)}>Back to cut {current}</button>
               {:else if currentCut}
                 <div><small>Cut {current} of {order.cuts.length}</small>
-                  <div class="now">{mm(currentCut.measure)} mm <em>{currentCut.direction === "along" ? "along the length" : "across the length"} → {what(currentCut.produces)}</em></div></div>
+                  <div class="now">{mm(currentCut.measure)} mm <em>{currentCut.direction === "along" ? "along the length" : "across the length"} → {what(currentCut.produces, currentCut.edge)}</em></div></div>
                 <div class="stepper">
                   <button class="button" type="button" aria-label="Previous cut" disabled={current <= 1} onclick={() => goCut(current - 1)}>‹</button>
                   <button class="button primary" type="button" aria-label="Next cut" disabled={current >= order.cuts.length} onclick={() => goCut(current + 1)}>›</button>
@@ -449,21 +454,21 @@
       </div>
     {:else}
       <div class="workbench two" class:bare={pane}>
-        {#if !pane}<SheetNav {id} {patterns} current={null} {kerf} grain={grainOf} />{/if}
+        {#if !pane}<SheetNav {id} {patterns} current={null} {kerf} grain={grainOf} {instance} />{/if}
         <div style="min-width:0">
           <div class="overview">
             {#each patterns as p, i (i)}
-              {@const s = patternStats(p)}
+              {@const s = patternStats(p, panelTrims(instance, p))}
               <section class="viewer">
                 <div class="viewer-head">
                   <div><h3>Panel {i + 1}{#if p.repeat > 1}{" "}<small>× {p.repeat}</small>{/if}</h3><small>{s.parts} parts · {percent(s.wasteFraction)} waste</small></div>
                   <a class="link" href={href({ name: "plan", id, panel: i + 1, cut: null })}>Cut order →</a>
                 </div>
-                <PanelDrawing pattern={p} {kerf} grain={grainOf} width={540} labels="full" nameSize={10.5} title="Panel {i + 1}: {p.panel_id}" />
+                <PanelDrawing pattern={p} trims={panelTrims(instance, p)} {kerf} grain={grainOf} width={540} labels="full" nameSize={10.5} title="Panel {i + 1}: {p.panel_id}" />
               </section>
             {/each}
           </div>
-          <Legend {kerf} />
+          <Legend {kerf} {trims} />
           <!-- Open when it matters: parts left out of the plan. -->
           <div class="folds" style="margin-top:20px">
             <Section title="Parts checklist" summary={best.metrics.parts_cut >= total ? `all ${total} parts cut` : `${best.metrics.parts_cut} of ${total} parts cut · ${total - best.metrics.parts_cut} not cut`}

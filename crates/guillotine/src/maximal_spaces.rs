@@ -1232,7 +1232,7 @@ pub(crate) fn sequential_feasibility(
             // Enough panels for twice the parts' area.
             let mut total = 0;
             for bin in &problem.bin_types {
-                let area = bin.size.area();
+                let area = bin.area();
                 let needed = (2 * item_area - total + area - 1) / area;
                 let used = needed.min(i64::from(bin.copies));
                 total += used * area;
@@ -1272,6 +1272,7 @@ pub(crate) fn sequential_feasibility(
                         size: bin.size,
                         copies,
                         cost: bin.cost,
+                        trims: bin.trims,
                     });
                     original_bin_types.push(index);
                     remaining -= copies;
@@ -1284,6 +1285,7 @@ pub(crate) fn sequential_feasibility(
                 },
                 copies: 1,
                 cost: bin.cost,
+                trims: bin.trims,
             }),
             _ => bin_types.push(BinType {
                 size: Size {
@@ -1292,6 +1294,7 @@ pub(crate) fn sequential_feasibility(
                 },
                 copies: 1,
                 cost: bin.cost,
+                trims: bin.trims,
             }),
         }
         let sub = Problem::from_types(

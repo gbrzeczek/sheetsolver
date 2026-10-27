@@ -1,6 +1,6 @@
 <!-- One panel of a plan, drawn to scale (DESIGN.md §4.6). -->
 <script lang="ts">
-  import type { Pattern, PlanNode } from "../api/types";
+  import type { Pattern, PlanNode, Trims } from "../api/types";
   import type { Cut } from "../plan/cutorder";
   import { layout, BADGE_RADIUS, type LabelMode, type Shape } from "../plan/drawing";
 
@@ -20,10 +20,12 @@
     oncut?(number: number): void;
     onpart?(node: PlanNode): void;
     selected?: PlanNode | null;
+    /** The panel's trims, from the job. */
+    trims?: Trims;
   }
   let {
     pattern, kerf, grain, width, labels = "full", rulers = false, cuts, current = null,
-    nameSize = 12, title, oncut, onpart, selected = null,
+    nameSize = 12, title, oncut, onpart, selected = null, trims,
   }: Props = $props();
 
   const uid = $props.id();
@@ -31,7 +33,7 @@
   // phone instead of shrinking with the drawing (DESIGN.md §4.6).
   let shown = $state(0);
   const fitted = $derived(shown > 0 ? Math.min(width, Math.round(shown)) : width);
-  const d = $derived(layout(pattern, { width: fitted, labels, rulers, cuts, kerf, grain, nameSize }));
+  const d = $derived(layout(pattern, { width: fitted, labels, rulers, cuts, kerf, grain, nameSize, trims }));
   const currentBadge = $derived(d.badges.find((b) => b.number === current));
 
   function center(s: Shape) {
@@ -61,6 +63,9 @@
     <pattern id="{uid}-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
       <rect width="6" height="6" class="p-offcut-bg" /><line x1="0" y1="0" x2="0" y2="6" class="p-hatch" />
     </pattern>
+    <pattern id="{uid}-trim" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+      <rect width="5" height="5" class="p-trim-bg" /><line x1="0" y1="0" x2="0" y2="5" class="p-trim-hatch" />
+    </pattern>
   </defs>
   <!-- The panel shows through wherever the saw removes material. -->
   <rect x={d.panel.x} y={d.panel.y} width={r(d.panel.w)} height={r(d.panel.h)} class="p-kerf" />
@@ -83,6 +88,9 @@
         {/if}
         {@render label(s, "p-part-text", d.nameSize, d.detailSize)}
       </g>
+    {:else if s.kind === "trim"}
+      <rect x={r(s.x)} y={r(s.y)} width={r(s.w)} height={r(s.h)} fill="url(#{uid}-trim)" class="p-trim" />
+      {@render label(s, "p-offcut-text", d.nameSize, d.detailSize - 0.5)}
     {:else if s.kind === "offcut"}
       <rect x={r(s.x)} y={r(s.y)} width={r(s.w)} height={r(s.h)} fill="url(#{uid}-hatch)" class="p-offcut" />
       {@render label(s, "p-offcut-text", d.nameSize, d.detailSize - 0.5)}
@@ -90,6 +98,10 @@
       <rect x={r(s.x + 0.75)} y={r(s.y + 0.75)} width={r(s.w - 1.5)} height={r(s.h - 1.5)} class="p-leftover" />
       {@render label(s, "p-leftover-text", d.nameSize, d.detailSize)}
     {/if}
+  {/each}
+
+  {#each d.trimBands as t, i (i)}
+    <rect x={r(t.x)} y={r(t.y)} width={r(t.w)} height={r(t.h)} fill="url(#{uid}-trim)" class="p-trim p-trim-soft" />
   {/each}
 
   <rect x={d.panel.x} y={d.panel.y} width={r(d.panel.w)} height={r(d.panel.h)} class="p-edge" />

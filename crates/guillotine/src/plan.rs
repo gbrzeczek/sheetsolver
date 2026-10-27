@@ -27,6 +27,12 @@ pub(crate) enum Content {
     Offcut,
     /// The reusable remainder of the last panel (upstream -3).
     Leftover,
+    /// The panel without its hard trims (upstream's depth-0 node under the
+    /// root). It is not among the root's children, as in upstream, whose
+    /// `SolutionBuilder::add_bin` adds the trims and this node to a copy of
+    /// the root; the trims themselves are not stored (`to_solution` writes
+    /// them from the panel's trims).
+    Trimmed,
 }
 
 /// A rectangle of a panel's cutting tree, in the panel's own coordinates
@@ -272,7 +278,7 @@ impl Plan {
             } else {
                 CutDirection::AlongLength
             },
-            root: model_node(problem, instance, bin, 0, leftover_as_offcut),
+            root: model_root(problem, instance, bin, leftover_as_offcut),
         };
         let mut patterns = Vec::new();
         for bin in &self.bins {
@@ -322,6 +328,101 @@ pub(crate) fn strictly_greater_profit(v1: f64, v2: f64) -> bool {
         (v1 - v2) / denominator > 1e-6
     } else {
         v1 - v2 > 1e-6
+    }
+}
+
+/// A panel's cutting tree in the public format. With trims cut off first,
+/// the panel is cut into those trims, then the trimmed panel, all at
+/// stage 0: the left and right trims run the panel's full width, the
+/// bottom and top ones between them (the oracle writes them so; upstream
+/// writes the corners as pieces of their own).
+fn model_root(
+    problem: &Problem,
+    instance: &Instance,
+    bin: &PlanBin,
+    leftover_as_offcut: bool,
+) -> model::Node {
+    let panel = &instance.panels[bin.bin_type];
+    let t = &panel.trims;
+    let cut_first = |trim: model::Trim| {
+        if problem.trims_moved || trim.is_cut_off_first() {
+            trim.width
+        } else {
+            Length::ZERO
+        }
+    };
+    let (left, right, bottom, top) = (
+        cut_first(t.left),
+        cut_first(t.right),
+        cut_first(t.bottom),
+        cut_first(t.top),
+    );
+    if (left, right, bottom, top) == (Length::ZERO, Length::ZERO, Length::ZERO, Length::ZERO) {
+        return model_node(problem, instance, bin, 0, leftover_as_offcut);
+    }
+    let trimmed = if problem.trims_moved {
+        // The plan was made on the panel without its trims.
+        let mut trimmed = model_node(problem, instance, bin, 0, leftover_as_offcut);
+        shift(&mut trimmed, left, bottom);
+        trimmed
+    } else {
+        model_node(problem, instance, bin, 1, leftover_as_offcut)
+    };
+    let (length, width) = (panel.length, panel.width);
+    let rectangle = |kind, x, y, length, width| model::Node {
+        kind,
+        x,
+        y,
+        length,
+        width,
+        stage: 0,
+        children: Vec::new(),
+    };
+    let between = length - left - right;
+    let mut children = Vec::new();
+    if left > Length::ZERO {
+        children.push(rectangle(
+            NodeKind::Trim,
+            Length::ZERO,
+            Length::ZERO,
+            left,
+            width,
+        ));
+    }
+    if right > Length::ZERO {
+        children.push(rectangle(
+            NodeKind::Trim,
+            length - right,
+            Length::ZERO,
+            right,
+            width,
+        ));
+    }
+    if bottom > Length::ZERO {
+        children.push(rectangle(
+            NodeKind::Trim,
+            left,
+            Length::ZERO,
+            between,
+            bottom,
+        ));
+    }
+    if top > Length::ZERO {
+        children.push(rectangle(NodeKind::Trim, left, width - top, between, top));
+    }
+    children.push(trimmed);
+    model::Node {
+        children,
+        ..rectangle(NodeKind::Piece, Length::ZERO, Length::ZERO, length, width)
+    }
+}
+
+/// Moves a subtree by (`dx`, `dy`).
+fn shift(node: &mut model::Node, dx: Length, dy: Length) {
+    node.x = node.x + dx;
+    node.y = node.y + dy;
+    for child in &mut node.children {
+        shift(child, dx, dy);
     }
 }
 
@@ -382,23 +483,40 @@ impl<'a> PlanBuilder<'a> {
         }
     }
 
-    /// upstream: `SolutionBuilder::add_bin`, without trims.
+    /// upstream: `SolutionBuilder::add_bin`. With hard trims, the panel's
+    /// cuts start from the trimmed panel.
     pub fn add_bin(&mut self, bin_type: usize, copies: u32, first_cut_orientation: Orientation) {
-        let size = self.problem.bin_types[bin_type].size;
+        let bin = &self.problem.bin_types[bin_type];
+        let size = bin.size;
+        let mut nodes = vec![PlanNode {
+            parent: None,
+            depth: 0,
+            left: 0,
+            right: size.w,
+            bottom: 0,
+            top: size.h,
+            content: Content::Panel,
+            children: Vec::new(),
+        }];
+        let t = bin.trims;
+        if t.any_hard() {
+            let hard = |trim: i64, soft: bool| if soft { 0 } else { trim };
+            nodes.push(PlanNode {
+                parent: Some(0),
+                depth: 0,
+                left: hard(t.left, t.left_soft),
+                right: size.w - hard(t.right, t.right_soft),
+                bottom: hard(t.bottom, t.bottom_soft),
+                top: size.h - hard(t.top, t.top_soft),
+                content: Content::Trimmed,
+                children: Vec::new(),
+            });
+        }
         self.bins.push(PlanBin {
             bin_type,
             copies,
             first_cut_orientation,
-            nodes: vec![PlanNode {
-                parent: None,
-                depth: 0,
-                left: 0,
-                right: size.w,
-                bottom: 0,
-                top: size.h,
-                content: Content::Panel,
-                children: Vec::new(),
-            }],
+            nodes,
         });
     }
 
@@ -450,7 +568,7 @@ impl<'a> PlanBuilder<'a> {
             parent = bin.nodes[parent].parent.ok_or(BuildError)?;
         }
 
-        if bin.nodes[parent].parent.is_some() {
+        if bin.nodes[parent].parent.is_some() && bin.nodes[parent].content != Content::Trimmed {
             if matches!(bin.nodes[parent].content, Content::Part(_)) {
                 return Err(BuildError);
             }
@@ -544,8 +662,8 @@ impl<'a> PlanBuilder<'a> {
 
 /// The plan of a search node.
 ///
-/// upstream: tree_search.cpp, `BranchingScheme::to_solution`, without trims
-/// and defects.
+/// upstream: tree_search.cpp, `BranchingScheme::to_solution`, without
+/// defects.
 pub(crate) fn plan_of(scheme: &Scheme, problem: &Problem, node: &Node) -> Plan {
     // The placements from the first to `node`.
     let mut placements: Vec<&Node> = Vec::new();
@@ -565,8 +683,15 @@ pub(crate) fn plan_of(scheme: &Scheme, problem: &Problem, node: &Node) -> Plan {
         // them ends.
         let later = &placements[index + 1..];
 
+        // The strip of a soft left or bottom trim is an offcut cut off
+        // first: by a first cut with 3 stages, by a cut in each strip
+        // otherwise. Trims are read as the search sees them.
+        let kerf = problem.cut_thickness;
+        let orientation = placement.first_stage_orientation;
+
         // New panels.
         while (builder.bins.len() as u32) < placement.number_of_bins {
+            let trims = scheme.trims(builder.bins.len() as u32, orientation);
             let vertical =
                 (placement.first_stage_orientation == Orientation::Vertical) == three_stages;
             let bin_type = scheme.bin_type_ids()[builder.bins.len()];
@@ -579,7 +704,16 @@ pub(crate) fn plan_of(scheme: &Scheme, problem: &Problem, node: &Node) -> Plan {
                     Orientation::Horizontal
                 },
             );
+            if three_stages {
+                if trims.has_soft_left() {
+                    builder.add_node(1, scheme.x_start(&trims) - kerf);
+                }
+            } else if trims.has_soft_bottom() {
+                builder.add_node(1, scheme.y_start(&trims) - kerf);
+            }
         }
+
+        let trims = scheme.trims(placement.number_of_bins - 1, orientation);
 
         // A new level-1 strip.
         if placement.depth < 1 && three_stages {
@@ -589,6 +723,9 @@ pub(crate) fn plan_of(scheme: &Scheme, problem: &Problem, node: &Node) -> Plan {
                 .last()
                 .map_or(placement.x1_curr, |next| next.x1_curr);
             builder.add_node(1, x1);
+            if trims.has_soft_bottom() {
+                builder.add_node(2, scheme.y_start(&trims) - kerf);
+            }
         }
 
         // A new level-2 piece.
@@ -599,6 +736,9 @@ pub(crate) fn plan_of(scheme: &Scheme, problem: &Problem, node: &Node) -> Plan {
                 .last()
                 .map_or(placement.y2_curr, |next| next.y2_curr);
             builder.add_node(if three_stages { 2 } else { 1 }, subplate2_y2);
+            if !three_stages && trims.has_soft_left() {
+                builder.add_node(2, scheme.x_start(&trims) - kerf);
+            }
         }
 
         // The level-3 piece holding the part.

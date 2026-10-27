@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { adoptKeys, draftMatches, emptyPanel, emptyPart, fromInstance, namesFor, newDraft, parseLength, toRequest, type Draft } from "./draft";
+import { adoptKeys, draftMatches, emptyPanel, emptyPart, fromInstance, namesFor, newDraft, parseLength, toRequest, upgradeDraft, type Draft } from "./draft";
 import { place } from "./problems";
+import { trimsSummary } from "./trims";
 
 function draft(): Draft {
   const d = newDraft();
@@ -55,7 +56,7 @@ describe("the request", () => {
       { id: "Part 2", length: 400, width: 300.5, quantity: 1, grain: false },
     ]);
     expect(request.instance.panels).toEqual([{ id: "Panel 1", length: 2440, width: 1220 }]);
-    expect(request.instance.saw).toEqual({ kerf: 0, stages: 3, cut_type: "non_exact", first_cuts: "either" });
+    expect(request.instance.saw).toEqual({ kerf: 0, stages: 3, cut_type: "non_exact", first_cuts: "either", minimum_offcut_width: 0 });
   });
 
   it("sends an empty kerf as 0 mm", () => {
@@ -188,5 +189,80 @@ describe("a plan for an older job", () => {
     const d = draft();
     d.parts[0]!.width = "56,";
     expect(draftMatches(d, sent())).toBe(false);
+  });
+});
+
+describe("trims and the minimum offcut width", () => {
+  it("send each trimmed edge with its cut, and no edge without a trim", () => {
+    const d = draft();
+    d.panels[0]!.trims.left.width = "10";
+    d.panels[0]!.trims.top.width = "5,5";
+    d.panels[0]!.trims.bottom.width = "0";
+    d.minimumOffcutWidth = "20";
+    const { request, problems } = toRequest(d);
+    expect(problems).toEqual([]);
+    // The cuts are each edge's default (docs/FIELDS.md).
+    expect(request.instance.panels[0]!.trims).toEqual({
+      left: { width: 10, cut: "cut_off_first" },
+      top: { width: 5.5, cut: "left_on_offcut" },
+    });
+    expect(request.instance.saw.minimum_offcut_width).toBe(20);
+    // And come back from the instance as typed.
+    const back = fromInstance(request.instance, 10);
+    expect(back.panels[0]!.trims.top).toEqual({ width: "5.5", cut: "left_on_offcut" });
+    expect(back.minimumOffcutWidth).toBe("20");
+    expect(draftMatches(back, request.instance)).toBe(true);
+  });
+
+  it("report problems with the API's paths and wording", () => {
+    const d = draft();
+    d.panels[0]!.trims.left.width = "1220";
+    d.panels[0]!.trims.right.width = "1220";
+    d.panels[0]!.trims.top.width = "-1";
+    d.minimumOffcutWidth = "2.25";
+    const fields = toRequest(d).problems.map((p) => [p.field, p.message]);
+    expect(fields).toEqual([
+      ["instance.panels[0].trims.top.width", "must be a length in millimetres, such as 720 or 3.2"],
+      ["instance.panels[0].trims.right.width", 'the left and right trims of panel "Panel 1" together must be less than its length'],
+      ["instance.saw.minimum_offcut_width", "length 2.25 mm has more than one decimal; lengths are in steps of 0.1 mm"],
+    ]);
+    expect(place("instance.panels[0].trims.right.width")).toMatchObject({ section: "panels", row: 0, edge: "right", label: "Row 1, Right end trim" });
+    expect(place("instance.saw.minimum_offcut_width")).toMatchObject({ section: "settings", label: "Minimum offcut width" });
+  });
+
+  it("make a plan out of date when they change", () => {
+    const d = draft();
+    const sent = toRequest(d).request.instance;
+    d.panels[0]!.trims.bottom.width = "8";
+    expect(draftMatches(d, sent)).toBe(false);
+    d.panels[0]!.trims.bottom.width = "";
+    d.panels[0]!.trims.bottom.cut = "left_on_offcut";
+    // A cut on an edge without a trim changes nothing.
+    expect(draftMatches(d, sent)).toBe(true);
+    d.minimumOffcutWidth = "30";
+    expect(draftMatches(d, sent)).toBe(false);
+  });
+
+  it("are filled in on a draft stored before they existed", () => {
+    const old = JSON.parse(JSON.stringify(draft())) as Draft;
+    delete (old as Partial<Draft>).minimumOffcutWidth;
+    delete (old.panels[0] as Partial<Draft["panels"][number]>).trims;
+    const upgraded = upgradeDraft(old);
+    expect(upgraded.minimumOffcutWidth).toBe("");
+    expect(upgraded.panels[0]!.trims.right.cut).toBe("left_on_offcut");
+    expect(toRequest(upgraded).problems).toEqual([]);
+  });
+
+  it("sum up a panel's trims in a few words", () => {
+    const trims = emptyPanel().trims;
+    expect(trimsSummary(trims)).toBe("none");
+    for (const edge of ["left", "right", "bottom", "top"] as const) {
+      trims[edge].width = "10";
+      trims[edge].cut = "cut_off_first";
+    }
+    expect(trimsSummary(trims)).toBe("10 mm all round, cut off first");
+    trims.right.cut = "left_on_offcut";
+    trims.top.width = "";
+    expect(trimsSummary(trims)).toBe("left 10 · right 10 · bottom 10 mm · right left on the offcut");
   });
 });

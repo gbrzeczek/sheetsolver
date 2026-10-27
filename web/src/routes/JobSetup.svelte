@@ -97,10 +97,11 @@
     if (where.section === "parts" || where.section === "panels") {
       const list = where.section === "parts" ? "part" : "panel";
       const name = where.field?.split(".")[1];
-      const input = document.getElementById(`${list}-${where.row}-${name}`) as HTMLInputElement | null;
+      const id = where.edge ? `panel-${where.row}-trim-${where.edge}${name === "cut" ? "-cut" : ""}` : `${list}-${where.row}-${name}`;
+      const input = document.getElementById(id) as HTMLInputElement | null;
       input?.focus();
     } else if (where.field) {
-      const id = { "Instance.objective": "objective", "Saw.kerf": "kerf", "JobRequest.time_limit": "time-limit", "JobRequest.name": "job-name" }[where.field as string];
+      const id = { "Instance.objective": "objective", "Saw.kerf": "kerf", "JobRequest.time_limit": "time-limit", "JobRequest.name": "job-name", "Saw.minimum_offcut_width": "minimum-offcut-width" }[where.field as string];
       if (id) document.getElementById(id)?.focus();
     }
   }

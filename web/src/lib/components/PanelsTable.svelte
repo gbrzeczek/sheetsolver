@@ -1,6 +1,7 @@
 <!-- "Panels you have": an editable table (DESIGN.md §2, Job setup). -->
 <script lang="ts">
   import ColumnHeader from "./ColumnHeader.svelte";
+  import TrimsEditor from "./TrimsEditor.svelte";
   import { emptyPanel, namesFor, type PanelRow } from "../job/draft";
   import { describedBy, field, type FieldKey } from "../api/fields";
 
@@ -80,6 +81,12 @@
           {/each}
           <td>
             <button class="icon-btn" type="button" aria-label="Remove panel {i + 1}" onclick={() => onremove(i)}>×</button>
+          </td>
+        </tr>
+        <tr class="trims-row">
+          <td></td>
+          <td colspan={cols.length + 1}>
+            <TrimsEditor bind:trims={row.trims} index={i} {problems} {onedit} />
           </td>
         </tr>
         {#each rowProblems as col (col.name)}

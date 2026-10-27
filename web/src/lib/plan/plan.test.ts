@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Instance, Pattern, PlanNode } from "../api/types";
 import { cutDirection, cutOrder } from "./cutorder";
 import { fitLabel } from "./labels";
-import { children, nodes, patternStats } from "./tree";
+import { children, cuttingRoot, nodes, panelTrims, patternStats } from "./tree";
 
 const DATA = join(__dirname, "../../../../data");
 const GOLDEN = join(DATA, "golden/9b656a0d");
@@ -63,7 +63,9 @@ describe("cut order", () => {
       for (const pattern of golden(file).patterns ?? []) {
         for (const piece of nodes(pattern.root)) {
           const kids = children(piece);
-          if (kids.length < 2) continue;
+          // A panel with trims cut off first is cut into them and the
+          // trimmed panel, which are not side by side.
+          if (kids.length < 2 || cuttingRoot(piece) !== piece) continue;
           pieces++;
           const direction = cutDirection(piece);
           // Side by side along the cut axis, in order, aligned on the other
@@ -100,16 +102,52 @@ describe("cut order", () => {
   });
 });
 
+describe("trims", () => {
+  it("cuts the trims cut off first before anything else", () => {
+    const name = "generated__trims_every_edge_cut_off_first";
+    const pattern = golden(`${name}.q2048.json`).patterns![0]!;
+    const { cuts, names } = cutOrder(pattern, 3.2, 3);
+    expect(cuts.slice(0, 4).map((c) => [c.edge, c.direction, c.measure, c.group])).toEqual([
+      ["left", "across", 10, "trims"],
+      ["right", "across", 10, "trims"],
+      ["bottom", "along", 10, "trims"],
+      ["top", "along", 10, "trims"],
+    ]);
+    // Then the trimmed panel, whose strips are named as a panel's.
+    expect(cuts[4]!.group).toBe("panel");
+    expect(names.get(cuts[4]!.produces)).toBe("Strip A");
+    expect(cuts[4]!.piece).toBe(cuttingRoot(pattern.root));
+  });
+
+  it("leaves a trim on the offcut with no cut of its own", () => {
+    const pattern = golden("generated__trims_every_edge_left_on_offcut.q2048.json").patterns![0]!;
+    const { cuts } = cutOrder(pattern, 3.2, 3);
+    expect(cuts.some((c) => c.edge)).toBe(false);
+    // The soft left trim is the first first cut: an offcut of at least the
+    // minimum offcut width (30 mm), kerf excluded.
+    expect(cuts[0]!.produces.kind).toBe("offcut");
+    expect(cuts[0]!.measure).toBe(30);
+  });
+
+  it("excludes every trim from the panel's area, as upstream does", () => {
+    const job = instance("generated__trims_every_edge_left_on_offcut");
+    const pattern = golden("generated__trims_every_edge_left_on_offcut.q2048.json").patterns![0]!;
+    expect(patternStats(pattern, panelTrims(job, pattern)).panelArea).toBe(2480 * 1230);
+    expect(patternStats(pattern).panelArea).toBe(2500 * 1250);
+  });
+});
+
 describe("figures per panel", () => {
   it("add up to upstream's waste for every golden plan", () => {
     let checked = 0;
     for (const file of readdirSync(GOLDEN).filter((f) => f.endsWith(".json"))) {
       const g = golden(file);
       if (!g.patterns?.length || !g.upstream_metrics || !/bin_packing|knapsack/.test(file)) continue;
+      const job = instance(file.split(".")[0]!);
       let waste = 0;
       let usable = 0;
       for (const pattern of g.patterns) {
-        const s = patternStats(pattern);
+        const s = patternStats(pattern, panelTrims(job, pattern));
         waste += s.wasteArea * pattern.repeat;
         usable += (s.panelArea - s.leftoverArea) * pattern.repeat;
       }

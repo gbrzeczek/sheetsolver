@@ -1,10 +1,10 @@
 // The geometry of a panel drawing in screen pixels (web/DESIGN.md §4.6):
 // length horizontal, width vertical, y = 0 at the bottom edge. Laid out at
 // the width it is shown at, so labels keep their pixel size.
-import type { Pattern, PlanNode } from "../api/types";
+import type { Pattern, PlanNode, Trims } from "../api/types";
 import type { Cut } from "./cutorder";
 import { fitLabel, textWidth, type LabelFit } from "./labels";
-import { children, leaves, mm, size } from "./tree";
+import { children, cuttingRoot, leaves, mm, size, trimEdge, trimWidths } from "./tree";
 
 export type LabelMode = "full" | "names" | "none";
 
@@ -17,7 +17,7 @@ export interface Box {
 
 export interface Shape extends Box {
   node: PlanNode;
-  kind: "part" | "offcut" | "leftover";
+  kind: "part" | "offcut" | "leftover" | "trim";
   name: string | null;
   detail: string | null;
   fit: LabelFit;
@@ -47,6 +47,8 @@ export interface Drawing {
   height: number;
   panel: Box;
   shapes: Shape[];
+  /** Trims left on the offcut: no part is there, but they are no piece of their own. */
+  trimBands: Box[];
   badges: Badge[];
   /** Panel length along the top, panel width on the right, strips on the left. */
   rulers: { top: RulerMark; right: RulerMark; strips: RulerMark[]; stripsSide: "left" | "bottom" } | null;
@@ -64,6 +66,8 @@ export interface DrawingOptions {
   kerf: number;
   grain(partId: string): boolean;
   nameSize?: number;
+  /** The panel's trims, from the job: those left on the offcut are drawn as bands. */
+  trims?: Trims;
 }
 
 export const BADGE_RADIUS = 9;
@@ -97,6 +101,8 @@ export function layout(pattern: Pattern, options: DrawingOptions): Drawing {
     if (kind === "part") {
       name = options.labels === "none" ? null : leaf.part_id;
       detail = options.labels === "full" ? size(leaf) : null;
+    } else if (kind === "trim") {
+      name = options.labels === "full" ? "Trim" : null;
     } else if (kind === "offcut") {
       // A sliver thinner than the kerf is saw dust: no label.
       detail = options.labels === "full" && Math.min(leaf.length, leaf.width) >= options.kerf ? size(leaf) : null;
@@ -117,6 +123,19 @@ export function layout(pattern: Pattern, options: DrawingOptions): Drawing {
     });
   }
 
+  // A trim left on the offcut has no piece: show where it is.
+  const cutFirst = new Set(
+    children(root)
+      .filter((c) => c.kind === "trim")
+      .map((c) => trimEdge(c, root)),
+  );
+  const t = trimWidths(options.trims);
+  const trimBands: Box[] = [];
+  if (t.left && !cutFirst.has("left")) trimBands.push(box({ x: 0, y: 0, length: t.left, width: W }));
+  if (t.right && !cutFirst.has("right")) trimBands.push(box({ x: L - t.right, y: 0, length: t.right, width: W }));
+  if (t.bottom && !cutFirst.has("bottom")) trimBands.push(box({ x: 0, y: 0, length: L, width: t.bottom }));
+  if (t.top && !cutFirst.has("top")) trimBands.push(box({ x: 0, y: W - t.top, length: L, width: t.top }));
+
   const badges: Badge[] = [];
   if (options.cuts) {
     const placed: [number, number][] = [];
@@ -130,7 +149,24 @@ export function layout(pattern: Pattern, options: DrawingOptions): Drawing {
       let cy: number;
       let dx = 0;
       let dy = 0;
-      if (cut.direction === "across") {
+      if (cut.edge) {
+        // A trim cut off first: the saw cut is inside the trim, at its
+        // inner edge.
+        const thin = Math.max(gap, 1.5);
+        if (cut.edge === "left" || cut.edge === "right") {
+          const gx = ml + (cut.edge === "left" ? c.x + c.length : c.x) * s - (cut.edge === "left" ? thin : 0);
+          line = { x: gx, y: p.y, w: thin, h: p.h };
+          cx = gx + thin / 2;
+          cy = p.y + 12;
+          dy = 2 * r + 3;
+        } else {
+          const gy = mt + (W - (cut.edge === "bottom" ? c.y + c.width : c.y)) * s;
+          line = { x: p.x, y: cut.edge === "bottom" ? gy : gy - thin, w: p.w, h: thin };
+          cx = p.x + 12;
+          cy = line.y + thin / 2;
+          dx = 2 * r + 3;
+        }
+      } else if (cut.direction === "across") {
         const gx = ml + (c.x + c.length) * s;
         line = { x: gx, y: p.y, w: gap, h: p.h };
         cx = gx + gap / 2;
@@ -157,14 +193,16 @@ export function layout(pattern: Pattern, options: DrawingOptions): Drawing {
   let rulers: Drawing["rulers"] = null;
   if (options.rulers) {
     const strips: RulerMark[] = [];
+    // The strips of the first cuts, after any trims cut off first.
+    const stripsOf = cuttingRoot(root);
     if (along) {
-      for (const c of children(root)) {
+      for (const c of children(stripsOf)) {
         const a = mt + (W - c.y - c.width) * s;
         const b = mt + (W - c.y) * s;
         strips.push({ from: a, to: b, label: b - a >= 14 ? mm(c.width) : null, weak: c.kind === "offcut" || c.kind === "leftover" });
       }
     } else {
-      for (const c of children(root)) {
+      for (const c of children(stripsOf)) {
         const a = ml + c.x * s;
         const b = ml + (c.x + c.length) * s;
         strips.push({ from: a, to: b, label: b - a >= textWidth(mm(c.length), 11) + 8 ? mm(c.length) : null, weak: c.kind === "offcut" || c.kind === "leftover" });
@@ -183,6 +221,7 @@ export function layout(pattern: Pattern, options: DrawingOptions): Drawing {
     height: W * s + mt + mb,
     panel: { x: ml, y: mt, w: L * s, h: W * s },
     shapes,
+    trimBands,
     badges,
     rulers,
     nameSize,

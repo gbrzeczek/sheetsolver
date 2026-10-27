@@ -5,7 +5,7 @@
   import CutList from "./CutList.svelte";
   import type { Instance, JobStatus, PlanReport } from "../api/types";
   import { cutOrder } from "../plan/cutorder";
-  import { mm, patternStats, percent, size } from "../plan/tree";
+  import { mm, panelTrims, patternStats, percent, size } from "../plan/tree";
   import { headline, panelsLine } from "../plan/summary";
   import { optionTitle } from "../api/fields";
 
@@ -27,14 +27,17 @@
       instance.saw.stages === "unlimited" ? "unlimited stages" : `${instance.saw.stages} stages`,
       `first cuts: ${optionTitle("Saw.first_cuts", instance.saw.first_cuts).toLowerCase()}`,
       `last-stage trimming: ${optionTitle("Saw.cut_type", instance.saw.cut_type).toLowerCase()}`,
-    ].join(" · "),
+      instance.saw.minimum_offcut_width ? `offcuts at least ${mm(instance.saw.minimum_offcut_width)} mm` : null,
+    ]
+      .filter(Boolean)
+      .join(" · "),
   );
 </script>
 
 <div class="print-only" aria-hidden="true">
   {#each patterns as pattern, i (i)}
     {@const order = cutOrder(pattern, kerf, instance.saw.stages)}
-    {@const s = patternStats(pattern)}
+    {@const s = patternStats(pattern, panelTrims(instance, pattern))}
     {@const counts = s.partLeaves.reduce((m, l) => (l.kind === "part" ? m.set(l.part_id, (m.get(l.part_id) ?? 0) + 1) : m), new Map<string, number>())}
     <section class="print-sheet">
       <header class="print-head">
@@ -44,7 +47,7 @@
           <small>{named(pattern.panel_id)}{size(pattern.root)} mm · {s.parts} parts · {percent(s.wasteFraction)} waste · {settings}</small>
         </div>
       </header>
-      <PanelDrawing {pattern} {kerf} {grain} width={900} labels="full" rulers cuts={order.cuts} current={null} nameSize={11}
+      <PanelDrawing {pattern} trims={panelTrims(instance, pattern)} {kerf} {grain} width={900} labels="full" rulers cuts={order.cuts} current={null} nameSize={11}
         title="Panel {i + 1}" />
       <div class="print-cols">
         <div class="print-cuts">

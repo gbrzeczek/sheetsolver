@@ -103,6 +103,17 @@ fn oracle_solutions_pass_and_metrics_match_upstream() {
 
         let m = &report.metrics;
         let usable = m.panel_area - m.leftover_area;
+        // Solved on the panel without its trims (unlimited stages, no
+        // minimum offcut width): upstream's extent is measured from the
+        // trimmed panel's corner, ours from the panel's.
+        let moved = read_json::<Value>(&path)["oracle"]["trims"].is_string();
+        let (dx, dy) = match (moved, solution.patterns.last()) {
+            (true, Some(pattern)) => {
+                let trims = instance.panel(&pattern.panel_id).unwrap().trims;
+                (trims.left.width.tenths(), trims.bottom.width.tenths())
+            }
+            _ => (0, 0),
+        };
         let ours = [
             ("number_of_bins", m.panels_used as i64),
             ("number_of_items", m.parts_cut as i64),
@@ -110,8 +121,8 @@ fn oracle_solutions_pass_and_metrics_match_upstream() {
             ("item_area", m.part_area.hundredths_mm2()),
             ("area", usable.hundredths_mm2()),
             ("waste", m.waste_area.hundredths_mm2()),
-            ("width", m.used_length.tenths()),
-            ("height", m.used_width.tenths()),
+            ("width", m.used_length.tenths() - dx),
+            ("height", m.used_width.tenths() - dy),
         ];
         for (key, value) in ours {
             if upstream[key].as_i64() != Some(value) {

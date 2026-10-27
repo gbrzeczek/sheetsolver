@@ -4,7 +4,7 @@ import { headline, oversizedParts, panelsLine, totalParts } from "./summary";
 
 const instance: Instance = {
   objective: "bin_packing",
-  saw: { kerf: 3.2, stages: 3, cut_type: "non_exact", first_cuts: "either" },
+  saw: { kerf: 3.2, stages: 3, cut_type: "non_exact", first_cuts: "either", minimum_offcut_width: 0 },
   panels: [{ id: "Birch", length: 2440, width: 1220 }],
   parts: [
     { id: "Side", length: 720, width: 560, quantity: 4, grain: true },

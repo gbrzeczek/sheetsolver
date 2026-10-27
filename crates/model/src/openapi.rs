@@ -75,8 +75,9 @@ impl PartialSchema for NodeKind {
                         .enum_values(Some([kind]))
                         .description(Some(
                             "What this rectangle is: `piece` (the panel, or a piece cut \
-                             further), `part`, `offcut` (waste) or `leftover` (the reusable \
-                             remainder of the last panel).",
+                             further), `part`, `offcut` (waste), `leftover` (the reusable \
+                             remainder of the last panel) or `trim` (a strip cut off an edge \
+                             of the panel first).",
                         )),
                 )
                 .required("kind")
@@ -109,6 +110,12 @@ impl PartialSchema for NodeKind {
             .item(variant(
                 "leftover",
                 "The reusable remainder of the last panel, beyond its last first-stage cut.",
+            ))
+            .item(variant(
+                "trim",
+                "A strip cut off an edge of the panel before any other cut (a trim *Cut off \
+                 first*). Trims are children of the panel, at stage 0, before the trimmed \
+                 panel, which is a piece at stage 0 too.",
             ))
             .description(Some("The kind of a rectangle in the cutting tree."))
             .into()

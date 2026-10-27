@@ -1,7 +1,7 @@
 // The cut order a woodworker follows at the saw, derived from the plan tree
 // (web/DESIGN.md §2, "How the cut order is derived").
 import type { Pattern, PlanNode } from "../api/types";
-import { children } from "./tree";
+import { children, cuttingRoot, trimEdge } from "./tree";
 
 /** Which way a cut runs: along the panel's length (at a fixed y) or across it (at a fixed x). */
 export type Direction = "along" | "across";
@@ -24,6 +24,8 @@ export interface Cut {
   group: string;
   /** The last-stage trimming cut (stage `stages + 1`, docs/ARCHITECTURE.md). */
   trim: boolean;
+  /** For a trim cut off first, before every other cut: the panel edge it trims. */
+  edge?: "left" | "right" | "bottom" | "top";
 }
 
 /**
@@ -67,11 +69,32 @@ export interface CutOrder {
  * come first, then each strip is finished before the next.
  */
 export function cutOrder(pattern: Pattern, kerf: number, stages: number | "unlimited"): CutOrder {
-  const root = pattern.root;
+  const panel = pattern.root;
+  // With trims cut off first, they are the first cuts, then the trimmed
+  // panel is cut as a panel would be.
+  const root = cuttingRoot(panel);
   const names = new Map<PlanNode, string>();
   nameStrips(root, names);
   const lastStage = stages === "unlimited" ? Infinity : stages;
   const cuts: Cut[] = [];
+  if (root !== panel) {
+    for (const trim of children(panel).slice(0, -1)) {
+      const edge = trimEdge(trim, panel);
+      const across = edge === "left" || edge === "right";
+      cuts.push({
+        number: cuts.length + 1,
+        piece: panel,
+        direction: across ? "across" : "along",
+        measure: across ? trim.length : trim.width,
+        produces: trim,
+        leaves: null,
+        leavesSawDust: false,
+        group: "trims",
+        trim: false,
+        edge,
+      });
+    }
+  }
 
   const process = (piece: PlanNode, group: string): void => {
     const kids = children(piece);

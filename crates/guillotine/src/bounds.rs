@@ -75,7 +75,7 @@ fn value_bound(problem: &Problem) -> f64 {
     let total_capacity: i64 = problem
         .bin_types
         .iter()
-        .map(|bin| bin.size.area() * i64::from(bin.copies))
+        .map(|bin| bin.area() * i64::from(bin.copies))
         .sum();
     let items = &problem.item_types;
     let mut order: Vec<usize> = (0..items.len()).collect();
@@ -115,7 +115,7 @@ fn panel_bound(problem: &Problem) -> u32 {
         if remaining_item_area <= 0 {
             break;
         }
-        let area = bin.size.area();
+        let area = bin.area();
         if area <= 0 {
             continue;
         }

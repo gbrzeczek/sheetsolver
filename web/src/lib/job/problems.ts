@@ -8,6 +8,8 @@ export interface ProblemPlace {
   section: "parts" | "panels" | "settings" | "page";
   /** 0-based row in a table, if the problem is in one row. */
   row?: number;
+  /** The panel edge, for a problem with one of its trims. */
+  edge?: string;
   /** The field's key, if the problem is in one field. */
   field?: FieldKey;
   /** "Row 2, Width", "Saw blade thickness (kerf)", "Parts". */
@@ -15,6 +17,15 @@ export interface ProblemPlace {
 }
 
 const ROW = /^instance\.(parts|panels)\[(\d+)\]\.(\w+)$/;
+const TRIM = /^instance\.panels\[(\d+)\]\.trims\.(left|right|bottom|top)\.(width|cut)$/;
+
+/** The edges as the trims editor names them (docs/FIELDS.md, *Panel trims*). */
+export const EDGE_NAMES: Record<string, string> = {
+  left: "Left end",
+  right: "Right end",
+  bottom: "Bottom edge",
+  top: "Top edge",
+};
 
 const SETTINGS: Record<string, FieldKey> = {
   "instance.objective": "Instance.objective",
@@ -22,12 +33,25 @@ const SETTINGS: Record<string, FieldKey> = {
   "instance.saw.stages": "Saw.stages",
   "instance.saw.cut_type": "Saw.cut_type",
   "instance.saw.first_cuts": "Saw.first_cuts",
+  "instance.saw.minimum_offcut_width": "Saw.minimum_offcut_width",
   time_limit: "JobRequest.time_limit",
   name: "JobRequest.name",
 };
 
 export function place(path: string | null): ProblemPlace {
   if (path === null) return { section: "page", label: "Job" };
+  const trim = TRIM.exec(path);
+  if (trim) {
+    const [, index, edge, name] = trim;
+    const key = `Trim.${name}` as FieldKey;
+    return {
+      section: "panels",
+      row: Number(index),
+      edge,
+      field: key,
+      label: `Row ${Number(index) + 1}, ${EDGE_NAMES[edge!]} ${field(key).label.toLowerCase()}`,
+    };
+  }
   const row = ROW.exec(path);
   if (row) {
     const [, list, index, name] = row;

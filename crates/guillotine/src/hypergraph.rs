@@ -488,7 +488,7 @@ pub(crate) fn tree_search_hypergraph_infinite_copies(problem: &Problem, stop: &S
 
     // Otherwise, only the part types whose copies cannot run out in the
     // panel.
-    let area = problem.bin_types[0].size.area();
+    let area = problem.bin_types[0].area();
     let infinite: Vec<bool> = problem
         .item_types
         .iter()

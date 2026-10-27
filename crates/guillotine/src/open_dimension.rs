@@ -24,7 +24,21 @@ pub fn complete_open_dimension(instance: &Instance, solution: &mut Solution) {
     };
     let kerf = instance.saw.kerf;
     for pattern in &mut solution.patterns {
-        let root = &mut pattern.root;
+        // With trims cut off first, the trimmed panel is the one cut.
+        let trimmed = pattern
+            .root
+            .children
+            .first()
+            .is_some_and(|child| child.kind == NodeKind::Trim);
+        let root = if trimmed {
+            pattern
+                .root
+                .children
+                .last_mut()
+                .expect("the trimmed panel follows the trims")
+        } else {
+            &mut pattern.root
+        };
         if root.children.is_empty() {
             continue;
         }
@@ -71,7 +85,7 @@ pub fn complete_open_dimension(instance: &Instance, solution: &mut Solution) {
                 y: root.y,
                 length: if open_x { reach - root.x } else { root.length },
                 width: if open_x { root.width } else { reach - root.y },
-                stage: 1,
+                stage: root.stage + 1,
                 children: std::mem::take(&mut root.children),
             };
             for child in &mut used.children {
@@ -86,7 +100,7 @@ pub fn complete_open_dimension(instance: &Instance, solution: &mut Solution) {
             y: if open_x { root.y } else { reach + kerf },
             length: if open_x { remainder } else { root.length },
             width: if open_x { root.width } else { remainder },
-            stage: 1,
+            stage: root.stage + 1,
             children: Vec::new(),
         };
         root.children.push(leftover);

@@ -65,9 +65,11 @@ pub(crate) fn tree_search(
                 // bound, and once the best plan meets it (an infeasibility
                 // proof, or the panel count or value just found), every
                 // later search is skipped. With open dimensions no bound is
-                // recorded.
+                // recorded. A minimum offcut width makes the search miss
+                // plans, so it is not exhaustive then.
                 if output.optimal
                     && problem.first_stage_orientation != Orientation::Any
+                    && problem.minimum_waste_length == 0
                     && (!feasible
                         || matches!(
                             problem.objective,

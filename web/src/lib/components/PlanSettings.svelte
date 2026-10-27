@@ -15,7 +15,9 @@
   let { draft = $bindable(), problems, onedit }: Props = $props();
 
   const advancedProblem = $derived(
-    ["name", "instance.saw.stages", "instance.saw.cut_type", "instance.saw.first_cuts", "time_limit"].some((p) => problems.has(p)),
+    ["name", "instance.saw.stages", "instance.saw.cut_type", "instance.saw.first_cuts", "instance.saw.minimum_offcut_width", "time_limit"].some((p) =>
+      problems.has(p),
+    ),
   );
   let advancedOpen = $state(false);
   $effect(() => {
@@ -28,6 +30,8 @@
       draft.stages === "unlimited" ? "unlimited stages" : `${draft.stages} stages`,
       draft.stages === "unlimited" ? null : `trimming ${optionTitle("Saw.cut_type", draft.cutType).toLowerCase()}`,
       draft.firstCuts === "either" ? "first cuts either way" : `${optionTitle("Saw.first_cuts", draft.firstCuts).toLowerCase()} first`,
+      // Only when there is one: no minimum is the usual case.
+      Number(draft.minimumOffcutWidth.replace(",", ".")) > 0 ? `offcuts at least ${draft.minimumOffcutWidth.trim()} mm` : null,
       `${draft.timeLimit || "?"} s`,
     ]
       .filter(Boolean)
@@ -98,6 +102,23 @@
       {#snippet children({ helpId })}
         <Choice key="Saw.first_cuts" name="first_cuts" value={draft.firstCuts} describedby={helpId}
           onchange={(v) => { draft.firstCuts = v as FirstCuts; onedit("instance.saw.first_cuts"); }} />
+      {/snippet}
+    </Setting>
+    <Setting key="Saw.minimum_offcut_width" for="minimum-offcut-width" error={problems.get("instance.saw.minimum_offcut_width")}>
+      {#snippet children({ helpId })}
+        <div class="input-wrap input-short">
+          <input
+            id="minimum-offcut-width"
+            class="input"
+            placeholder="0"
+            class:invalid={problems.has("instance.saw.minimum_offcut_width")}
+            inputmode="decimal"
+            autocomplete="off"
+            aria-describedby={helpId}
+            bind:value={draft.minimumOffcutWidth}
+            oninput={() => onedit("instance.saw.minimum_offcut_width")}
+          /><span class="suffix">mm</span>
+        </div>
       {/snippet}
     </Setting>
     <Setting key="JobRequest.time_limit" for="time-limit" error={problems.get("time_limit")}>

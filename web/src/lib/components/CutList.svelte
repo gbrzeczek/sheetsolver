@@ -20,7 +20,9 @@
         const strip = [...order.names.entries()].find(([, n]) => n === cut.group)?.[0];
         g = cut.group === "panel"
           ? { title: "Panel into strips", meta: cut.direction === "along" ? "along the length" : "across the length", cuts: [] }
-          : { title: cut.group, meta: strip ? size(strip) : "", cuts: [] };
+          : cut.group === "trims"
+            ? { title: "Trims", meta: "cut off first", cuts: [] }
+            : { title: cut.group, meta: strip ? size(strip) : "", cuts: [] };
         out.push(g);
       }
       g.cuts.push(cut);
@@ -28,7 +30,10 @@
     return out;
   });
 
-  function what(node: PlanNode): { bold: string | null; rest: string } {
+  const EDGE = { left: "left end", right: "right end", bottom: "bottom edge", top: "top edge" } as const;
+
+  function what(node: PlanNode, cut?: Cut): { bold: string | null; rest: string } {
+    if (node.kind === "trim") return { bold: `${cut?.edge ? EDGE[cut.edge] : "edge"} trim`, rest: size(node) };
     if (node.kind === "part") return { bold: node.part_id, rest: size(node) };
     if (node.kind === "leftover") return { bold: "leftover", rest: size(node) };
     if (node.kind === "offcut") return { bold: null, rest: `offcut ${size(node)}` };
@@ -51,7 +56,7 @@
   {#each groups as g, gi (gi)}
     <li class="group"><span>{g.title}</span><span class="num">{g.meta}</span></li>
     {#each g.cuts as cut (cut.number)}
-      {@const p = what(cut.produces)}
+      {@const p = what(cut.produces, cut)}
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
       <li
         class="cut"

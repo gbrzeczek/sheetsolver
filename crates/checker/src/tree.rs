@@ -100,19 +100,29 @@ fn rectangle(node: &Node) -> Rect {
     (node.x, node.y, node.length, node.width)
 }
 
+/// Whether every trim is cut off first, whatever its *Trimmed strip*
+/// says: with unlimited stages and no minimum offcut width
+/// (`docs/FIELDS.md`), where the choice makes no difference.
+fn every_trim_cut_off_first(instance: &Instance) -> bool {
+    instance.saw.stages == Stages::Unlimited && instance.saw.minimum_offcut_width == Length::ZERO
+}
+
+/// The width of the strip cut off first at an edge, 0 if none.
+fn cut_first(trim: model::Trim, every_trim: bool) -> Length {
+    if trim.is_cut_off_first() || every_trim {
+        trim.width
+    } else {
+        Length::ZERO
+    }
+}
+
 /// The strips cut off first, in the order left, right, bottom, top, and
 /// where each is. The left and right ones run the panel's full width; the
 /// bottom and top ones run between them.
-fn trims_cut_off_first(panel: &Panel) -> Vec<(&'static str, Rect)> {
+fn trims_cut_off_first(panel: &Panel, every_trim: bool) -> Vec<(&'static str, Rect)> {
     let trims = &panel.trims;
     let (length, width) = (panel.length, panel.width);
-    let cut = |trim: model::Trim| {
-        if trim.is_cut_off_first() {
-            trim.width
-        } else {
-            Length::ZERO
-        }
-    };
+    let cut = |trim| cut_first(trim, every_trim);
     let (left, right, bottom, top) = (
         cut(trims.left),
         cut(trims.right),
@@ -137,15 +147,9 @@ fn trims_cut_off_first(panel: &Panel) -> Vec<(&'static str, Rect)> {
 }
 
 /// The panel without its trims cut off first.
-fn trimmed_panel(panel: &Panel) -> Rect {
+fn trimmed_panel(panel: &Panel, every_trim: bool) -> Rect {
     let trims = &panel.trims;
-    let cut = |trim: model::Trim| {
-        if trim.is_cut_off_first() {
-            trim.width
-        } else {
-            Length::ZERO
-        }
-    };
+    let cut = |trim| cut_first(trim, every_trim);
     let (left, right, bottom, top) = (
         cut(trims.left),
         cut(trims.right),

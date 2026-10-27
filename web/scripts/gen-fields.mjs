@@ -14,7 +14,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const openapi = JSON.parse(readFileSync(join(root, "openapi.json"), "utf8"));
 const schemas = openapi.components.schemas;
 
-const SCHEMAS = ["JobRequest", "Instance", "Saw", "Part", "Panel"];
+const SCHEMAS = ["JobRequest", "Instance", "Saw", "Part", "Panel", "Trim"];
 
 /** The schema a property refers to, if any. */
 function referenced(property) {

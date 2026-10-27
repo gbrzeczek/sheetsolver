@@ -27,11 +27,12 @@
 //! cuts are then the real first cuts, so first cuts in one direction are
 //! searched with level-1 strips in the other.
 //!
-//! Upstream also handles trims, defects, minimum waste, cut distances, cut
-//! counts, cutting costs, resources, stacks and two parts per level-3
-//! piece (roadef2018). None of them is In (`docs/SCOPE.md`), and with their
-//! neutral values most of upstream's `update()` reduces to the few rules
-//! kept in [`Scheme::update`]; the comments there say what was dropped.
+//! Trims and the minimum waste (offcut width) are ported as upstream
+//! handles them. Upstream also handles defects, cut distances, cut counts,
+//! cutting costs, resources, stacks and two parts per level-3 piece
+//! (roadef2018). None of them is In yet (`docs/SCOPE.md`), and with their
+//! neutral values their steps of upstream's `update()` change nothing; the
+//! comments in [`Scheme::update`] say which were left out.
 
 use std::cell::Cell;
 use std::hash::{Hash, Hasher};
@@ -40,7 +41,7 @@ use std::rc::Rc;
 use model::CutType;
 use treesearch::{BranchingScheme, Guide};
 
-use crate::problem::{Objective, Orientation, Problem};
+use crate::problem::{BinTrims, Objective, Orientation, Problem};
 
 /// Which guide orders the nodes in a queue.
 ///
@@ -81,6 +82,17 @@ pub(crate) struct Node {
     pub y2_prev: i64,
     /// Right end of the last level-3 piece.
     pub x3_curr: i64,
+    /// Furthest the current level-1 strip may reach (upstream `x1_max`).
+    pub x1_max: i64,
+    /// Highest the current level-2 piece may reach (upstream `y2_max`).
+    pub y2_max: i64,
+    /// Whether the current level-1 strip can be widened freely (upstream
+    /// `z1`): 0 if a part ends exactly at its end, so widening it must
+    /// leave an offcut at least the minimum waste wide; 1 if it can.
+    pub z1: u8,
+    /// The same for the height of the current level-2 piece (upstream
+    /// `z2`), and 2 if its height is fixed (exact cuts).
+    pub z2: u8,
     /// Copies of each part type placed so far (upstream `pos_stack`).
     pub copies_placed: Vec<u32>,
     /// Panels used, the current one included.
@@ -128,6 +140,10 @@ struct Insertion {
     x1: i64,
     y2: i64,
     x3: i64,
+    x1_max: i64,
+    y2_max: i64,
+    z1: u8,
+    z2: u8,
 }
 
 /// Nodes with the same copies placed may dominate each other (upstream
@@ -180,7 +196,7 @@ impl<'a> Scheme<'a> {
         let mut bin_type_order: Vec<usize> = (0..problem.bin_types.len()).collect();
         if problem.objective == Objective::Knapsack {
             // A stable sort, like upstream's.
-            bin_type_order.sort_by_key(|&bin_type| problem.bin_types[bin_type].size.area());
+            bin_type_order.sort_by_key(|&bin_type| problem.bin_types[bin_type].area());
         }
         let mut bin_type_ids = Vec::new();
         let mut previous_bins_area = Vec::new();
@@ -190,7 +206,7 @@ impl<'a> Scheme<'a> {
             for _ in 0..bin.copies {
                 bin_type_ids.push(bin_type);
                 previous_bins_area.push(area);
-                area += bin.size.area();
+                area += bin.area();
             }
         }
 
@@ -279,8 +295,32 @@ impl<'a> Scheme<'a> {
         }
     }
 
+    /// The trims of panel `bin` seen with first cuts in `orientation`.
+    pub fn trims(&self, bin: u32, orientation: Orientation) -> BinTrims {
+        self.problem
+            .bin_trims(self.bin_type_ids[bin as usize], orientation)
+    }
+
+    /// Where parts start after the left trim (upstream `Instance::x_start`).
+    pub fn x_start(&self, trims: &BinTrims) -> i64 {
+        self.problem.trim_start(trims.left, trims.left_soft)
+    }
+
+    /// Where parts start after the bottom trim (upstream `Instance::y_start`).
+    pub fn y_start(&self, trims: &BinTrims) -> i64 {
+        self.problem.trim_start(trims.bottom, trims.bottom_soft)
+    }
+
     // Where a part placed at `depth` starts. Negative depths open a new
-    // panel, whose strips start at 0 (no trims).
+    // panel, whose strips start after its trims.
+
+    /// The trims of the new panel a part placed at negative `depth` opens.
+    fn new_bin_trims(&self, node: &Node, depth: i32) -> BinTrims {
+        self.trims(
+            self.last_bin(node, depth),
+            self.last_bin_orientation(node, depth),
+        )
+    }
 
     /// Left end of the new level-3 piece (upstream `x3_prev(node, df)`).
     pub fn x3_prev(&self, node: &Node, depth: i32) -> i64 {
@@ -288,17 +328,53 @@ impl<'a> Scheme<'a> {
             0 => node.x1_curr + self.problem.cut_thickness,
             1 => node.x1_prev,
             2 => node.x3_curr + self.problem.cut_thickness,
-            _ => 0,
+            _ => self.x_start(&self.new_bin_trims(node, depth)),
         }
     }
 
     /// Bottom of the level-2 piece (upstream `y2_prev(node, df)`).
     fn y2_prev(&self, node: &Node, depth: i32) -> i64 {
         match depth {
+            0 => self.y_start(&self.trims(node.number_of_bins - 1, node.first_stage_orientation)),
             1 => node.y2_curr + self.problem.cut_thickness,
             2 => node.y2_prev,
-            _ => 0,
+            _ => self.y_start(&self.new_bin_trims(node, depth)),
         }
+    }
+
+    /// Furthest the level-1 strip may reach (upstream `x1_max`): the
+    /// panel's end, or a hard right trim.
+    fn x1_max(&self, node: &Node, depth: i32) -> i64 {
+        if depth == 1 || depth == 2 {
+            return node.x1_max;
+        }
+        let (bin, orientation) = if depth == 0 {
+            (node.number_of_bins - 1, node.first_stage_orientation)
+        } else {
+            (
+                self.last_bin(node, depth),
+                self.last_bin_orientation(node, depth),
+            )
+        };
+        let w = self
+            .problem
+            .bin_size(self.bin_type_ids[bin as usize], orientation)
+            .w;
+        let trims = self.trims(bin, orientation);
+        if trims.right_soft { w } else { w - trims.right }
+    }
+
+    /// Highest the level-2 piece may reach (upstream `y2_max`): the
+    /// panel's top, or a hard top trim.
+    fn y2_max(&self, node: &Node, depth: i32) -> i64 {
+        if depth == 2 {
+            return node.y2_max;
+        }
+        let bin = self.last_bin(node, depth);
+        let orientation = self.last_bin_orientation(node, depth);
+        let h = self.bin_height(bin, orientation);
+        let trims = self.trims(bin, orientation);
+        if trims.top_soft { h } else { h - trims.top }
     }
 
     /// Index of the panel a part placed at `depth` goes on (upstream
@@ -416,9 +492,10 @@ impl<'a> Scheme<'a> {
         let panel = self
             .problem
             .bin_size(self.bin_type_ids[bin as usize], orientation);
+        let trims = self.trims(bin, orientation);
         let x = self.x3_prev(parent, depth) + item.width(rotate);
         let y = self.y2_prev(parent, depth) + item.height(rotate);
-        if x > panel.w || y > panel.h {
+        if x > panel.w - trims.right || y > panel.h - trims.top {
             return;
         }
         // One part type per last-stage strip.
@@ -428,12 +505,21 @@ impl<'a> Scheme<'a> {
         {
             return;
         }
+        // Without trimming, parts fill their level-2 piece's height.
+        let z2 = match self.problem.cut_type {
+            CutType::Exact | CutType::Homogenous => 2,
+            CutType::NonExact => 0,
+        };
         let insertion = Insertion {
             item_type,
             depth,
             x1: x,
             y2: y,
             x3: x,
+            x1_max: self.x1_max(parent, depth),
+            y2_max: self.y2_max(parent, depth),
+            z1: 0,
+            z2,
         };
         self.update(children, parent, insertion);
     }
@@ -442,42 +528,202 @@ impl<'a> Scheme<'a> {
     /// unless an existing child dominates it, removing the children it
     /// dominates.
     ///
-    /// upstream: tree_search.cpp, `BranchingScheme::update`. With no
-    /// minimum waste (upstream's `z1`/`z2` are then 1, or 2 for a level-2
-    /// piece whose height is fixed), no trims, defects, cut distances or
-    /// cut counts, only the steps below change anything; upstream's other
-    /// checks cannot fail.
+    /// upstream: tree_search.cpp, `BranchingScheme::update`. Its steps for
+    /// the minimum distance between cuts, the maximum number of cuts and
+    /// defects are left out: with those features unused they change
+    /// nothing.
     fn update(&self, children: &mut Vec<NodeRef>, parent: &NodeRef, mut insertion: Insertion) {
         let orientation = self.last_bin_orientation(parent, insertion.depth);
         let bin = self.last_bin(parent, insertion.depth);
         let panel = self
             .problem
             .bin_size(self.bin_type_ids[bin as usize], orientation);
+        let trims = self.trims(bin, orientation);
+        let min_waste = self.problem.minimum_waste_length;
+        let kerf = self.problem.cut_thickness;
+        // Where parts must end, and where the cuts may go: a soft trim's
+        // strip stays on the offcut beside it, so cuts may reach the edge.
+        let w = panel.w - trims.right;
+        let h = panel.h - trims.top;
+        let w_physical = if trims.right_soft { panel.w } else { w };
+        let h_physical = if trims.top_soft { panel.h } else { h };
 
-        // With 2 stages, every level-1 strip spans the panel.
-        if self.problem.number_of_stages == 2 {
-            insertion.x1 = panel.w;
-        }
-
-        // A part in the current level-1 strip widens it, never narrows it.
-        if insertion.depth >= 1 && insertion.x1 <= parent.x1_curr {
-            insertion.x1 = parent.x1_curr;
-        }
-
-        // A part in the current level-2 piece: with trimming allowed, the
-        // piece grows to fit it. Without (exact and homogenous cuts), parts
-        // fill their piece exactly, so the part must have its height.
-        if insertion.depth == 2 {
-            if self.problem.cut_type == CutType::NonExact {
-                if insertion.y2 <= parent.y2_curr {
-                    insertion.y2 = parent.y2_curr;
-                }
-            } else if insertion.y2 != parent.y2_curr {
-                return;
+        // Without a minimum waste, any strip may be widened.
+        if min_waste <= 1 {
+            if insertion.z1 == 0 {
+                insertion.z1 = 1;
+            }
+            if insertion.z2 == 0 {
+                insertion.z2 = 1;
             }
         }
 
-        debug_assert!(insertion.x1 <= panel.w && insertion.y2 <= panel.h);
+        // With 2 stages, every level-1 strip spans the panel.
+        if self.problem.number_of_stages == 2 && insertion.x1 != w_physical {
+            if insertion.z1 == 0 && insertion.x1 + kerf + min_waste > w_physical {
+                return;
+            }
+            insertion.x1 = w_physical;
+        }
+
+        // A part in the current level-1 strip widens it, never narrows it;
+        // widening a strip a part fills exactly leaves an offcut, which
+        // must be at least the minimum waste.
+        if insertion.depth >= 1 {
+            let x1_curr = parent.x1_curr;
+            if insertion.z1 == 0 {
+                if insertion.x1 + min_waste + kerf <= x1_curr {
+                    insertion.x1 = x1_curr;
+                    insertion.z1 = parent.z1;
+                } else if insertion.x1 < x1_curr {
+                    insertion.x1 = if parent.z1 == 0 {
+                        x1_curr + kerf + min_waste
+                    } else {
+                        insertion.x1 + kerf + min_waste
+                    };
+                    insertion.z1 = 1;
+                } else if insertion.x1 > x1_curr
+                    && parent.z1 == 0
+                    && insertion.x1 < x1_curr + kerf + min_waste
+                {
+                    insertion.x1 += kerf + min_waste;
+                    insertion.z1 = 1;
+                }
+            } else if insertion.x1 <= x1_curr {
+                insertion.x1 = x1_curr;
+                insertion.z1 = parent.z1;
+            } else if parent.z1 == 0 && x1_curr + kerf + min_waste > insertion.x1 {
+                insertion.x1 = x1_curr + kerf + min_waste;
+            }
+        }
+
+        // The same for the height of the current level-2 piece; a height
+        // that is fixed (2) cannot change.
+        if insertion.depth == 2 {
+            let y2_curr = parent.y2_curr;
+            let just_above = y2_curr < insertion.y2 && insertion.y2 < y2_curr + kerf + min_waste;
+            match insertion.z2 {
+                0 => {
+                    if insertion.y2 + kerf + min_waste <= y2_curr {
+                        insertion.y2 = y2_curr;
+                        insertion.z2 = parent.z2;
+                    } else if insertion.y2 < y2_curr {
+                        match parent.z2 {
+                            2 => return,
+                            0 => {
+                                insertion.y2 = y2_curr + kerf + min_waste;
+                                insertion.z2 = 1;
+                            }
+                            _ => {
+                                insertion.y2 += kerf + min_waste;
+                                insertion.z2 = 1;
+                            }
+                        }
+                    } else if insertion.y2 == y2_curr {
+                        if parent.z2 == 2 {
+                            insertion.z2 = 2;
+                        }
+                    } else if just_above {
+                        match parent.z2 {
+                            2 => return,
+                            0 => {
+                                insertion.y2 += kerf + min_waste;
+                                insertion.z2 = 1;
+                            }
+                            _ => {}
+                        }
+                    } else if parent.z2 == 2 {
+                        return;
+                    }
+                }
+                1 => {
+                    if insertion.y2 <= y2_curr {
+                        insertion.y2 = y2_curr;
+                        insertion.z2 = parent.z2;
+                    } else if just_above {
+                        match parent.z2 {
+                            2 => return,
+                            0 => insertion.y2 = y2_curr + kerf + min_waste,
+                            _ => {}
+                        }
+                    } else if parent.z2 == 2 {
+                        return;
+                    }
+                }
+                _ => {
+                    if insertion.y2 < y2_curr {
+                        return;
+                    } else if insertion.y2 == y2_curr {
+                    } else if just_above {
+                        if parent.z2 != 1 {
+                            return;
+                        }
+                    } else if parent.z2 == 2 {
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Beyond a soft right trim, the strip runs to the panel's edge.
+        if insertion.x1 > w {
+            if insertion.x1 > w_physical {
+                return;
+            }
+            if insertion.x1 < w_physical {
+                if insertion.z1 == 1 || insertion.x1 + min_waste <= w_physical {
+                    insertion.x1 = w_physical;
+                } else {
+                    return;
+                }
+            }
+        }
+
+        // Too close to the edge for an offcut: the strip runs to it.
+        if insertion.x1 < w_physical
+            && min_waste > 0
+            && insertion.x1 + kerf + min_waste > w_physical
+        {
+            if insertion.z1 != 1 {
+                return;
+            }
+            insertion.x1 = w_physical;
+            insertion.z1 = 0;
+        }
+
+        if insertion.x1 > insertion.x1_max {
+            return;
+        }
+
+        // Beyond a soft top trim, the piece runs to the panel's edge.
+        if insertion.y2 > h {
+            if insertion.y2 > h_physical {
+                return;
+            }
+            if insertion.y2 < h_physical {
+                match insertion.z2 {
+                    1 => insertion.y2 = h_physical,
+                    0 if insertion.y2 + min_waste <= h_physical => insertion.y2 = h_physical,
+                    _ => return,
+                }
+            }
+        }
+
+        // Too close to the top for an offcut: the piece runs to it.
+        if insertion.y2 < h_physical
+            && min_waste > 0
+            && insertion.y2 + kerf + min_waste > h_physical
+        {
+            if insertion.z2 != 1 {
+                return;
+            }
+            insertion.y2 = h_physical;
+            insertion.z2 = 0;
+        }
+
+        if insertion.y2 > insertion.y2_max {
+            return;
+        }
 
         // Dominance against the children found so far, of the same part
         // type.
@@ -521,12 +767,13 @@ impl<'a> Scheme<'a> {
         };
         let bin = (number_of_bins - 1) as usize;
         let panel = problem.bin_size(self.bin_type_ids[bin], first_stage_orientation);
+        let trims = self.trims(bin as u32, first_stage_orientation);
 
         let (x1_prev, y2_prev) = match depth {
-            0 => (parent.x1_curr + problem.cut_thickness, 0),
+            0 => (parent.x1_curr + problem.cut_thickness, self.y_start(&trims)),
             1 => (parent.x1_prev, parent.y2_curr + problem.cut_thickness),
             2 => (parent.x1_prev, parent.y2_prev),
-            _ => (0, 0),
+            _ => (self.x_start(&trims), self.y_start(&trims)),
         };
 
         let item = &problem.item_types[insertion.item_type];
@@ -538,18 +785,23 @@ impl<'a> Scheme<'a> {
 
         let (x1_curr, y2_curr, x3_curr) = (insertion.x1, insertion.y2, insertion.x3);
         // Once every part is placed, the last panel is used up to its last
-        // cut, kerf included.
+        // cut, kerf included. The trims, even soft ones, are not counted:
+        // no part can be there.
+        let x_max = panel.w - trims.right;
+        let y_max = panel.h - trims.top;
+        let h = panel.h - trims.top - trims.bottom;
+        let w = panel.w - trims.right - trims.left;
         let mut current_area = self.previous_bins_area[bin];
         if number_of_items == problem.number_of_items {
             current_area += if problem.number_of_stages >= 3 {
-                (x1_curr + problem.cut_thickness).min(panel.w) * panel.h
+                ((x1_curr + problem.cut_thickness).min(x_max) - trims.left) * h
             } else {
-                (y2_curr + problem.cut_thickness).min(panel.h) * panel.w
+                ((y2_curr + problem.cut_thickness).min(y_max) - trims.bottom) * w
             };
         } else {
-            current_area += x1_prev * panel.h
-                + (x1_curr.min(panel.w) - x1_prev) * y2_prev
-                + (x3_curr.min(panel.w) - x1_prev) * (y2_curr.min(panel.h) - y2_prev);
+            current_area += (x1_prev - trims.left) * h
+                + (x1_curr.min(x_max) - x1_prev) * (y2_prev - trims.bottom)
+                + (x3_curr.min(x_max) - x1_prev) * (y2_curr.min(y_max) - y2_prev);
         }
         let waste = current_area - item_area;
         debug_assert!(waste >= 0, "negative waste");
@@ -564,6 +816,10 @@ impl<'a> Scheme<'a> {
             y2_curr,
             y2_prev,
             x3_curr,
+            x1_max: insertion.x1_max,
+            y2_max: insertion.y2_max,
+            z1: insertion.z1,
+            z2: insertion.z2,
             copies_placed,
             number_of_bins,
             first_stage_orientation,
@@ -713,6 +969,10 @@ impl BranchingScheme for Scheme<'_> {
             y2_curr: 0,
             y2_prev: 0,
             x3_curr: 0,
+            x1_max: 0,
+            y2_max: 0,
+            z1: 0,
+            z2: 0,
             copies_placed: vec![0; self.problem.item_types.len()],
             number_of_bins: 0,
             first_stage_orientation: Orientation::Vertical,
@@ -780,7 +1040,7 @@ impl BranchingScheme for Scheme<'_> {
                         return true;
                     }
                     let bin_type = self.bin_type_ids[bins_needed as usize];
-                    area -= problem.bin_types[bin_type].size.area();
+                    area -= problem.bin_types[bin_type].area();
                     bins_needed += 1;
                 }
                 bins_needed >= incumbent.number_of_bins

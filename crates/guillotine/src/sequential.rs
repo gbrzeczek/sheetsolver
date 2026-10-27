@@ -91,14 +91,14 @@ pub(crate) fn sequential_value_correction(
     let largest_bin_space = problem
         .bin_types
         .iter()
-        .map(|bin| bin.size.area() as f64)
+        .map(|bin| bin.area() as f64)
         .fold(0.0, f64::max);
 
     // The panel type of each panel position: smallest first for knapsack,
     // otherwise in the order listed.
     let mut bin_type_order: Vec<usize> = (0..problem.bin_types.len()).collect();
     if knapsack {
-        bin_type_order.sort_by_key(|&bin_type| problem.bin_types[bin_type].size.area());
+        bin_type_order.sort_by_key(|&bin_type| problem.bin_types[bin_type].area());
     }
     let bin_type_by_position: Vec<usize> = bin_type_order
         .iter()
@@ -143,9 +143,8 @@ pub(crate) fn sequential_value_correction(
                 problem.settings(),
                 item_types,
                 vec![BinType {
-                    size: bin.size,
                     copies: 1,
-                    cost: bin.cost,
+                    ..bin.clone()
                 }],
             );
             // upstream: the part types keep their stack numbers.
@@ -200,7 +199,7 @@ pub(crate) fn sequential_value_correction(
                 item_space += (i64::from(pattern.item_copies[item_type]) * item.size.area()) as f64;
             }
             // upstream: stored as an integer area, so truncated.
-            let waste = (bin.size.area() as f64 - item_space) as i64;
+            let waste = (bin.area() as f64 - item_space) as i64;
             for (item_type, item) in problem.item_types.iter().enumerate() {
                 let packed = f64::from(pattern.item_copies[item_type]);
                 let space = item.size.area() as f64;

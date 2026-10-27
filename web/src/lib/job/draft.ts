@@ -1,7 +1,7 @@
 // The job as the woodworker edits it: every input kept as typed (text), so
 // a half-typed "3," is not lost, and turned into an API request on submit.
 import { API_FIELDS } from "../api/fields.generated";
-import type { CutType, FirstCuts, Instance, JobRequest, Objective, Panel, Part, Stages } from "../api/types";
+import type { CutType, FirstCuts, Instance, JobRequest, Objective, Panel, Part, Stages, TrimCut, Trims } from "../api/types";
 
 export interface PartRow {
   /** Stable identity for list rendering; not sent. */
@@ -14,6 +14,27 @@ export interface PartRow {
   value: string;
 }
 
+/** The four edges of a panel, as drawn on the plan (docs/FIELDS.md, *Panel trims*). */
+export const EDGES = ["left", "right", "bottom", "top"] as const;
+export type Edge = (typeof EDGES)[number];
+
+/**
+ * Each edge's *Trimmed strip* when none is chosen: upstream's defaults, kept
+ * by the owner (docs/FIELDS.md; docs/SCOPE.md, 2026-10-27). The API applies
+ * the same; it depends on the edge, so openapi.json gives no single default.
+ */
+export const DEFAULT_TRIM_CUT: Record<Edge, TrimCut> = {
+  left: "cut_off_first",
+  right: "left_on_offcut",
+  bottom: "cut_off_first",
+  top: "left_on_offcut",
+};
+
+export interface TrimRow {
+  width: string;
+  cut: TrimCut;
+}
+
 export interface PanelRow {
   key: number;
   id: string;
@@ -21,6 +42,7 @@ export interface PanelRow {
   width: string;
   quantity: string;
   cost: string;
+  trims: Record<Edge, TrimRow>;
 }
 
 export interface Draft {
@@ -31,6 +53,7 @@ export interface Draft {
   stages: Stages;
   cutType: CutType;
   firstCuts: FirstCuts;
+  minimumOffcutWidth: string;
   timeLimit: string;
   parts: PartRow[];
   panels: PanelRow[];
@@ -59,8 +82,27 @@ export function emptyPart(): PartRow {
   return { key: newKey(), id: "", length: "", width: "", quantity: "", grain: false, value: "" };
 }
 
+export function noTrims(): Record<Edge, TrimRow> {
+  return {
+    left: { width: "", cut: DEFAULT_TRIM_CUT.left },
+    right: { width: "", cut: DEFAULT_TRIM_CUT.right },
+    bottom: { width: "", cut: DEFAULT_TRIM_CUT.bottom },
+    top: { width: "", cut: DEFAULT_TRIM_CUT.top },
+  };
+}
+
 export function emptyPanel(): PanelRow {
-  return { key: newKey(), id: "", length: "", width: "", quantity: "", cost: "" };
+  return { key: newKey(), id: "", length: "", width: "", quantity: "", cost: "", trims: noTrims() };
+}
+
+/**
+ * A draft stored before a field existed gets that field's default, so a
+ * draft kept in the browser across an update still opens.
+ */
+export function upgradeDraft(draft: Draft): Draft {
+  draft.minimumOffcutWidth ??= "";
+  for (const panel of draft.panels) panel.trims ??= noTrims();
+  return draft;
 }
 
 /** A new job with the FIELDS.md defaults, one empty part and one empty panel. */
@@ -72,6 +114,7 @@ export function newDraft(): Draft {
     stages: API_FIELDS["Saw.stages"].default as Stages,
     cutType: API_FIELDS["Saw.cut_type"].default as CutType,
     firstCuts: API_FIELDS["Saw.first_cuts"].default as FirstCuts,
+    minimumOffcutWidth: "",
     timeLimit: String(API_FIELDS["JobRequest.time_limit"].default),
     parts: [emptyPart()],
     panels: [emptyPanel()],
@@ -101,7 +144,10 @@ function isBlankPart(row: PartRow): boolean {
 }
 
 function isBlankPanel(row: PanelRow): boolean {
-  return !row.id.trim() && !row.length.trim() && !row.width.trim() && !row.quantity.trim() && !row.cost.trim();
+  return (
+    !row.id.trim() && !row.length.trim() && !row.width.trim() && !row.quantity.trim() && !row.cost.trim() &&
+    EDGES.every((edge) => !row.trims[edge].width.trim())
+  );
 }
 
 /** Rows to send: all of them except wholly empty rows at the end, so positions match row numbers. */
@@ -227,6 +273,31 @@ export function toRequest(draft: Draft): { request: JobRequest; problems: Proble
       if (cost.ok) panel.cost = cost.value;
       else at(`${path}.cost`, cost.message);
     }
+    // An edge with an empty or zero trim has none, and is not sent.
+    const trims: Trims = {};
+    const widths: Partial<Record<Edge, number>> = {};
+    for (const edge of EDGES) {
+      const trim = row.trims[edge];
+      if (!trim.width.trim()) continue;
+      const width = parseLength(trim.width, `${edge} trim`, 0);
+      if (!width.ok) {
+        at(`${path}.trims.${edge}.width`, width.message);
+        continue;
+      }
+      widths[edge] = width.value;
+      if (width.value > 0) trims[edge] = { width: width.value, cut: trim.cut };
+    }
+    // Opposite trims must leave some of the panel (the API's wording).
+    const pairs = [
+      ["right", "left and right", "length", (widths.left ?? 0) + (widths.right ?? 0), panel.length],
+      ["top", "bottom and top", "width", (widths.bottom ?? 0) + (widths.top ?? 0), panel.width],
+    ] as const;
+    for (const [edge, edges, side, total, extent] of pairs) {
+      if (extent > 0 && total > 0 && Math.round(total * 10) >= Math.round(extent * 10)) {
+        at(`${path}.trims.${edge}.width`, `the ${edges} trims of panel "${panel.id}" together must be less than its ${side}`);
+      }
+    }
+    if (Object.keys(trims).length) panel.trims = trims;
     return panel;
   });
 
@@ -236,6 +307,14 @@ export function toRequest(draft: Draft): { request: JobRequest; problems: Proble
     const parsedKerf = parseLength(draft.kerf, "saw blade thickness", 0);
     if (parsedKerf.ok) kerf = parsedKerf.value;
     else at("instance.saw.kerf", parsedKerf.message);
+  }
+
+  // An empty minimum offcut width means none.
+  let minimumOffcutWidth = 0;
+  if (draft.minimumOffcutWidth.trim()) {
+    const parsed = parseLength(draft.minimumOffcutWidth, "minimum offcut width", 0);
+    if (parsed.ok) minimumOffcutWidth = parsed.value;
+    else at("instance.saw.minimum_offcut_width", parsed.message);
   }
 
   const limit = API_FIELDS["JobRequest.time_limit"];
@@ -258,7 +337,13 @@ export function toRequest(draft: Draft): { request: JobRequest; problems: Proble
 
   const instance: Instance = {
     objective: draft.objective,
-    saw: { kerf, stages: draft.stages, cut_type: draft.cutType, first_cuts: draft.firstCuts },
+    saw: {
+      kerf,
+      stages: draft.stages,
+      cut_type: draft.cutType,
+      first_cuts: draft.firstCuts,
+      minimum_offcut_width: minimumOffcutWidth,
+    },
     panels: outPanels,
     parts: outParts,
   };
@@ -301,6 +386,7 @@ export function fromInstance(instance: Instance, timeLimit: number, name = ""): 
     width: fmt(p.width),
     quantity: fmt(p.quantity),
     cost: fmt(p.cost),
+    trims: trimRows(p.trims),
   }));
   return {
     name,
@@ -309,10 +395,29 @@ export function fromInstance(instance: Instance, timeLimit: number, name = ""): 
     stages: instance.saw.stages,
     cutType: instance.saw.cut_type,
     firstCuts: instance.saw.first_cuts,
+    minimumOffcutWidth: instance.saw.minimum_offcut_width ? fmt(instance.saw.minimum_offcut_width) : "",
     timeLimit: String(timeLimit),
     parts: parts.length ? parts : [emptyPart()],
     panels: panels.length ? panels : [emptyPanel()],
   };
+}
+
+/** The trims rows of a panel as sent, with each edge's default cut where it has none. */
+function trimRows(trims: Trims | undefined): Record<Edge, TrimRow> {
+  const rows = noTrims();
+  for (const edge of EDGES) {
+    const trim = trims?.[edge];
+    if (trim?.width) rows[edge] = { width: fmt(trim.width), cut: trim.cut ?? DEFAULT_TRIM_CUT[edge] };
+  }
+  return rows;
+}
+
+/** A panel's trims by meaning: each edge's width and cut, an edge without a trim as none. */
+function canonicalTrims(trims: Trims | undefined) {
+  return EDGES.map((edge) => {
+    const trim = trims?.[edge];
+    return trim?.width ? [trim.width, trim.cut ?? DEFAULT_TRIM_CUT[edge]] : null;
+  });
 }
 
 /**
@@ -328,9 +433,9 @@ export function sameInstance(a: Instance, b: Instance): boolean {
 function canonical(instance: Instance) {
   return {
     objective: instance.objective,
-    saw: [instance.saw.kerf, instance.saw.stages, instance.saw.cut_type, instance.saw.first_cuts],
+    saw: [instance.saw.kerf, instance.saw.stages, instance.saw.cut_type, instance.saw.first_cuts, instance.saw.minimum_offcut_width ?? 0],
     parts: instance.parts.map((p) => [p.id, p.length, p.width, p.quantity ?? 1, p.grain ?? false, p.value ?? null]),
-    panels: instance.panels.map((p) => [p.id, p.length, p.width, p.quantity ?? null, p.cost ?? null]),
+    panels: instance.panels.map((p) => [p.id, p.length, p.width, p.quantity ?? null, p.cost ?? null, canonicalTrims(p.trims)]),
   };
 }
 

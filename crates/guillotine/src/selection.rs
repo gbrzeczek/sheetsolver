@@ -57,7 +57,7 @@ fn mean_number_of_items_in_bins(problem: &Problem) -> i64 {
     let largest_bin_space = problem
         .bin_types
         .iter()
-        .map(|bin| bin.size.area() as f64)
+        .map(|bin| bin.area() as f64)
         .fold(0.0, f64::max);
     let mean_item_space = problem
         .item_types
@@ -97,11 +97,14 @@ pub(crate) fn select(problem: &Problem) -> Vec<Algorithm> {
     // with unlimited stages, the tree search runs.
     let one_stack_per_part_type = problem.number_of_stacks == problem.item_types.len();
     if problem.number_of_bins <= 1 {
-        if !one_stack_per_part_type {
+        // upstream: neither one-panel search keeps offcuts wide enough, so
+        // with a minimum offcut width the tree search runs (upstream's
+        // next choice, column generation, needs at most 2 stages).
+        if !one_stack_per_part_type || problem.minimum_waste_length > 0 {
             return vec![Algorithm::TreeSearch];
         }
         let bin_area = if problem.bin_types.len() == 1 {
-            problem.bin_types[0].size.area()
+            problem.bin_types[0].area()
         } else {
             0
         };
@@ -145,6 +148,9 @@ pub(crate) fn not_applicable(problem: &Problem, algorithm: Algorithm) -> Option<
         }
         Algorithm::Hypergraph if problem.objective != Objective::Knapsack => {
             Some("it maximizes the value cut")
+        }
+        Algorithm::MaximalSpaces | Algorithm::Hypergraph if problem.minimum_waste_length > 0 => {
+            Some("it ignores the minimum offcut width")
         }
         Algorithm::MaximalSpaces | Algorithm::Hypergraph => None,
         Algorithm::SequentialSingleKnapsack | Algorithm::SequentialValueCorrection => {

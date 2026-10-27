@@ -430,7 +430,7 @@
             "description": "The panel or an intermediate piece, cut further into its children.",
             "properties": {
               "kind": {
-                "description": "What this rectangle is: `piece` (the panel, or a piece cut further), `part`, `offcut` (waste) or `leftover` (the reusable remainder of the last panel).",
+                "description": "What this rectangle is: `piece` (the panel, or a piece cut further), `part`, `offcut` (waste), `leftover` (the reusable remainder of the last panel) or `trim` (a strip cut off an edge of the panel first).",
                 "enum": [
                   "piece"
                 ],
@@ -446,7 +446,7 @@
             "description": "A finished part.",
             "properties": {
               "kind": {
-                "description": "What this rectangle is: `piece` (the panel, or a piece cut further), `part`, `offcut` (waste) or `leftover` (the reusable remainder of the last panel).",
+                "description": "What this rectangle is: `piece` (the panel, or a piece cut further), `part`, `offcut` (waste), `leftover` (the reusable remainder of the last panel) or `trim` (a strip cut off an edge of the panel first).",
                 "enum": [
                   "part"
                 ],
@@ -472,7 +472,7 @@
             "description": "Waste.",
             "properties": {
               "kind": {
-                "description": "What this rectangle is: `piece` (the panel, or a piece cut further), `part`, `offcut` (waste) or `leftover` (the reusable remainder of the last panel).",
+                "description": "What this rectangle is: `piece` (the panel, or a piece cut further), `part`, `offcut` (waste), `leftover` (the reusable remainder of the last panel) or `trim` (a strip cut off an edge of the panel first).",
                 "enum": [
                   "offcut"
                 ],
@@ -488,9 +488,25 @@
             "description": "The reusable remainder of the last panel, beyond its last first-stage cut.",
             "properties": {
               "kind": {
-                "description": "What this rectangle is: `piece` (the panel, or a piece cut further), `part`, `offcut` (waste) or `leftover` (the reusable remainder of the last panel).",
+                "description": "What this rectangle is: `piece` (the panel, or a piece cut further), `part`, `offcut` (waste), `leftover` (the reusable remainder of the last panel) or `trim` (a strip cut off an edge of the panel first).",
                 "enum": [
                   "leftover"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "description": "A strip cut off an edge of the panel before any other cut (a trim *Cut off first*). Trims are children of the panel, at stage 0, before the trimmed panel, which is a piece at stage 0 too.",
+            "properties": {
+              "kind": {
+                "description": "What this rectangle is: `piece` (the panel, or a piece cut further), `part`, `offcut` (waste), `leftover` (the reusable remainder of the last panel) or `trim` (a strip cut off an edge of the panel first).",
+                "enum": [
+                  "trim"
                 ],
                 "type": "string"
               }
@@ -854,7 +870,6 @@
             "$ref": "#/components/schemas/Length",
             "default": 0,
             "description": "How much to cut off this edge of the panel, in millimetres, to remove a chipped or damaged factory edge. No part is placed in it, and the saw cut that removes it is taken from it, so parts start exactly this far from the edge. Typical values: 5–15 mm on chipboard, MDF and melamine-faced board; more on a dented edge. Leave empty or 0 for a clean edge.",
-            "maximum": 100000,
             "minimum": 0,
             "title": "Trim",
             "x-short-help": "How much to cut off this edge to remove damage, in millimetres."

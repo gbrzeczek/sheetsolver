@@ -1,7 +1,7 @@
 // A per-browser convenience: the draft job.
 // Storage can be missing or throw (private windows, blocked site data), so
 // every access is guarded and the app works without it.
-import { adoptKeys, type Draft } from "./draft";
+import { adoptKeys, upgradeDraft, type Draft } from "./draft";
 
 const DRAFT = "sheetsolver.draft.v1";
 
@@ -24,7 +24,7 @@ function write(key: string, value: unknown): void {
 
 export function loadDraft(): Draft | null {
   const draft = read<Draft>(DRAFT);
-  return draft && Array.isArray(draft.parts) && Array.isArray(draft.panels) ? adoptKeys(draft) : null;
+  return draft && Array.isArray(draft.parts) && Array.isArray(draft.panels) ? adoptKeys(upgradeDraft(draft)) : null;
 }
 
 export function saveDraft(draft: Draft): void {
