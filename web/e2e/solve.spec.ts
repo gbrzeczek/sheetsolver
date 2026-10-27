@@ -177,3 +177,26 @@ test("a link to a panel the plan does not have shows all panels and says why", a
   await page.getByRole("link", { name: "Cut order →" }).first().click();
   await expect(page.getByText(/is not in this plan/)).toBeHidden();
 });
+
+test("a Stop that does not reach the server can be tried again", async ({ page }) => {
+  // The search of "stop a running search": it runs until it is stopped.
+  const instance = JSON.parse(readFileSync(join(import.meta.dirname, "../../data/instances/generated__knapsack_3_non_exact_kerf3_2.json"), "utf8"));
+  const parts = instance.parts.map((p: { length: number; width: number; quantity: number; grain?: boolean }) => ({
+    length: String(p.length), width: String(p.width), quantity: String(p.quantity), grain: p.grain,
+  }));
+  await enterJob(page, parts, { length: "2800", width: "2070", quantity: "2" }, "60");
+  await page.locator("#objective").selectOption("knapsack");
+  await findPlan(page);
+  await expect(page.locator(".headline")).toHaveText(/so far$/, { timeout: 20_000 });
+
+  await page.route("**/jobs/*", (route) => (route.request().method() === "DELETE" ? route.abort() : route.fallback()));
+  const stop = page.getByRole("button", { name: "Stop and keep this plan" });
+  await stop.click();
+  await expect(page.getByText(/Not stopped: The server cannot be reached/)).toBeVisible();
+  await expect(stop).toBeEnabled();
+
+  await page.unroute("**/jobs/*");
+  await stop.click();
+  await expect(page.getByText(/stopped after/)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/Not stopped/)).toBeHidden();
+});

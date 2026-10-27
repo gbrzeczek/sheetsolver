@@ -271,6 +271,7 @@
     <div class="statusline num">
       <span style="color:var(--ink);font-weight:600">{elapsed.toFixed(1)} s</span> of {job.time_limit} s
       {#if !session.connected}{" "}· <span>Reconnecting…</span>{/if}
+      {#if session.stopTrouble}{" "}· <span style="color:var(--bad)">Not stopped: {session.stopTrouble}</span>{/if}
     </div>
     <div class="progress" role="progressbar" aria-label="Search time" aria-valuenow={Math.round(elapsed)} aria-valuemin={0} aria-valuemax={job.time_limit}>
       <span style="width:{(elapsed / job.time_limit) * 100}%"></span>
@@ -324,6 +325,7 @@
       {#if searching}
         <span>Still searching · {elapsed.toFixed(1)} s of {job.time_limit} s; the plan updates itself.</span>
         <button class="link" type="button" onclick={() => void session.stop()}>{session.stopping ? "Stopping…" : "Stop and keep this plan"}</button>
+        {#if session.stopTrouble}<span style="color:var(--bad)">Not stopped: {session.stopTrouble}</span>{/if}
       {:else}
         <span class="ok">✓ {best.metrics.parts_cut >= total ? "Complete plan" : "Checked plan"}</span>
         {#if job.ended_by === "complete"}

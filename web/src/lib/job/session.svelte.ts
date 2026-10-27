@@ -38,6 +38,8 @@ class Session {
   connected = $state(true);
   trouble = $state<JobTrouble | null>(null);
   stopping = $state(false);
+  /** Why the last Stop did not reach the server, while that is still news. */
+  stopTrouble = $state<string | null>(null);
   /**
    * A panel link for a panel the shown plan does not have (a better plan
    * can need fewer panels), so the plan view can say why it shows them all.
@@ -127,6 +129,7 @@ class Session {
     this.history = [];
     this.trouble = null;
     this.stopping = false;
+    this.stopTrouble = null;
     const result = await getJob(id);
     if (this.jobId !== id) return;
     if (result.ok) this.#show(result.job);
@@ -137,6 +140,8 @@ class Session {
   #show(job: JobStatus): void {
     if (this.jobId !== job.id) {
       this.#stopFollowing();
+      this.stopping = false;
+      this.stopTrouble = null;
       // The previous job's plan must not stand in for this job's, which may have none.
       this.best = null;
       this.history = [];
@@ -195,10 +200,22 @@ class Session {
   }
 
   async stop(): Promise<void> {
-    if (!this.jobId) return;
+    const id = this.jobId;
+    if (!id) return;
     this.stopping = true;
-    const result = await cancelJob(this.jobId);
-    if (result.ok && isFinal(result.job.state)) {
+    this.stopTrouble = null;
+    const result = await cancelJob(id);
+    // Another job may be shown by now; this answer is not about it.
+    if (this.jobId !== id) return;
+    if (!result.ok) {
+      this.stopping = false;
+      if (result.status === 404) {
+        this.#stopFollowing();
+        this.trouble = { kind: "not_found" };
+      } else {
+        this.stopTrouble = result.error.message;
+      }
+    } else if (isFinal(result.job.state)) {
       this.stopping = false;
       this.#show(result.job);
     }
