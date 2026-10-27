@@ -15,6 +15,8 @@ npm run check          # svelte-check: types and Svelte warnings
 npm test               # unit tests (Vitest), incl. against data/golden
 npm run build          # web/dist
 npm run e2e            # build, start the API on :8092, run Playwright
+                       #   (the screen budget needs the Inter font:
+                       #   `sudo apt-get install fonts-inter` on Ubuntu)
 npm run screens        # screenshots of every screen at 1440, 820, 360 px
                        #   into mockups/screenshots (DESIGN.md §10)
 ```

@@ -1035,7 +1035,9 @@ still never scrolls sideways.
 
 The most each screen may show with the mockups' job. `e2e/budget.spec.ts`
 reads this table and fails if any screen, at any width, goes over it or
-scrolls sideways. Raising a number is an owner's decision, recorded
+scrolls sideways. It counts lines of text, so it is measured in Inter
+(Ubuntu's `fonts-inter`, which CI installs): in another font lines wrap
+differently, e.g. DejaVu Sans gives `setup` at 820 px one line over. Raising a number is an owner's decision, recorded
 here with its reason.
 
 <!-- budget -->
