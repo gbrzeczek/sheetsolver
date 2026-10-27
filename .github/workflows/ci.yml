@@ -35,4 +35,9 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npx playwright install --with-deps chromium
+      # The screen budget (e2e/budget.spec.ts) counts lines of text, so it
+      # is measured in Inter, the first font of the UI's stack that Linux
+      # has; without it the browser falls back to the wider DejaVu Sans
+      # and wraps more lines.
+      - run: sudo apt-get install -y --no-install-recommends fonts-inter
       - run: npm run e2e
