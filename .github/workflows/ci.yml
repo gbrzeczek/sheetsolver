@@ -1,8 +1,16 @@
 name: CI
 
+# A PR branch is tested once, by its pull request; main after each merge.
+# A branch without a PR is not tested: open a draft PR for feedback.
 on:
   push:
+    branches: [main]
   pull_request:
+
+# A newer push to the same branch or PR cancels the run it supersedes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   rust:
