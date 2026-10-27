@@ -71,7 +71,8 @@ pub struct Saw {
     /// thickness of your saw blade's teeth, not the blade body. Every cut
     /// between two parts uses this much material, so parts are spaced by
     /// it. Typical values: 3.2–4.4 mm for panel and table saws, 2.2–2.8 mm
-    /// for track saws. Set 0 only if your dimensions already include it.
+    /// for track saws. Leave it at 0 only if your dimensions already
+    /// include it.
     #[serde(default = "default_kerf")]
     pub kerf: Length,
     /// How many times a piece is turned and cut again. **Stage 1**:
@@ -108,9 +109,10 @@ pub struct Saw {
     pub first_cuts: FirstCuts,
 }
 
-/// The kerf when none is given: 3.2 mm, a typical panel-saw blade.
+/// The kerf when none is given: none, so nothing is cut away until the
+/// user enters their blade (owner's decision, 2026-10-27).
 fn default_kerf() -> Length {
-    Length::from_tenths(32)
+    Length::ZERO
 }
 
 /// Which way the first cuts may run. See [`Saw::first_cuts`].
@@ -258,11 +260,9 @@ pub struct Part {
     /// don't fit.
     #[serde(default = "one")]
     pub quantity: u32,
-    /// Tick this if the part must keep its grain running the same way as
-    /// the panel's grain (veneered or solid-wood panels, brushed or
-    /// wood-look melamine). The part is then never turned 90°. Untick it
-    /// for plain MDF, chipboard or any part whose look doesn't depend on
-    /// direction — turning parts usually saves material.
+    /// Tick if the part must keep the panel's grain direction (veneer,
+    /// solid wood, wood-look melamine); it is then never turned. Leave
+    /// unticked for MDF or chipboard: turning parts saves material.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub grain: bool,
     /// Only used with "Best use of the panels I have": how much you want
@@ -554,7 +554,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(instance.objective, Objective::BinPacking);
-        assert_eq!(instance.saw.kerf, Length::from_tenths(32));
+        assert_eq!(instance.saw.kerf, Length::ZERO);
         assert_eq!(instance.saw.stages, Stages::Limited(3));
         assert_eq!(instance.saw.cut_type, CutType::NonExact);
         assert_eq!(instance.saw.first_cuts, FirstCuts::Either);

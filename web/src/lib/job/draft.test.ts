@@ -17,7 +17,7 @@ describe("a new job", () => {
   it("starts with the FIELDS.md defaults", () => {
     const d = newDraft();
     expect([d.objective, d.kerf, d.stages, d.cutType, d.firstCuts, d.timeLimit]).toEqual([
-      "bin_packing", "3.2", 3, "non_exact", "either", "10",
+      "bin_packing", "0", 3, "non_exact", "either", "10",
     ]);
   });
 });
@@ -55,7 +55,7 @@ describe("the request", () => {
       { id: "Part 2", length: 400, width: 300.5, quantity: 1, grain: false },
     ]);
     expect(request.instance.panels).toEqual([{ id: "Panel 1", length: 2440, width: 1220 }]);
-    expect(request.instance.saw).toEqual({ kerf: 3.2, stages: 3, cut_type: "non_exact", first_cuts: "either" });
+    expect(request.instance.saw).toEqual({ kerf: 0, stages: 3, cut_type: "non_exact", first_cuts: "either" });
   });
 
   it("sends an empty kerf as 0 mm", () => {

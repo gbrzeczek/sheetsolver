@@ -242,7 +242,7 @@ another field; a test compares them). For these input fields,
 - `title`: the field's UI label from `FIELDS.md` ("Saw blade thickness
   (kerf)").
 - `default`: the value the server uses when the field is left out (kerf
-  3.2, stages 3, cut type `non_exact`, first cuts `either`, objective
+  0, stages 3, cut type `non_exact`, first cuts `either`, objective
   `bin_packing`, part quantity 1, grain `false`, time limit 10).
 - `minimum` / `maximum`: the bounds the server accepts (lengths ≥ 0.1,
   kerf ≥ 0, quantities ≥ 1, cost and value ≥ 0, time limit 1–600).

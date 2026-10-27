@@ -96,7 +96,5 @@
 </div>
 <div class="table-foot">
   <button class="link" type="button" onclick={add} disabled={single && rows.length >= 1}>+ Add panel size</button>
-  <small>
-    {single ? "This goal cuts from exactly one panel, quantity 1." : "Leave Quantity empty for as many as needed."}
-  </small>
+  {#if single}<small>This goal cuts from exactly one panel, quantity 1.</small>{/if}
 </div>

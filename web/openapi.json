@@ -586,7 +586,7 @@
         "properties": {
           "grain": {
             "default": false,
-            "description": "Tick this if the part must keep its grain running the same way as the panel's grain (veneered or solid-wood panels, brushed or wood-look melamine). The part is then never turned 90°. Untick it for plain MDF, chipboard or any part whose look doesn't depend on direction — turning parts usually saves material.",
+            "description": "Tick if the part must keep the panel's grain direction (veneer, solid wood, wood-look melamine); it is then never turned. Leave unticked for MDF or chipboard: turning parts saves material.",
             "title": "Keep grain direction",
             "type": "boolean"
           },
@@ -713,8 +713,8 @@
           },
           "kerf": {
             "$ref": "#/components/schemas/Length",
-            "default": 3.2,
-            "description": "The width of material each cut removes, in millimetres — the thickness of your saw blade's teeth, not the blade body. Every cut between two parts uses this much material, so parts are spaced by it. Typical values: 3.2–4.4 mm for panel and table saws, 2.2–2.8 mm for track saws. Set 0 only if your dimensions already include it.",
+            "default": 0,
+            "description": "The width of material each cut removes, in millimetres — the thickness of your saw blade's teeth, not the blade body. Every cut between two parts uses this much material, so parts are spaced by it. Typical values: 3.2–4.4 mm for panel and table saws, 2.2–2.8 mm for track saws. Leave it at 0 only if your dimensions already include it.",
             "maximum": 100000,
             "minimum": 0,
             "title": "Saw blade thickness (kerf)"

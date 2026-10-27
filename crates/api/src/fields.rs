@@ -99,7 +99,7 @@ pub static INPUT_FIELDS: &[InputField] = &[
     input("Part", "grain", "Keep grain direction").default("false"),
     input("Part", "value", "Value").minimum(0.0),
     input("Saw", "kerf", "Saw blade thickness (kerf)")
-        .default("3.2")
+        .default("0")
         .minimum(0.0)
         .maximum(LONGEST),
     input("Saw", "stages", "Cutting stages").default("3"),

@@ -303,7 +303,7 @@ piece.
 
 **First use.** Job setup opens with one empty part row, one panel row
 named "Panel 1", and the FIELDS.md defaults (Use as few panels as
-possible, kerf 3.2, 3 stages, trimming Allowed, first cuts Either,
+possible, kerf 0, 3 stages, trimming Allowed, first cuts Either,
 10 s). The empty table says how to start (`states.html`, "New job").
 
 **Entering parts quickly.**
@@ -315,7 +315,7 @@ possible, kerf 3.2, 3 stages, trimming Allowed, first cuts Either,
   likely a thousands separator, and reading them as 1.2 mm would
   silently make a tiny part.
 - An empty *Saw blade thickness (kerf)* means 0 mm (its placeholder
-  shows 0); a new job still starts with 3.2.
+  shows 0), the same as a new job (owner's decision, 2026-10-27).
 - Removing a row offers *Undo* in a toast instead of asking for
   confirmation.
 
@@ -564,7 +564,7 @@ works on touch screens, unlike hover tooltips:
   *Name*, the part *Width* and the panel *Quantity* (owner's decision,
   2026-10-27). Their help only restates the label: Width's "finished,
   before edge banding" is also in Length's help, and the panel Quantity
-  already says "Unlimited" and has the hint under the table. Their help
+  already says "Unlimited" as its placeholder. Their help
   text stays in FIELDS.md and in the page, hidden, linked by
   `aria-describedby`, so screen readers still read it. The list is
   `hasHelpButton` in `src/lib/api/fields.ts`.
@@ -574,13 +574,12 @@ works on touch screens, unlike hover tooltips:
   every (?) and checks that its text matches FIELDS.md; for the
   self-explanatory fields it checks there is no button and that the
   input still points at the exact text.
-- **Short visible hints stay** where they prevent mistakes:
-  - "Sizes in millimetres, at most one decimal" under the page title;
-  - "Leave Quantity empty for as many as needed" under the panels.
-
-  The parts table has no hint: "Keep grain" and its (?) say enough,
-  and the ↔ glyph is explained by the plan's legend (owner's decision,
-  2026-10-27).
+- **One short visible hint stays**, where it prevents mistakes: "Sizes
+  in millimetres, at most one decimal" under the page title. The parts
+  and panels tables have none: "Keep grain" and its (?) say enough, the
+  ↔ glyph is explained by the plan's legend, and the panel Quantity's
+  "Unlimited" placeholder says what empty means (owner's decision,
+  2026-10-27). Only the one-panel goals add a line under the panels.
 - **Source**: labels come from each property's `title` and help from its
   `description` in `openapi.json`. Option names come from the `oneOf`
   titles (§8, #1–#2). Help markup is rendered (`**bold**` →
@@ -763,7 +762,7 @@ No request needed server-side persistence.
    **Request:** describe each value, e.g. `oneOf: [{ const: "non_exact",
    title: "Allowed" }, …]` or an `x-enum-labels` list, generated from
    one table.
-3. **Defaults and bounds in the schema**: `default` (kerf 3.2, stages 3,
+3. **Defaults and bounds in the schema**: `default` (kerf 0, stages 3,
    cut type `non_exact`, first cuts `either`, objective `bin_packing`,
    part quantity 1, time limit 10) and `minimum`/`maximum` (lengths
    ≥ 0.1, quantity ≥ 1, time limit 1–600), plus `multipleOf: 0.1` for
