@@ -6,8 +6,11 @@ export interface JobEventHandlers {
   plan(report: PlanReport): void;
   /** The job's state changed (or, on connecting, its current state). */
   state(event: StateEvent): void;
-  /** The connection dropped (`false`) or came back (`true`). */
-  connection?(connected: boolean): void;
+  /**
+   * The connection dropped (`false`) or came back (`true`). `gaveUp`: the
+   * browser will not reconnect by itself, as after a 404.
+   */
+  connection?(connected: boolean, gaveUp?: boolean): void;
 }
 
 /**
@@ -24,7 +27,7 @@ export function followJob(id: string, on: JobEventHandlers): () => void {
   };
   source.addEventListener("open", () => on.connection?.(true));
   source.addEventListener("error", () => {
-    if (!closed) on.connection?.(false);
+    if (!closed) on.connection?.(false, source.readyState === EventSource.CLOSED);
   });
   source.addEventListener("plan", (event) => {
     on.plan(JSON.parse((event as MessageEvent<string>).data) as PlanReport);

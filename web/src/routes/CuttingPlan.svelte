@@ -212,7 +212,7 @@
 
 {#if session.trouble?.kind === "not_found" && session.jobId === id}
   {@render stateBlock("Not found", "This plan is no longer on the server",
-    "Plans are kept for an hour after the search ends. Your job is still in this browser, so you can search again.",
+    "Plans are kept for an hour after the search ends, and not across a restart of the server. Your job is still in this browser, so you can search again.",
     [{ label: "Go to job setup", primary: true, editor: true, run: () => router.go({ name: "setup" }) }])}
 {:else if session.trouble?.kind === "unreachable" && session.jobId === id}
   {@render stateBlock("Connection", "The server cannot be reached", session.trouble.message,

@@ -200,3 +200,20 @@ test("a Stop that does not reach the server can be tried again", async ({ page }
   await expect(page.getByText(/stopped after/)).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(/Not stopped/)).toBeHidden();
 });
+
+test("a running job the server forgot (a restart) is shown as gone", async ({ page }) => {
+  // A restarted server: the live stream ends, and the job is unknown after.
+  let restarted = false;
+  await page.route(/\/jobs\/[^/]+(\/events)?$/, (route) => {
+    const events = route.request().url().endsWith("/events");
+    if (!restarted && events) {
+      restarted = true;
+      return route.fulfill({ status: 200, contentType: "text/event-stream", body: "" });
+    }
+    if (!restarted) return route.fallback();
+    return route.fulfill({ status: 404, json: { error: "not_found", message: "No job with this id; it may have expired.", problems: [] } });
+  });
+  await enterJob(page, [{ length: "500", width: "400" }], { length: "2440", width: "1220" }, "60");
+  await findPlan(page);
+  await expect(page.getByRole("heading", { name: "This plan is no longer on the server" })).toBeVisible({ timeout: 15_000 });
+});

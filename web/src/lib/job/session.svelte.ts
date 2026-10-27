@@ -178,8 +178,9 @@ class Session {
           this.#stopFollowing();
         }
       },
-      connection: (connected) => {
+      connection: (connected, gaveUp) => {
         this.connected = connected;
+        if (!connected) void this.#recheck(id, gaveUp ?? false);
       },
     });
     // The queue position is not sent as an event: poll while queued.
@@ -190,6 +191,29 @@ class Session {
         this.job = { ...this.job, queue_position: result.job.queue_position };
       }
     }, 2000);
+  }
+
+  /**
+   * After the live connection dropped: whether the job still exists. Jobs
+   * live in the server's memory, so a restart forgets them, and the page
+   * would otherwise search forever.
+   */
+  async #recheck(id: string, gaveUp: boolean): Promise<void> {
+    const result = await getJob(id);
+    if (this.jobId !== id || !this.#unfollow) return;
+    if (!result.ok) {
+      if (result.status === 404) {
+        this.#stopFollowing();
+        this.trouble = { kind: "not_found" };
+      }
+    } else if (isFinal(result.job.state)) {
+      this.#stopFollowing();
+      this.stopping = false;
+      this.#show(result.job);
+    } else if (gaveUp) {
+      this.#stopFollowing();
+      this.#follow(id);
+    }
   }
 
   #stopFollowing(): void {
