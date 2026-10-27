@@ -100,3 +100,16 @@ test("the draft survives a reload", async ({ page }) => {
   await expect(page.locator("#job-name")).toHaveValue("Wardrobe");
   await expect(page.locator("#part-0-length")).toHaveValue("720");
 });
+
+test("rows can be added to a job brought back from an earlier visit", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await enterJob(page, [{ name: "Side", length: "720", width: "560" }, { name: "Shelf", length: "500", width: "300" }], { length: "2440", width: "1220" });
+  await page.reload();
+  await expect(page.locator("#part-1-id")).toHaveValue("Shelf");
+  await page.getByRole("button", { name: "+ Add part" }).click();
+  await page.getByRole("button", { name: "+ Add panel size" }).click();
+  await expect(page.locator("#part-2-length")).toBeVisible();
+  await expect(page.locator("#panel-1-length")).toBeVisible();
+  expect(errors).toEqual([]);
+});

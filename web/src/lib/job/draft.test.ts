@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { draftMatches, emptyPanel, emptyPart, fromInstance, namesFor, newDraft, parseLength, toRequest, type Draft } from "./draft";
+import { adoptKeys, draftMatches, emptyPanel, emptyPart, fromInstance, namesFor, newDraft, parseLength, toRequest, type Draft } from "./draft";
 import { place } from "./problems";
 
 function draft(): Draft {
@@ -19,6 +19,22 @@ describe("a new job", () => {
     expect([d.objective, d.kerf, d.stages, d.cutType, d.firstCuts, d.timeLimit]).toEqual([
       "bin_packing", "3.2", 3, "non_exact", "either", "10",
     ]);
+  });
+});
+
+describe("row keys", () => {
+  it("are never reused after a stored draft is taken in", () => {
+    // A draft stored on an earlier visit, numbered from 1 then: its keys are
+    // the ones this visit would hand out next.
+    const stored = newDraft();
+    const [part, panel] = [emptyPart(), emptyPanel()];
+    const next = panel.key + 1;
+    stored.parts = [{ ...part, key: next }, { ...part, key: next + 2 }];
+    stored.panels = [{ ...panel, key: next + 1 }];
+    adoptKeys(stored);
+    const keys = [...stored.parts, ...stored.panels].map((r) => r.key);
+    expect(keys).not.toContain(emptyPart().key);
+    expect(keys).not.toContain(emptyPanel().key);
   });
 });
 

@@ -46,6 +46,15 @@ export interface Problem {
 let nextKey = 1;
 export const newKey = (): number => nextKey++;
 
+/**
+ * Takes in a draft whose rows got their keys elsewhere (a stored draft from
+ * an earlier visit), so that new rows never reuse one of its keys.
+ */
+export function adoptKeys(draft: Draft): Draft {
+  for (const row of [...draft.parts, ...draft.panels]) nextKey = Math.max(nextKey, row.key + 1);
+  return draft;
+}
+
 export function emptyPart(): PartRow {
   return { key: newKey(), id: "", length: "", width: "", quantity: "", grain: false, value: "" };
 }
