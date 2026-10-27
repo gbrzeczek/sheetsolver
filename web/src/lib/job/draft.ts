@@ -230,10 +230,13 @@ export function toRequest(draft: Draft): { request: JobRequest; problems: Proble
     return panel;
   });
 
+  // An empty kerf means no kerf: there is nothing to cut away.
   let kerf = 0;
-  const parsedKerf = parseLength(draft.kerf, "saw blade thickness", 0);
-  if (parsedKerf.ok) kerf = parsedKerf.value;
-  else at("instance.saw.kerf", parsedKerf.message);
+  if (draft.kerf.trim()) {
+    const parsedKerf = parseLength(draft.kerf, "saw blade thickness", 0);
+    if (parsedKerf.ok) kerf = parsedKerf.value;
+    else at("instance.saw.kerf", parsedKerf.message);
+  }
 
   const limit = API_FIELDS["JobRequest.time_limit"];
   let timeLimit = limit.default as number;

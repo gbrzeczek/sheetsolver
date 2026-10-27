@@ -312,6 +312,8 @@ possible, kerf 3.2, 3 stages, trimming Allowed, first cuts Either,
   or point ("1,200", "2.500") are rejected with a message: they are as
   likely a thousands separator, and reading them as 1.2 mm would
   silently make a tiny part.
+- An empty *Saw blade thickness (kerf)* means 0 mm (its placeholder
+  shows 0); a new job still starts with 3.2.
 - Removing a row offers *Undo* in a toast instead of asking for
   confirmation.
 

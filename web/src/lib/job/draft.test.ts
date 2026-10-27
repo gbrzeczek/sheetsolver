@@ -56,6 +56,14 @@ describe("the request", () => {
     ]);
     expect(request.instance.panels).toEqual([{ id: "Panel 1", length: 2440, width: 1220 }]);
     expect(request.instance.saw).toEqual({ kerf: 3.2, stages: 3, cut_type: "non_exact", first_cuts: "either" });
+  });
+
+  it("sends an empty kerf as 0 mm", () => {
+    const d = draft();
+    d.kerf = " ";
+    const { request, problems } = toRequest(d);
+    expect(problems).toEqual([]);
+    expect(request.instance.saw.kerf).toBe(0);
     expect(request.time_limit).toBe(10);
   });
 

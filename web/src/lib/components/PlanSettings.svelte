@@ -58,6 +58,7 @@
       <input
         id="kerf"
         class="input"
+        placeholder="0"
         class:invalid={problems.has("instance.saw.kerf")}
         inputmode="decimal"
         autocomplete="off"
