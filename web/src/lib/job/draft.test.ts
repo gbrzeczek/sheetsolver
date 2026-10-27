@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyPanel, emptyPart, namesFor, newDraft, parseLength, toRequest, type Draft } from "./draft";
+import { draftMatches, emptyPanel, emptyPart, fromInstance, namesFor, newDraft, parseLength, toRequest, type Draft } from "./draft";
 import { place } from "./problems";
 
 function draft(): Draft {
@@ -104,5 +104,51 @@ describe("the job name", () => {
     expect(toRequest(d).problems).toContainEqual({ field: "name", message: "job name must be at most 100 characters, not 101" });
     d.name = "two\nlines";
     expect(toRequest(d).problems).toContainEqual({ field: "name", message: "job name must be one line, without tabs or line breaks" });
+  });
+});
+
+describe("a plan for an older job", () => {
+  const sent = () => toRequest(draft()).request.instance;
+
+  it("matches the draft it was sent from, and the server's echo with defaults filled in", () => {
+    expect(draftMatches(draft(), sent())).toBe(true);
+    const echo = sent();
+    echo.panels = echo.panels.map((p) => ({ ...p, quantity: null, cost: null }));
+    echo.parts = echo.parts.map((p) => ({ ...p, value: null }));
+    expect(draftMatches(draft(), echo)).toBe(true);
+  });
+
+  it("matches again after Edit job, whose generated names come back empty", () => {
+    expect(draftMatches(fromInstance(sent(), 10), sent())).toBe(true);
+  });
+
+  it("is out of date when a size, a quantity, the grain or a setting changes", () => {
+    const changes: ((d: Draft) => void)[] = [
+      (d) => (d.parts[0]!.width = "561"),
+      (d) => (d.parts[1]!.quantity = "2"),
+      (d) => (d.parts[1]!.grain = true),
+      (d) => (d.panels[0]!.quantity = "3"),
+      (d) => (d.kerf = "4"),
+      (d) => (d.stages = 2),
+      (d) => (d.parts[1]!.id = "Back"),
+    ];
+    for (const change of changes) {
+      const d = draft();
+      change(d);
+      expect(draftMatches(d, sent())).toBe(false);
+    }
+  });
+
+  it("is not out of date for the job name or the time limit, which do not change the plan", () => {
+    const d = draft();
+    d.name = "Kitchen units";
+    d.timeLimit = "60";
+    expect(draftMatches(d, sent())).toBe(true);
+  });
+
+  it("is out of date while the draft cannot be sent", () => {
+    const d = draft();
+    d.parts[0]!.width = "56,";
+    expect(draftMatches(d, sent())).toBe(false);
   });
 });

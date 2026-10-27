@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 import { enterJob, findPlan } from "./helpers";
 
-test("enter a job, solve it, and follow the plan cut by cut", async ({ page, request }) => {
+test("enter a job, solve it, and follow the plan cut by cut", async ({ page, request }, info) => {
   await enterJob(
     page,
     [
@@ -19,7 +19,7 @@ test("enter a job, solve it, and follow the plan cut by cut", async ({ page, req
   await findPlan(page);
 
   // The search runs to its 2 s limit, then the plan answers "did it fit?".
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("All 6 parts fit", { timeout: 20_000 });
+  await expect(page.locator(".headline")).toHaveText("All 6 parts fit", { timeout: 20_000 });
   await expect(page.getByText("✓ Complete plan")).toBeVisible();
   await expect(page.getByText("Test cabinet · plan")).toBeVisible();
   await expect(page.getByText("✓ No missing parts")).toBeVisible();
@@ -38,8 +38,8 @@ test("enter a job, solve it, and follow the plan cut by cut", async ({ page, req
   await expect(checklist.getByRole("row")).toHaveCount(4);
   await expect(checklist.getByRole("cell", { name: "Part 2" })).toBeVisible();
 
-  // One panel: drawing, current cut, cut order.
-  await page.getByRole("link", { name: /^Panel 1/ }).click();
+  // One panel, full screen at every width: drawing, current cut, cut order.
+  await page.getByRole("link", { name: "Cut order →" }).first().click();
   await expect(page.getByRole("img", { name: /Panel 1 of \d: Birch ply 18 mm/ })).toBeVisible();
   const cuts = page.locator(".wb-cuts .cutlist .cut");
   const count = await cuts.count();
@@ -60,7 +60,7 @@ test("enter a job, solve it, and follow the plan cut by cut", async ({ page, req
   // Printing gives one page per panel: drawing, cut order, parts.
   await page.goto(page.url().replace(/\/panels\/.*$/, ""));
   await expect(page.getByRole("button", { name: "Print" })).toBeVisible();
-  const panels = await page.locator(".sheet-choice").count() - 1;
+  const panels = job.best.plan.patterns.length;
   await page.emulateMedia({ media: "print" });
   await expect(page.locator(".print-sheet")).toHaveCount(panels);
   await expect(page.locator(".print-sheet").first()).toBeVisible();
@@ -69,8 +69,16 @@ test("enter a job, solve it, and follow the plan cut by cut", async ({ page, req
   await page.emulateMedia({ media: "screen" });
   await expect(page.locator(".print-sheet").first()).toBeHidden();
 
-  // Edit job brings the job back, the generated name still generated.
-  await page.getByRole("button", { name: "Edit job" }).click();
+  // Edit job brings the job back, the generated name still generated. On
+  // the workbench the editor is already on screen, holding this browser's
+  // new draft, so the plan is out of date and offers to take its job back.
+  if (info.project.name === "desktop") {
+    await expect(page.getByText("The job has changed since this plan was found.")).toBeVisible();
+    await page.getByRole("button", { name: "Edit this plan's job" }).click();
+    await expect(page.locator(".stale-bar")).toBeHidden();
+  } else {
+    await page.getByRole("button", { name: "Edit job" }).click();
+  }
   await expect(page.locator("#part-1-id")).toHaveValue("");
   await expect(page.locator("#part-0-id")).toHaveValue("Side");
 });
@@ -86,11 +94,11 @@ test("stop a running search and keep the best plan so far", async ({ page }) => 
   await page.locator("#objective").selectOption("knapsack");
   await findPlan(page);
   await expect(page.getByRole("progressbar", { name: "Search time" })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^\d+ of 88 parts fit so far$/, { timeout: 20_000 });
+  await expect(page.locator(".headline")).toHaveText(/^\d+ of 88 parts fit so far$/, { timeout: 20_000 });
   await expect(page.getByText("Plans found")).toBeVisible();
   await page.getByRole("button", { name: "Stop and keep this plan" }).click();
   await expect(page.getByText(/stopped after/)).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^\d+ of 88 parts fit$/);
+  await expect(page.locator(".headline")).toHaveText(/^\d+ of 88 parts fit$/);
   // Parts not cut come first in the checklist, marked as such.
   await expect(page.locator("tr.not-cut").first()).toBeVisible();
 });

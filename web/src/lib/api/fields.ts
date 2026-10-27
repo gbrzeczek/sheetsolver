@@ -9,6 +9,24 @@ export function field(key: FieldKey): ApiField {
   return API_FIELDS[key];
 }
 
+/**
+ * Fields whose label says it all (web/DESIGN.md §5). Their help text stays
+ * in FIELDS.md and is still read with the input by screen readers, but they
+ * get no (?) button.
+ */
+const SELF_EXPLANATORY: ReadonlySet<FieldKey> = new Set<FieldKey>([
+  "JobRequest.name",
+  "Part.id",
+  "Panel.id",
+  "Part.width",
+  "Panel.quantity",
+]);
+
+/** Whether the field shows a (?) button for its help text. */
+export function hasHelpButton(key: FieldKey): boolean {
+  return !SELF_EXPLANATORY.has(key);
+}
+
 /** The option names of a field with options, in order. */
 export function options(key: FieldKey): readonly { value: string | number; title: string }[] {
   return field(key).options ?? [];

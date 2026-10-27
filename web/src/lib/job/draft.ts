@@ -292,3 +292,28 @@ export function fromInstance(instance: Instance, timeLimit: number, name = ""): 
     panels: panels.length ? panels : [emptyPanel()],
   };
 }
+
+/**
+ * Whether two instances ask for the same plan (DESIGN.md §2, "A plan for an
+ * older job"). Optional fields compare by their meaning, not their spelling:
+ * the server echoes a job with its defaults filled in, which must not make
+ * a plan look out of date.
+ */
+export function sameInstance(a: Instance, b: Instance): boolean {
+  return JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
+}
+
+function canonical(instance: Instance) {
+  return {
+    objective: instance.objective,
+    saw: [instance.saw.kerf, instance.saw.stages, instance.saw.cut_type, instance.saw.first_cuts],
+    parts: instance.parts.map((p) => [p.id, p.length, p.width, p.quantity ?? 1, p.grain ?? false, p.value ?? null]),
+    panels: instance.panels.map((p) => [p.id, p.length, p.width, p.quantity ?? null, p.cost ?? null]),
+  };
+}
+
+/** Whether the draft, as it would be sent now, asks for the plan of `instance`. */
+export function draftMatches(draft: Draft, instance: Instance): boolean {
+  const { request, problems } = toRequest(draft);
+  return problems.length === 0 && sameInstance(request.instance, instance);
+}

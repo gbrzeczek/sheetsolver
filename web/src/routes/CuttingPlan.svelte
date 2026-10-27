@@ -1,6 +1,7 @@
 <!-- The Cutting plan tab: progress while searching, then all panels or one
      panel with its cut order (DESIGN.md §2; mockups/solving.html,
-     plan-overview.html, plan-panel.html, states.html). -->
+     plan-overview.html, plan-panel.html, states.html). In the workbench
+     (`pane`) it is the right column: all panels, without the panel list. -->
 <script lang="ts">
   import PanelDrawing from "../lib/components/PanelDrawing.svelte";
   import CutList from "../lib/components/CutList.svelte";
@@ -18,8 +19,10 @@
     id: string;
     panel: number | null;
     cut: number | null;
+    /** In the workbench, next to the job: no panel list, no *Edit job*. */
+    pane?: boolean;
   }
-  let { id, panel, cut }: Props = $props();
+  let { id, panel, cut, pane = false }: Props = $props();
 
   $effect(() => {
     void session.open(id);
@@ -35,6 +38,8 @@
   });
   const searching = $derived(job !== null && !isFinal(job.state));
   const name = $derived(session.jobName);
+  const stale = $derived(job !== null && session.stale);
+  const headingTag = $derived(pane ? "h2" : "h1");
 
   // The time bar moves between events with the local clock.
   let now = $state(performance.now());
@@ -104,16 +109,36 @@
 
 <svelte:window onkeydown={keys} />
 
-{#snippet stateBlock(tag: string, title: string, text: string, actions: { label: string; primary?: boolean; run(): void }[], items: string[] = [])}
-  <main class="narrow">
+{#snippet staleBar()}
+  {#if stale && job}
+    <div class="stale-bar" role="status">
+      <div>
+        <strong>The job has changed since this {best ? (searching ? "search started" : "plan was found") : "search"}.</strong>
+        {best ? "The plan below is for the job as it was." : ""}
+      </div>
+      <div class="actions">
+        <button class="button primary" type="button" disabled={session.submitting} onclick={() => void session.submit()}>
+          {session.submitting ? "Sending…" : "Find plan again"}
+        </button>
+        <button class="link" type="button" onclick={() => session.edit()}>Edit this plan's job</button>
+      </div>
+    </div>
+  {/if}
+{/snippet}
+
+<!-- An action with `editor` goes to the job, which the workbench already shows. -->
+{#snippet stateBlock(tag: string, title: string, text: string, actions: { label: string; primary?: boolean; editor?: boolean; run(): void }[], items: string[] = [])}
+  {@const shown = actions.filter((a) => !(pane && a.editor))}
+  <main class={pane ? "pane-main" : "narrow"} class:is-stale={stale}>
+    {@render staleBar()}
     <section class="state" aria-live="polite">
       <div class="eyebrow">{tag}</div>
       <h2>{title}</h2>
       <p>{text}</p>
       {#if items.length}<ul>{#each items as item, i (i)}<li>{item}</li>{/each}</ul>{/if}
-      {#if actions.length}
+      {#if shown.length}
         <div class="actions">
-          {#each actions as a (a.label)}<button class="button" class:primary={a.primary} type="button" onclick={a.run}>{a.label}</button>{/each}
+          {#each shown as a (a.label)}<button class="button" class:primary={a.primary} type="button" onclick={a.run}>{a.label}</button>{/each}
         </div>
       {/if}
     </section>
@@ -163,32 +188,32 @@
 {#if session.trouble?.kind === "not_found" && session.jobId === id}
   {@render stateBlock("Not found", "This plan is no longer on the server",
     "Plans are kept for an hour after the search ends. Your job is still in this browser, so you can search again.",
-    [{ label: "Go to job setup", primary: true, run: () => router.go({ name: "setup" }) }])}
+    [{ label: "Go to job setup", primary: true, editor: true, run: () => router.go({ name: "setup" }) }])}
 {:else if session.trouble?.kind === "unreachable" && session.jobId === id}
   {@render stateBlock("Connection", "The server cannot be reached", session.trouble.message,
     [{ label: "Try again", primary: true, run: () => { session.jobId = null; void session.open(id); } }])}
 {:else if !job || !instance}
-  <main class="narrow"><p class="muted" aria-live="polite">Loading the cutting plan…</p></main>
+  <main class={pane ? "pane-main" : "narrow"}><p class="muted" aria-live="polite">Loading the cutting plan…</p></main>
 {:else if !best && job.state === "failed"}
   {@render stateBlock("Failed", "The search stopped with an error",
     `This is a fault in Sheetsolver, not in your job. Details for a bug report: ${job.message ?? "none"}`,
-    [{ label: "Search again", primary: true, run: () => void session.again() }, { label: "Edit job", run: () => session.edit() }])}
+    [{ label: "Search again", primary: true, run: () => void session.again() }, { label: "Edit job", editor: true, run: () => session.edit() }])}
 {:else if !best && job.state === "cancelled"}
   {@render stateBlock("Cancelled", "Stopped before the first plan",
     "The search was stopped before it found a plan. The first plan usually appears within a second.",
-    [{ label: "Search again", primary: true, run: () => void session.again() }, { label: "Edit job", run: () => session.edit() }])}
+    [{ label: "Search again", primary: true, run: () => void session.again() }, { label: "Edit job", editor: true, run: () => session.edit() }])}
 {:else if !best && job.state === "done"}
   {@const big = oversizedParts(instance)}
   {#if instance.objective === "knapsack"}
     {@render stateBlock("Done · no plan", "No part fits on any panel",
       "With the goal “Best use of the panels I have”, the search cuts as many parts as fit, but none fits on the panels listed.",
-      [{ label: "Edit job", primary: true, run: () => session.edit() }],
+      [{ label: "Edit job", primary: true, editor: true, run: () => session.edit() }],
       ["Check the units: panel sizes are in millimetres (2440, not 244).",
        "Grain: untick “Keep grain direction” where the look allows it, so parts can turn."])}
   {:else}
     {@render stateBlock("Done · no plan", "Not every part fits",
       "The search ended without a way to cut every part from the panels listed.",
-      [{ label: "Edit job", primary: true, run: () => session.edit() }],
+      [{ label: "Edit job", primary: true, editor: true, run: () => session.edit() }],
       [
         ...big.map((p) => `A part is larger than every panel: “${p.id}”, ${size(p)} mm${p.grain ? ", which keeps its grain direction" : ""}.`),
         "Too few panels: leave a panel’s Quantity empty for as many as needed.",
@@ -197,11 +222,12 @@
   {/if}
 {:else if searching && panel === null}
   <!-- Searching: progress, figures, the best plan so far. -->
-  <main>
+  <main class:pane-main={pane} class:is-stale={stale}>
+    {@render staleBar()}
     <div class="heading">
       <div>
         <div class="eyebrow">{name || "Cutting plan"} · {job.state === "queued" ? "waiting" : "searching"}</div>
-        <h1>{best ? `${headline(instance, best.metrics)} so far` : job.state === "queued" ? "Waiting for a free solver" : "No plan yet"}</h1>
+        <svelte:element this={headingTag} class="headline">{best ? `${headline(instance, best.metrics)} so far` : job.state === "queued" ? "Waiting for a free solver" : "No plan yet"}</svelte:element>
         <p class="muted">
           {#if job.state === "queued"}
             {job.queue_position ? `${job.queue_position === 1 ? "Your job runs next" : `${job.queue_position - 1} ${job.queue_position === 2 ? "job" : "jobs"} ahead of yours`}. ` : ""}The time limit only counts once your search starts.
@@ -253,16 +279,17 @@
   </main>
 {:else if best}
   {@const total = totalParts(instance)}
-  <main>
+  <main class:pane-main={pane} class:is-stale={stale}>
+    {@render staleBar()}
     <div class="heading">
       <div>
         <div class="eyebrow">{name || "Cutting plan"} · plan {best.number}</div>
-        <h1>{headline(instance, best.metrics)}</h1>
+        <svelte:element this={headingTag} class="headline">{headline(instance, best.metrics)}</svelte:element>
         <p class="muted">{panelsLine(instance, best.plan)}</p>
       </div>
       <div class="actions">
         {#if !searching}<button class="button" type="button" onclick={() => window.print()}>Print</button>{/if}
-        <button class="button" type="button" onclick={() => session.edit()}>Edit job</button>
+        {#if !pane}<button class="button" type="button" onclick={() => session.edit()}>Edit job</button>{/if}
       </div>
     </div>
     {@render figures()}
@@ -351,8 +378,8 @@
         </div>
       </div>
     {:else}
-      <div class="workbench two">
-        <SheetNav {id} {patterns} current={null} {kerf} grain={grainOf} />
+      <div class="workbench two" class:bare={pane}>
+        {#if !pane}<SheetNav {id} {patterns} current={null} {kerf} grain={grainOf} />{/if}
         <div style="min-width:0">
           <div class="overview">
             {#each patterns as p, i (i)}
