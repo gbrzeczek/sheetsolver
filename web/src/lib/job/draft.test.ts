@@ -79,6 +79,11 @@ describe("the request", () => {
     expect(problems).toContainEqual({ field: "instance.parts[0].quantity", message: "quantity must be at least 1" });
     expect(problems.map((p) => p.field)).toContain("instance.saw.kerf");
     expect(problems.map((p) => p.field)).toContain("time_limit");
+    d.parts[0]!.quantity = "50001";
+    d.panels[0]!.quantity = "50001";
+    const beyond = toRequest(d).problems;
+    expect(beyond).toContainEqual({ field: "instance.parts[0].quantity", message: "quantity must be at most 50000" });
+    expect(beyond).toContainEqual({ field: "instance.panels[0].quantity", message: "quantity must be at most 50000" });
   });
 
   it("keeps positions of rows in the middle, even empty ones", () => {

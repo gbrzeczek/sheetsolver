@@ -27,6 +27,14 @@ pub enum ApiError {
         /// Seconds after which to try again (`Retry-After`).
         retry_after: u64,
     },
+    /// The client has as many jobs queued or running as it may.
+    #[error(
+        "You already have {max} jobs being solved or waiting; stop one, or wait for one to finish."
+    )]
+    TooManyJobs {
+        /// The limit per client.
+        max: usize,
+    },
 }
 
 impl ApiError {
@@ -40,6 +48,7 @@ impl ApiError {
                 (StatusCode::UNPROCESSABLE_ENTITY, ErrorCode::InvalidInstance)
             }
             ApiError::Busy { .. } => (StatusCode::SERVICE_UNAVAILABLE, ErrorCode::Busy),
+            ApiError::TooManyJobs { .. } => (StatusCode::TOO_MANY_REQUESTS, ErrorCode::TooManyJobs),
         }
     }
 }

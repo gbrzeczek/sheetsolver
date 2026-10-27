@@ -81,7 +81,8 @@
           "not_found",
           "too_large",
           "invalid_instance",
-          "busy"
+          "busy",
+          "too_many_jobs"
         ],
         "type": "string"
       },
@@ -581,6 +582,7 @@
           "quantity": {
             "description": "How many panels of this size you have. Leave empty for \"as many as needed\".",
             "format": "int32",
+            "maximum": 50000,
             "minimum": 1,
             "title": "Quantity",
             "type": [
@@ -639,6 +641,7 @@
             "default": 1,
             "description": "How many identical parts you need. With \"Best use of the panels I have\", this is the most that will be cut; fewer may be cut if they don't fit.",
             "format": "int32",
+            "maximum": 50000,
             "minimum": 1,
             "title": "Quantity",
             "type": "integer",
@@ -994,6 +997,16 @@
               }
             },
             "description": "The body is not a valid job (`invalid_instance`); `problems` lists every problem found."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "This client already has as many jobs queued or running as it may (`too_many_jobs`); stop one or wait for one to end."
           },
           "503": {
             "content": {

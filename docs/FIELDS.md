@@ -73,13 +73,26 @@ Rules:
 | `id` | Name | Your name for this panel size, shown on the cutting plan. | Your name for this panel, shown on the cutting plan (e.g. "Birch ply 18 mm"). | text | "Panel 1", … | — |
 | `length` | Length | The panel's long side in millimetres, along the grain if it has one. | The panel's long side, as delivered, in millimetres. For a panel with grain, the side along the grain. For "Shortest length from one panel", this is the maximum length available. | mm (0.1 mm steps), 0.1–100 000 | — | `width` |
 | `width` | Width | The panel's short side in millimetres. | The panel's short side, as delivered, in millimetres. For "Shortest width from one panel", this is the maximum width available. | mm (0.1 mm steps), 0.1–100 000 | — | `height` |
-| `quantity` | Quantity | How many panels of this size you have; empty means as many as needed. | How many panels of this size you have. Leave empty for "as many as needed". | count ≥ 1, or empty = unlimited | empty | `copies` (−1 = unlimited) |
+| `quantity` | Quantity | How many panels of this size you have; empty means as many as needed. | How many panels of this size you have. Leave empty for "as many as needed". | count 1–50 000, or empty = unlimited | empty | `copies` (−1 = unlimited) |
 | `cost` | Cost | Compares panel sizes when several are listed: a lower total cost is preferred. | Used only to compare panel sizes when several are listed: a lower total cost is preferred. Leave empty to use the panel's area. | number ≥ 0 | area | `cost` |
 | `trims` | Trims | Strips to cut off damaged panel edges before any part is placed. | Strips to cut off the panel's edges, named as the panel is drawn on the plan: the left and right ends, and the bottom and top long edges. Each edge has its *Trim* width and its *Trimmed strip*: how the strip is cut away. Leave them empty for clean factory edges. | per edge: *Trim* and *Trimmed strip* | no trims | `left_trim`, `right_trim`, `bottom_trim`, `top_trim` and their `TrimType`s |
 
 Only one panel type is allowed with the "Shortest length/width" goals,
 and its quantity must be 1 or empty (upstream: open-dimension objectives
 use a single bin).
+
+### Size of a job
+
+These bounds keep one job from taking the server's memory (owner's
+decision, 2026-10-27; `model::MAX_ROWS` and the others). Each is
+reported at the list (`panels` or `parts`):
+
+- At most 1 000 rows of panels, and 1 000 rows of parts.
+- At most 50 000 parts in all, the quantities added up.
+- At most 1 000 000 panels in all, a panel size without a quantity
+  counting as one panel per part, as the solver resolves "as many as
+  needed" (upstream: one bin copy per item). With 50 000 parts, that is
+  20 such sizes.
 
 ### Panel trims
 
@@ -102,7 +115,7 @@ strip* gets its edge's default.
 | `id` | Name | Your name for this part, shown on the cutting plan. | Your name for this part, shown on the cutting plan and labels (e.g. "Side left"). | text | "Part 1", … | — |
 | `length` | Length | The part's finished length in millimetres, along the grain if it keeps it. | The part's finished length in millimetres, before edge banding. For a part with grain, the side along the grain. | mm (0.1 mm steps), 0.1–100 000 | — | `width` |
 | `width` | Width | The part's finished width in millimetres. | The part's finished width in millimetres, before edge banding. | mm (0.1 mm steps), 0.1–100 000 | — | `height` |
-| `quantity` | Quantity | How many identical parts you need. | How many identical parts you need. With "Best use of the panels I have", this is the most that will be cut; fewer may be cut if they don't fit. | count ≥ 1 | 1 | `copies` |
+| `quantity` | Quantity | How many identical parts you need. | How many identical parts you need. With "Best use of the panels I have", this is the most that will be cut; fewer may be cut if they don't fit. | count 1–50 000 | 1 | `copies` |
 | `grain` | Keep grain direction | Tick for veneer, solid wood or wood-look panels: the part is then never turned. | Tick if the part must keep the panel's grain direction (veneer, solid wood, wood-look melamine); it is then never turned. Leave unticked for MDF or chipboard: turning parts saves material. | yes / no | no | `oriented` (`true` = no rotation) |
 | `value` | Value | How much you want this part when not every part fits; empty means its area. | Only used with "Best use of the panels I have": how much you want this part, compared with the others. The plan maximises the total value of the parts it cuts. Leave empty to value parts by their area in mm² (the plan then uses as much of the panel as possible). Set every part to 1 to cut as many parts as possible. | number ≥ 0 | area (mm²) | `profit` |
 

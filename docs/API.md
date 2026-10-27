@@ -303,6 +303,7 @@ Every error response has this body:
 | 404 | `not_found` | No job with this id (or the id is not a UUID), it has expired, or no such path. |
 | 413 | `too_large` | The body is larger than 2 MB. |
 | 422 | `invalid_instance` | The body is JSON but not a valid job: a missing or mistyped field, a length with more than one decimal, a time limit outside 1–600, or anything `Instance::validate` rejects (no parts, duplicate names, quantity 0, …). |
+| 429 | `too_many_jobs` | The client already has `--max-jobs-per-client` jobs queued or running (see [Limits](#limits)). A job asked to stop no longer counts, so stopping one and submitting at once works. No `Retry-After`: the client decides which job to stop. Checked before `busy`. |
 | 503 | `busy` | Every solver is busy and `--max-queued-jobs` jobs are already waiting. The `Retry-After` header (and `message`) gives the seconds until the first running job reaches its time limit, at the latest; a solver then takes the first queued job and a place in the queue frees up. Jobs often end sooner. |
 
 A JSON field the server does not know is ignored, as is a missing
@@ -342,6 +343,7 @@ Command-line options of `cargo run -p api -- …` (`--help` lists them).
 Each can also be set by an environment variable named after it:
 `SHEETSOLVER_LISTEN`, `SHEETSOLVER_WEB_DIR`,
 `SHEETSOLVER_MAX_RUNNING_JOBS`, `SHEETSOLVER_MAX_QUEUED_JOBS`,
+`SHEETSOLVER_MAX_JOBS_PER_CLIENT`, `SHEETSOLVER_CLIENT_IP_HEADER`,
 `SHEETSOLVER_KEEP_JOBS_FOR`, `SHEETSOLVER_QUEUE_SIZE`,
 `SHEETSOLVER_CORS_ORIGINS` (comma-separated).
 
@@ -350,6 +352,8 @@ Each can also be set by an environment variable named after it:
 | `--listen` | `127.0.0.1:8080` | Address and port to listen on. |
 | `--max-running-jobs` | number of CPU cores | Jobs solved at the same time, each on its own thread of a blocking pool of that size. Further jobs wait in state `queued`, first come first served. |
 | `--max-queued-jobs` | 32 | Jobs that may wait; beyond that `POST /jobs` answers `503 busy`. |
+| `--max-jobs-per-client` | 2 | Jobs one client may have queued or running at once; beyond that `POST /jobs` answers `429 too_many_jobs`. A client is one IPv4 address, or one IPv6 /64 network (one home or phone gets a whole /64). 0: no limit. |
+| `--client-ip-header` | none | The request header with the client's address, set by the proxy in front of the server: `CF-Connecting-IP` behind Cloudflare. For a list (`X-Forwarded-For`), the last address, the one the nearest proxy saw. Without it, or when the header is missing or unreadable, the connection's address is used, which behind a proxy is the proxy's: every visitor would share one limit. Anyone can send the header, so set it only when the server cannot be reached except through that proxy (`docs/DEPLOY.md`). |
 | `--keep-jobs-for` | 3600 | Seconds a job stays readable after it ends; then `GET` answers `404`. A queued or running job never expires. |
 | `--queue-size` | 2048 | The solver's beam width (not user-facing; larger finds better plans, slower). |
 | `--web-dir` | none | Directory of the built UI to serve at `/` (see [Serving the UI](#serving-the-ui)). |
@@ -357,7 +361,11 @@ Each can also be set by an environment variable named after it:
 | `--print-openapi` | | Print `openapi.json` and exit. |
 
 Fixed limits: `time_limit` 1–600 seconds (default 10), request body
-2 MB, every length, width and kerf at most 100 000 mm (100 m).
+2 MB, every length, width and kerf at most 100 000 mm (100 m), every
+quantity at most 50 000, and the size of a job: at most 1 000 rows of
+panels and of parts, 50 000 parts in all and 1 000 000 panels in all, a
+panel size without a quantity counting as one panel per part
+(`FIELDS.md`, *Size of a job*).
 
 The solver runs upstream's deterministic search: the same instance and
 time limit give the same plans, unless the time limit cuts the search
@@ -426,3 +434,14 @@ for reconciling the UI. None changes a field name or a JSON shape.
     problem beyond (`maximum` in `openapi.json`). Without a bound a huge
     size overflowed the areas into a plan with negative figures. Bodies
     with real sheet sizes stay valid.
+- 2026-10-27, abuse protection:
+  - Quantities are at most 50 000 (`maximum` in `openapi.json`), and a
+    job at most 1 000 rows of panels and of parts, 50 000 parts in all
+    and 1 000 000 panels in all, "as many as needed" counting as one
+    panel per part: `422` problems at the quantity or at the list. A
+    panel quantity of 4 000 000 000 used to abort the server, out of
+    memory; so did 1 000 panel sizes without a quantity.
+  - `429 too_many_jobs` when a client already has
+    `--max-jobs-per-client` (default 2) jobs queued or running; new
+    options `--max-jobs-per-client` and `--client-ip-header`.
+  - The UI stops the job it shows once it has submitted the next one.

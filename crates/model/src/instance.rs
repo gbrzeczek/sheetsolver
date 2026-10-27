@@ -11,6 +11,21 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use crate::length::Length;
 use crate::solution::CutDirection;
 
+/// The largest quantity of one panel or part.
+pub const MAX_QUANTITY: u32 = 50_000;
+
+/// The most parts in a job, the quantities added up.
+pub const MAX_PARTS: u64 = 50_000;
+
+/// The most rows in the list of panels, and in the list of parts.
+pub const MAX_ROWS: usize = 1_000;
+
+/// The most panels a search may hold, a panel size without a quantity
+/// counted as one panel per part. The solver keeps an entry per panel, so
+/// this bounds its memory: a million panels take about 200 MB, where
+/// unbounded "as many as needed" sizes could ask for tens of gigabytes.
+pub const MAX_PANELS: u64 = 1_000_000;
+
 /// A cutting job: everything the solver needs to produce a cutting plan.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
@@ -501,6 +516,40 @@ pub enum ValidationError {
         /// The panel's or part's name.
         id: String,
     },
+    /// A quantity is larger than [`MAX_QUANTITY`].
+    #[error("quantity of {what} \"{id}\" must be at most {}", MAX_QUANTITY)]
+    QuantityTooLarge {
+        /// "panel" or "part".
+        what: &'static str,
+        /// The panel's or part's name.
+        id: String,
+    },
+    /// A list has more than [`MAX_ROWS`] rows.
+    #[error("at most {} rows of {what}s can be listed, not {count}", MAX_ROWS)]
+    TooManyRows {
+        /// "panel" or "part".
+        what: &'static str,
+        /// How many rows were given.
+        count: usize,
+    },
+    /// The quantities of the parts add up to more than [`MAX_PARTS`].
+    #[error(
+        "at most {} parts in all (the quantities added up), not {total}",
+        MAX_PARTS
+    )]
+    TooManyParts {
+        /// The quantities added up.
+        total: u64,
+    },
+    /// There are more than [`MAX_PANELS`] panels to search.
+    #[error(
+        "at most {} panels in all, a panel size without a quantity counting as one panel per part, not {total}",
+        MAX_PANELS
+    )]
+    TooManyPanels {
+        /// The panels, counted that way.
+        total: u64,
+    },
     /// A cost or value is negative or not a number.
     #[error("{field} of {what} \"{id}\" must be a number of at least 0")]
     InvalidNumber {
@@ -619,6 +668,7 @@ impl Instance {
             .iter()
             .map(|p| (p.id.as_str(), p.length, p.width, Some(p.quantity), p.value));
         validate_items("part", parts, &mut report);
+        validate_counts(self, &mut report);
 
         if self.objective.is_open_dimension()
             && (self.panels.len() != 1 || self.panels[0].quantity.is_some_and(|q| q != 1))
@@ -696,6 +746,64 @@ fn validate_trims(index: usize, panel: &Panel, report: &mut impl FnMut(String, V
     }
 }
 
+/// Checks the sizes of the lists and their totals, which bound the
+/// solver's time and memory (see [`MAX_PANELS`]). The totals are only
+/// checked when every quantity is within bounds, so one quantity too large
+/// is reported once, at its field.
+fn validate_counts(instance: &Instance, report: &mut impl FnMut(String, ValidationError)) {
+    for (what, count) in [
+        ("panel", instance.panels.len()),
+        ("part", instance.parts.len()),
+    ] {
+        if count > MAX_ROWS {
+            report(
+                format!("{what}s"),
+                ValidationError::TooManyRows { what, count },
+            );
+        }
+    }
+
+    let quantities_fit = |quantity: u32| (1..=MAX_QUANTITY).contains(&quantity);
+    if !instance
+        .parts
+        .iter()
+        .all(|part| quantities_fit(part.quantity))
+    {
+        return;
+    }
+    let parts: u64 = instance
+        .parts
+        .iter()
+        .map(|part| u64::from(part.quantity))
+        .sum();
+    if parts > MAX_PARTS {
+        report(
+            "parts".into(),
+            ValidationError::TooManyParts { total: parts },
+        );
+        return;
+    }
+    if !instance
+        .panels
+        .iter()
+        .all(|panel| panel.quantity.is_none_or(quantities_fit))
+    {
+        return;
+    }
+    // As the solver resolves "as many as needed": one panel per part.
+    let panels: u64 = instance
+        .panels
+        .iter()
+        .map(|panel| panel.quantity.map_or(parts, u64::from))
+        .sum();
+    if panels > MAX_PANELS {
+        report(
+            "panels".into(),
+            ValidationError::TooManyPanels { total: panels },
+        );
+    }
+}
+
 /// Checks the fields panels and parts have in common: name, size, quantity
 /// and cost/value. `report` takes the field's path and the problem.
 fn validate_items<'a>(
@@ -749,6 +857,14 @@ fn validate_items<'a>(
             report(
                 path("quantity"),
                 ValidationError::ZeroQuantity {
+                    what,
+                    id: id.to_string(),
+                },
+            );
+        } else if quantity.is_some_and(|quantity| quantity > MAX_QUANTITY) {
+            report(
+                path("quantity"),
+                ValidationError::QuantityTooLarge {
                     what,
                     id: id.to_string(),
                 },
@@ -947,6 +1063,103 @@ mod tests {
             .map(|error| error.field)
             .collect();
         assert_eq!(fields, ["saw.kerf", "panels[0].length", "parts[0].width"]);
+    }
+
+    fn fields_at_fault(instance: &Instance) -> Vec<String> {
+        instance
+            .validate_fields()
+            .err()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|error| error.field)
+            .collect()
+    }
+
+    #[test]
+    fn rejects_quantities_beyond_50000() {
+        let mut instance = example();
+        instance.panels[0].quantity = Some(MAX_QUANTITY);
+        instance.parts[0].quantity = MAX_QUANTITY;
+        assert_eq!(instance.validate(), Ok(()));
+        // A quantity too large is reported at its field, not as a total too.
+        instance.panels[0].quantity = Some(MAX_QUANTITY + 1);
+        instance.parts[0].quantity = u32::MAX;
+        assert_eq!(
+            fields_at_fault(&instance),
+            ["panels[0].quantity", "parts[0].quantity"]
+        );
+    }
+
+    #[test]
+    fn rejects_more_than_1000_rows() {
+        let mut instance = example();
+        let part = instance.parts[0].clone();
+        let panel = instance.panels[0].clone();
+        let named = |index: usize| format!("{index}");
+        instance.parts = (0..MAX_ROWS)
+            .map(|index| Part {
+                id: named(index),
+                quantity: 1,
+                ..part.clone()
+            })
+            .collect();
+        instance.panels = (0..MAX_ROWS)
+            .map(|index| Panel {
+                id: named(index),
+                ..panel.clone()
+            })
+            .collect();
+        assert_eq!(instance.validate(), Ok(()));
+        instance.parts.push(Part {
+            id: "one more".into(),
+            ..part
+        });
+        instance.panels.push(Panel {
+            id: "one more".into(),
+            ..panel
+        });
+        assert_eq!(fields_at_fault(&instance), ["panels", "parts"]);
+    }
+
+    #[test]
+    fn rejects_more_than_50000_parts_in_all() {
+        let mut instance = example();
+        instance.parts[0].quantity = 30_000;
+        let mut second = instance.parts[0].clone();
+        second.id = "Side right".into();
+        second.quantity = 20_000;
+        instance.parts.push(second);
+        assert_eq!(instance.validate(), Ok(()));
+        instance.parts[1].quantity += 1;
+        let errors = instance.validate().unwrap_err();
+        assert_eq!(errors, [ValidationError::TooManyParts { total: 50_001 }]);
+        assert_eq!(fields_at_fault(&instance), ["parts"]);
+    }
+
+    /// A panel size without a quantity is one panel per part to the
+    /// solver: 20 such sizes and 50 000 parts are the most it may hold.
+    #[test]
+    fn rejects_more_than_a_million_panels_counting_as_many_as_needed_as_one_per_part() {
+        let mut instance = example();
+        instance.parts[0].quantity = 50_000;
+        instance.panels = (0..20)
+            .map(|index| Panel {
+                id: format!("{index}"),
+                quantity: None,
+                ..instance.panels[0].clone()
+            })
+            .collect();
+        assert_eq!(instance.validate(), Ok(()));
+        instance.panels.push(Panel {
+            id: "one more".into(),
+            quantity: Some(1),
+            ..instance.panels[0].clone()
+        });
+        assert_eq!(
+            instance.validate(),
+            Err(vec![ValidationError::TooManyPanels { total: 1_000_001 }])
+        );
+        assert_eq!(fields_at_fault(&instance), ["panels"]);
     }
 
     #[test]
