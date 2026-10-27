@@ -132,7 +132,9 @@ fn assert_valid_plan(stem: &str, report: &Value) {
 async fn a_submitted_job_runs_to_a_checked_plan() {
     let app = api::router(&config());
     let job = submit(&app, SMALL, 5).await;
-    assert!(["queued", "running"].contains(&job["state"].as_str().unwrap()));
+    // Usually queued or running (docs/API.md), but this job solves in
+    // milliseconds: on a fast machine it can be done before the response.
+    assert!(["queued", "running", "done"].contains(&job["state"].as_str().unwrap()));
     assert_eq!(job["time_limit"], 5);
     assert!(job["message"].is_null());
 
