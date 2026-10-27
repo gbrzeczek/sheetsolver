@@ -3,6 +3,7 @@
      plan-overview.html, plan-panel.html, states.html). In the workbench
      (`pane`) it is the right column: all panels, without the panel list. -->
 <script lang="ts">
+  import { untrack } from "svelte";
   import PanelDrawing from "../lib/components/PanelDrawing.svelte";
   import CutList from "../lib/components/CutList.svelte";
   import SheetNav from "../lib/components/SheetNav.svelte";
@@ -24,8 +25,11 @@
   }
   let { id, panel, cut, pane = false }: Props = $props();
 
+  // Only `id` reruns this: `open` reads and writes the session's job, and
+  // tracking that started a second live connection for the same job.
   $effect(() => {
-    void session.open(id);
+    const target = id;
+    untrack(() => void session.open(target));
   });
 
   const job = $derived(session.jobId === id ? session.job : null);

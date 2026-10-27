@@ -217,3 +217,20 @@ test("a running job the server forgot (a restart) is shown as gone", async ({ pa
   await findPlan(page);
   await expect(page.getByRole("heading", { name: "This plan is no longer on the server" })).toBeVisible({ timeout: 15_000 });
 });
+
+test("a job opened from a link is followed over one connection", async ({ page, request }) => {
+  // The search of "stop a running search": still running when the link opens.
+  const instance = JSON.parse(readFileSync(join(import.meta.dirname, "../../data/instances/generated__knapsack_3_non_exact_kerf3_2.json"), "utf8"));
+  instance.objective = "knapsack";
+  instance.panels = [{ id: "P", length: 2800, width: 2070, quantity: 2 }];
+  const { id } = await (await request.post("/jobs", { data: { time_limit: 60, instance } })).json();
+  const streams: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().endsWith(`/jobs/${id}/events`)) streams.push(r.url());
+  });
+  await page.goto(`/#/jobs/${id}`);
+  await expect(page.locator(".headline")).toHaveText(/so far$/, { timeout: 20_000 });
+  await page.waitForTimeout(500);
+  expect(streams).toHaveLength(1);
+  await request.delete(`/jobs/${id}`);
+});
