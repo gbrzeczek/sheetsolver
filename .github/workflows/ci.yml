@@ -20,6 +20,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      # Compiled dependencies and workspace crates, keyed on Cargo.lock and
+      # the toolchain; a PR reads main's cache when it has none of its own.
+      - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
@@ -32,6 +35,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      # Its own cache: this job builds the api in debug (openapi) and
+      # release (e2e), not the tests.
+      - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-node@v4
         with:
           node-version: 22
