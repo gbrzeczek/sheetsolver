@@ -15,3 +15,13 @@ missing_docs = "warn"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
+
+# Tests keep overflow checks and debug assertions, which catch the i64
+# geometry going wrong, but the search runs optimised: unoptimised, the
+# golden tests take about 20 minutes. Set opt-level = 1 to step through
+# these crates in a debugger more easily.
+[profile.dev.package.guillotine]
+opt-level = 3
+
+[profile.dev.package.treesearch]
+opt-level = 3
