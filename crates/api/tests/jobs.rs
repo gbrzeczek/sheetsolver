@@ -583,8 +583,8 @@ async fn schema_defaults_and_bounds_are_what_the_server_applies() {
             }
         }
     }
-    // 8 defaults, 10 minimums, 1 maximum.
-    assert_eq!(checked, 19);
+    // 8 defaults, 10 minimums, 6 maximums.
+    assert_eq!(checked, 24);
 }
 
 #[tokio::test(flavor = "multi_thread")]

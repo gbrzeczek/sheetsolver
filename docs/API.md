@@ -355,7 +355,7 @@ Each can also be set by an environment variable named after it:
 | `--print-openapi` | | Print `openapi.json` and exit. |
 
 Fixed limits: `time_limit` 1–600 seconds (default 10), request body
-2 MB.
+2 MB, every length, width and kerf at most 100 000 mm (100 m).
 
 The solver runs upstream's deterministic search: the same instance and
 time limit give the same plans, unless the time limit cuts the search
@@ -416,3 +416,8 @@ for reconciling the UI. None changes a field name or a JSON shape.
   `FIELDS.md` (`title`, `description` and `maxLength: 100` in
   `openapi.json`); the "UI-only fields" row for `job_name` on the UI
   branch is replaced by it and should be dropped there.
+- 2026-10-27, bug fix:
+  - Lengths, widths and `saw.kerf` are at most 100 000 mm, a `422`
+    problem beyond (`maximum` in `openapi.json`). Without a bound a huge
+    size overflowed the areas into a plan with negative figures. Bodies
+    with real sheet sizes stay valid.

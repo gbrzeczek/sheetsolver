@@ -552,6 +552,7 @@
           "length": {
             "$ref": "#/components/schemas/Length",
             "description": "The panel's long side, as delivered, in millimetres. For a panel with grain, the side along the grain. For \"Shortest length from one panel\", this is the maximum length available.",
+            "maximum": 100000,
             "minimum": 0.1,
             "title": "Length"
           },
@@ -568,6 +569,7 @@
           "width": {
             "$ref": "#/components/schemas/Length",
             "description": "The panel's short side, as delivered, in millimetres. For \"Shortest width from one panel\", this is the maximum width available.",
+            "maximum": 100000,
             "minimum": 0.1,
             "title": "Width"
           }
@@ -596,6 +598,7 @@
           "length": {
             "$ref": "#/components/schemas/Length",
             "description": "The part's finished length in millimetres, before edge banding. For a part with grain, the side along the grain.",
+            "maximum": 100000,
             "minimum": 0.1,
             "title": "Length"
           },
@@ -620,6 +623,7 @@
           "width": {
             "$ref": "#/components/schemas/Length",
             "description": "The part's finished width in millimetres, before edge banding.",
+            "maximum": 100000,
             "minimum": 0.1,
             "title": "Width"
           }
@@ -711,6 +715,7 @@
             "$ref": "#/components/schemas/Length",
             "default": 3.2,
             "description": "The width of material each cut removes, in millimetres — the thickness of your saw blade's teeth, not the blade body. Every cut between two parts uses this much material, so parts are spaced by it. Typical values: 3.2–4.4 mm for panel and table saws, 2.2–2.8 mm for track saws. Set 0 only if your dimensions already include it.",
+            "maximum": 100000,
             "minimum": 0,
             "title": "Saw blade thickness (kerf)"
           },

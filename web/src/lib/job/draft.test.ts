@@ -99,6 +99,12 @@ describe("lengths", () => {
     expect(parseLength("1 04", "length", 0.1).ok).toBe(false);
   });
 
+  it("reject lengths beyond the API's maximum", () => {
+    expect(parseLength("100000", "length", 0.1)).toEqual({ ok: true, value: 100000 });
+    expect(parseLength("100000.1", "length", 0.1)).toEqual({ ok: false, message: "length must be at most 100000 mm" });
+    expect(parseLength("1000000000000", "saw blade thickness", 0).ok).toBe(false);
+  });
+
   it("reject three digits after a comma or point, which may be a thousands separator", () => {
     expect(parseLength("1,200", "length", 0.1)).toEqual({ ok: false, message: "write 1,200 without a separator: 1200 for 1200 mm, or 1.2 for 1.2 mm" });
     expect(parseLength("2.500", "width", 0.1).ok).toBe(false);

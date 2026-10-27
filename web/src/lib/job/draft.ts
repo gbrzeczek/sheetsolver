@@ -117,6 +117,9 @@ type Parsed<T> = { ok: true; value: T } | { ok: false; message: string };
 
 const DECIMAL = /^\d+(?:[.,]\d+)?$/;
 
+/** The longest length the API accepts, in millimetres (docs/FIELDS.md). */
+const LONGEST = API_FIELDS["Part.length"].maximum ?? Infinity;
+
 /**
  * Millimetres with at most one decimal. A comma is accepted as the decimal
  * mark, and spaces as thousands separators ("1 040.5", as the plan shows it).
@@ -140,6 +143,7 @@ export function parseLength(text: string, what: string, minimum: number): Parsed
   if (value < minimum) {
     return { ok: false, message: minimum > 0 ? `${what} must be at least 0.1 mm` : `${what} must be at least 0 mm` };
   }
+  if (value > LONGEST) return { ok: false, message: `${what} must be at most ${LONGEST} mm` };
   return { ok: true, value };
 }
 

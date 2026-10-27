@@ -25,6 +25,11 @@ impl Length {
     /// Zero length.
     pub const ZERO: Length = Length(0);
 
+    /// The longest length accepted: 100 m, far beyond any sheet. Areas are
+    /// `i64` products of two lengths, summed over many panels; without a
+    /// bound, a huge size overflows them into nonsense plans.
+    pub const MAX: Length = Length::from_mm(100_000);
+
     /// A length of `tenths` tenths of a millimetre.
     pub const fn from_tenths(tenths: i64) -> Self {
         Length(tenths)

@@ -66,6 +66,9 @@ impl InputField {
 /// be positive.
 const SHORTEST: f64 = 0.1;
 
+/// The longest length accepted, in millimetres (`model::Length::MAX`).
+const LONGEST: f64 = 100_000.0;
+
 /// Every input field, in the order of `FIELDS.md`.
 pub static INPUT_FIELDS: &[InputField] = &[
     input("JobRequest", "name", "Job name").max_length(crate::types::MAX_NAME_CHARS),
@@ -75,13 +78,21 @@ pub static INPUT_FIELDS: &[InputField] = &[
         .minimum(1.0)
         .maximum(600.0),
     input("Panel", "id", "Name"),
-    input("Panel", "length", "Length").minimum(SHORTEST),
-    input("Panel", "width", "Width").minimum(SHORTEST),
+    input("Panel", "length", "Length")
+        .minimum(SHORTEST)
+        .maximum(LONGEST),
+    input("Panel", "width", "Width")
+        .minimum(SHORTEST)
+        .maximum(LONGEST),
     input("Panel", "quantity", "Quantity").minimum(1.0),
     input("Panel", "cost", "Cost").minimum(0.0),
     input("Part", "id", "Name"),
-    input("Part", "length", "Length").minimum(SHORTEST),
-    input("Part", "width", "Width").minimum(SHORTEST),
+    input("Part", "length", "Length")
+        .minimum(SHORTEST)
+        .maximum(LONGEST),
+    input("Part", "width", "Width")
+        .minimum(SHORTEST)
+        .maximum(LONGEST),
     input("Part", "quantity", "Quantity")
         .default("1")
         .minimum(1.0),
@@ -89,7 +100,8 @@ pub static INPUT_FIELDS: &[InputField] = &[
     input("Part", "value", "Value").minimum(0.0),
     input("Saw", "kerf", "Saw blade thickness (kerf)")
         .default("3.2")
-        .minimum(0.0),
+        .minimum(0.0)
+        .maximum(LONGEST),
     input("Saw", "stages", "Cutting stages").default("3"),
     input("Saw", "cut_type", "Last-stage trimming").default("\"non_exact\""),
     input("Saw", "first_cuts", "First cuts").default("\"either\""),

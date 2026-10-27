@@ -322,6 +322,16 @@ pub enum ValidationError {
         /// "length" or "width".
         field: &'static str,
     },
+    /// A length or width is longer than [`Length::MAX`].
+    #[error("{field} of {what} \"{id}\" must be at most 100000 mm")]
+    TooLarge {
+        /// "panel" or "part".
+        what: &'static str,
+        /// The panel's or part's name.
+        id: String,
+        /// "length" or "width".
+        field: &'static str,
+    },
     /// A quantity is zero.
     #[error("quantity of {what} \"{id}\" must be at least 1")]
     ZeroQuantity {
@@ -343,6 +353,9 @@ pub enum ValidationError {
     /// The kerf is negative.
     #[error("saw blade thickness must be at least 0 mm")]
     NegativeKerf,
+    /// The kerf is longer than [`Length::MAX`].
+    #[error("saw blade thickness must be at most 100000 mm")]
+    KerfTooLarge,
     /// The number of stages is not 2, 3 or unlimited.
     #[error("cutting stages must be 2, 3 or unlimited, not {0}")]
     UnsupportedStages(u32),
@@ -377,6 +390,8 @@ impl Instance {
 
         if self.saw.kerf < Length::ZERO {
             report("saw.kerf".into(), ValidationError::NegativeKerf);
+        } else if self.saw.kerf > Length::MAX {
+            report("saw.kerf".into(), ValidationError::KerfTooLarge);
         }
         if let Stages::Limited(count) = self.saw.stages {
             if !(2..=3).contains(&count) {
@@ -462,6 +477,15 @@ fn validate_items<'a>(
                 report(
                     path(field),
                     ValidationError::NonPositiveSize {
+                        what,
+                        id: id.to_string(),
+                        field,
+                    },
+                );
+            } else if size > Length::MAX {
+                report(
+                    path(field),
+                    ValidationError::TooLarge {
                         what,
                         id: id.to_string(),
                         field,
@@ -592,6 +616,25 @@ mod tests {
         );
         instance.panels[0].quantity = Some(1);
         assert_eq!(instance.validate(), Ok(()));
+    }
+
+    #[test]
+    fn rejects_sizes_longer_than_100_m() {
+        let mut instance = example();
+        instance.panels[0].length = Length::from_mm(100_000);
+        instance.saw.kerf = Length::from_mm(100_000);
+        assert_eq!(instance.validate(), Ok(()));
+        // 1e12 mm once came back as a plan with a negative panel area.
+        instance.panels[0].length = Length::try_from_mm(1e12).unwrap();
+        instance.parts[0].width = Length::from_tenths(Length::MAX.tenths() + 1);
+        instance.saw.kerf = Length::from_tenths(Length::MAX.tenths() + 1);
+        let fields: Vec<String> = instance
+            .validate_fields()
+            .unwrap_err()
+            .into_iter()
+            .map(|error| error.field)
+            .collect();
+        assert_eq!(fields, ["saw.kerf", "panels[0].length", "parts[0].width"]);
     }
 
     #[test]
