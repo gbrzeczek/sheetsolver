@@ -16,7 +16,8 @@
     const out: Group[] = [];
     for (const cut of order.cuts) {
       let g = out[out.length - 1];
-      if (!g || (g.title !== cut.group && !(g.title === "Panel into strips" && cut.group === "panel"))) {
+      const same = g && (g.title === cut.group || (g.title === "Panel into strips" && cut.group === "panel") || (g.title === "Trims" && cut.group === "trims"));
+      if (!g || !same) {
         const strip = [...order.names.entries()].find(([, n]) => n === cut.group)?.[0];
         g = cut.group === "panel"
           ? { title: "Panel into strips", meta: cut.direction === "along" ? "along the length" : "across the length", cuts: [] }

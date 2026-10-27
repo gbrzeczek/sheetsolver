@@ -41,7 +41,7 @@ use std::rc::Rc;
 use model::CutType;
 use treesearch::{BranchingScheme, Guide};
 
-use crate::problem::{BinTrims, Objective, Orientation, Problem};
+use crate::problem::{BinTrims, Objective, Orientation, Problem, Size};
 
 /// Which guide orders the nodes in a queue.
 ///
@@ -165,6 +165,19 @@ impl Hash for CopiesPlaced {
     }
 }
 
+/// A panel as the search sees it with first cuts in one direction: its
+/// size, trims and where parts start, worked out once (they are read for
+/// every insertion).
+#[derive(Debug, Clone, Copy)]
+struct BinView {
+    size: Size,
+    trims: BinTrims,
+    /// upstream `Instance::x_start`.
+    x_start: i64,
+    /// upstream `Instance::y_start`.
+    y_start: i64,
+}
+
 /// The guillotine branching scheme for one guide and one first-cut
 /// direction.
 pub(crate) struct Scheme<'a> {
@@ -180,6 +193,8 @@ pub(crate) struct Scheme<'a> {
     bin_type_ids: Vec<usize>,
     /// Total area of the panels before each one.
     previous_bins_area: Vec<i64>,
+    /// Each panel seen with vertical, then horizontal first cuts.
+    views: Vec<[BinView; 2]>,
     /// For each part type, the previous part type that is identical to it,
     /// if any. Its copies are placed first, so identical part types are
     /// not explored in every order (upstream `stack_pred_`).
@@ -229,12 +244,28 @@ impl<'a> Scheme<'a> {
             })
             .collect();
 
+        let views = bin_type_ids
+            .iter()
+            .map(|&bin_type| {
+                [Orientation::Vertical, Orientation::Horizontal].map(|orientation| {
+                    let trims = problem.bin_trims(bin_type, orientation);
+                    BinView {
+                        size: problem.bin_size(bin_type, orientation),
+                        trims,
+                        x_start: problem.trim_start(trims.left, trims.left_soft),
+                        y_start: problem.trim_start(trims.bottom, trims.bottom_soft),
+                    }
+                })
+            })
+            .collect();
+
         Scheme {
             problem,
             guide,
             first_stage_orientation,
             bin_type_ids,
             previous_bins_area,
+            views,
             identical_predecessor,
             next_id: Cell::new(0),
         }
@@ -295,10 +326,14 @@ impl<'a> Scheme<'a> {
         }
     }
 
+    /// Panel `bin` seen with first cuts in `orientation`.
+    fn view(&self, bin: u32, orientation: Orientation) -> &BinView {
+        &self.views[bin as usize][usize::from(orientation == Orientation::Horizontal)]
+    }
+
     /// The trims of panel `bin` seen with first cuts in `orientation`.
     pub fn trims(&self, bin: u32, orientation: Orientation) -> BinTrims {
-        self.problem
-            .bin_trims(self.bin_type_ids[bin as usize], orientation)
+        self.view(bin, orientation).trims
     }
 
     /// Where parts start after the left trim (upstream `Instance::x_start`).
@@ -314,9 +349,9 @@ impl<'a> Scheme<'a> {
     // Where a part placed at `depth` starts. Negative depths open a new
     // panel, whose strips start after its trims.
 
-    /// The trims of the new panel a part placed at negative `depth` opens.
-    fn new_bin_trims(&self, node: &Node, depth: i32) -> BinTrims {
-        self.trims(
+    /// The new panel a part placed at negative `depth` opens.
+    fn new_bin_view(&self, node: &Node, depth: i32) -> &BinView {
+        self.view(
             self.last_bin(node, depth),
             self.last_bin_orientation(node, depth),
         )
@@ -328,17 +363,20 @@ impl<'a> Scheme<'a> {
             0 => node.x1_curr + self.problem.cut_thickness,
             1 => node.x1_prev,
             2 => node.x3_curr + self.problem.cut_thickness,
-            _ => self.x_start(&self.new_bin_trims(node, depth)),
+            _ => self.new_bin_view(node, depth).x_start,
         }
     }
 
     /// Bottom of the level-2 piece (upstream `y2_prev(node, df)`).
     fn y2_prev(&self, node: &Node, depth: i32) -> i64 {
         match depth {
-            0 => self.y_start(&self.trims(node.number_of_bins - 1, node.first_stage_orientation)),
+            0 => {
+                self.view(node.number_of_bins - 1, node.first_stage_orientation)
+                    .y_start
+            }
             1 => node.y2_curr + self.problem.cut_thickness,
             2 => node.y2_prev,
-            _ => self.y_start(&self.new_bin_trims(node, depth)),
+            _ => self.new_bin_view(node, depth).y_start,
         }
     }
 
@@ -356,12 +394,12 @@ impl<'a> Scheme<'a> {
                 self.last_bin_orientation(node, depth),
             )
         };
-        let w = self
-            .problem
-            .bin_size(self.bin_type_ids[bin as usize], orientation)
-            .w;
-        let trims = self.trims(bin, orientation);
-        if trims.right_soft { w } else { w - trims.right }
+        let view = self.view(bin, orientation);
+        if view.trims.right_soft {
+            view.size.w
+        } else {
+            view.size.w - view.trims.right
+        }
     }
 
     /// Highest the level-2 piece may reach (upstream `y2_max`): the
@@ -372,9 +410,12 @@ impl<'a> Scheme<'a> {
         }
         let bin = self.last_bin(node, depth);
         let orientation = self.last_bin_orientation(node, depth);
-        let h = self.bin_height(bin, orientation);
-        let trims = self.trims(bin, orientation);
-        if trims.top_soft { h } else { h - trims.top }
+        let view = self.view(bin, orientation);
+        if view.trims.top_soft {
+            view.size.h
+        } else {
+            view.size.h - view.trims.top
+        }
     }
 
     /// Index of the panel a part placed at `depth` goes on (upstream
@@ -401,9 +442,7 @@ impl<'a> Scheme<'a> {
 
     /// Height of panel `bin` seen in `orientation`.
     fn bin_height(&self, bin: u32, orientation: Orientation) -> i64 {
-        self.problem
-            .bin_size(self.bin_type_ids[bin as usize], orientation)
-            .h
+        self.view(bin, orientation).size.h
     }
 
     /// The node's frontier (upstream `front(node)`).
@@ -489,10 +528,9 @@ impl<'a> Scheme<'a> {
         let orientation = self.last_bin_orientation(parent, depth);
         let bin = self.last_bin(parent, depth);
         let item = self.problem.item_size(item_type, orientation);
-        let panel = self
-            .problem
-            .bin_size(self.bin_type_ids[bin as usize], orientation);
-        let trims = self.trims(bin, orientation);
+        let BinView {
+            size: panel, trims, ..
+        } = *self.view(bin, orientation);
         let x = self.x3_prev(parent, depth) + item.width(rotate);
         let y = self.y2_prev(parent, depth) + item.height(rotate);
         if x > panel.w - trims.right || y > panel.h - trims.top {
@@ -535,10 +573,9 @@ impl<'a> Scheme<'a> {
     fn update(&self, children: &mut Vec<NodeRef>, parent: &NodeRef, mut insertion: Insertion) {
         let orientation = self.last_bin_orientation(parent, insertion.depth);
         let bin = self.last_bin(parent, insertion.depth);
-        let panel = self
-            .problem
-            .bin_size(self.bin_type_ids[bin as usize], orientation);
-        let trims = self.trims(bin, orientation);
+        let BinView {
+            size: panel, trims, ..
+        } = *self.view(bin, orientation);
         let min_waste = self.problem.minimum_waste_length;
         let kerf = self.problem.cut_thickness;
         // Where parts must end, and where the cuts may go: a soft trim's
@@ -766,14 +803,14 @@ impl<'a> Scheme<'a> {
             (parent.number_of_bins, parent.first_stage_orientation)
         };
         let bin = (number_of_bins - 1) as usize;
-        let panel = problem.bin_size(self.bin_type_ids[bin], first_stage_orientation);
-        let trims = self.trims(bin as u32, first_stage_orientation);
+        let view = *self.view(bin as u32, first_stage_orientation);
+        let (panel, trims) = (view.size, view.trims);
 
         let (x1_prev, y2_prev) = match depth {
-            0 => (parent.x1_curr + problem.cut_thickness, self.y_start(&trims)),
+            0 => (parent.x1_curr + problem.cut_thickness, view.y_start),
             1 => (parent.x1_prev, parent.y2_curr + problem.cut_thickness),
             2 => (parent.x1_prev, parent.y2_prev),
-            _ => (self.x_start(&trims), self.y_start(&trims)),
+            _ => (view.x_start, view.y_start),
         };
 
         let item = &problem.item_types[insertion.item_type];

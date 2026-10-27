@@ -167,3 +167,32 @@ fn the_leftover_is_at_least_the_minimum_width_too() {
         minimum: mm(22)
     }));
 }
+
+#[test]
+fn with_unlimited_stages_and_no_minimum_every_trim_is_cut_off_first() {
+    let mut i = instance();
+    i["saw"]["stages"] = json!("unlimited");
+    i["saw"]["minimum_offcut_width"] = json!(0);
+    // The right trim, left on the offcut, is a trim cut off first too: the
+    // plan without it is wrong, …
+    assert_eq!(
+        problems(&i, &solution()),
+        vec![Problem::WrongTrims {
+            expected: "left 5 mm, right 5 mm".into()
+        }]
+    );
+    // … and with it, right.
+    let mut s = solution();
+    let root = &mut s["patterns"][0]["root"];
+    root["children"] = json!([
+        { "kind": "trim", "x": 0, "y": 0, "length": 5, "width": 50, "stage": 0 },
+        { "kind": "trim", "x": 95, "y": 0, "length": 5, "width": 50, "stage": 0 },
+        { "kind": "piece", "x": 5, "y": 0, "length": 90, "width": 50, "stage": 0, "children": [
+            { "kind": "part", "part_id": "B", "rotated": false, "x": 5, "y": 0, "length": 30, "width": 50, "stage": 1 },
+            { "kind": "offcut", "x": 37, "y": 0, "length": 58, "width": 50, "stage": 1 }
+        ]}
+    ]);
+    i["objective"] = json!("knapsack");
+    let found = problems(&i, &s);
+    assert_eq!(found, vec![]);
+}

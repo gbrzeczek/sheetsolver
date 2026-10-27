@@ -47,7 +47,7 @@ const plain = (text: string) => text.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*
 export function fieldsMd(): Map<string, { label: string; short: string; help: string }> {
   const md = readFileSync(join(import.meta.dirname, "../../docs/FIELDS.md"), "utf8");
   const help = new Map<string, { label: string; short: string; help: string }>();
-  const schema: Record<string, string> = { "Panels (stock sheets)": "Panel", Parts: "Part", "Saw and cutting": "Saw" };
+  const schema: Record<string, string> = { "Panels (stock sheets)": "Panel", "Panel trims": "Trim", Parts: "Part", "Saw and cutting": "Saw" };
   let chapter = "";
   let section = "";
   for (const line of md.split("\n")) {

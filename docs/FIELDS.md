@@ -85,7 +85,10 @@ use a single bin).
 
 Each edge of a panel (`trims.left`, `trims.right`, `trims.bottom`,
 `trims.top`) has these two fields. The left end is at the panel's
-origin (x = 0), the bottom edge along its length at y = 0.
+origin (x = 0), the bottom edge along its length at y = 0. The UI names
+the edges as drawn: **Left end**, **Right end**, **Bottom edge**, **Top
+edge**. An edge left out has no trim; one with a trim but no *Trimmed
+strip* gets its edge's default.
 
 | Field | UI label | Short help | Help text | Unit / values | Default | Upstream |
 |---|---|---|---|---|---|---|

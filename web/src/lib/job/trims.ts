@@ -11,6 +11,11 @@ function width(row: TrimRow): number {
   return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
+/** "right", "right and top", "left, right and top". */
+function list(words: readonly string[]): string {
+  return words.length <= 1 ? words.join("") : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+}
+
 /**
  * "none", "10 mm all round, cut off first", or each trimmed edge with its
  * width, then how the strips are cut: "left 10 · bottom 5 mm · cut off
@@ -24,10 +29,7 @@ export function trimsSummary(trims: Record<Edge, TrimRow>): string {
   const how =
     cuts.size === 1
       ? cutName([...cuts][0]!)
-      : trimmed
-          .filter((edge) => trims[edge].cut === "left_on_offcut")
-          .join(", ")
-          .concat(" ", cutName("left_on_offcut"));
+      : `${list(trimmed.filter((edge) => trims[edge].cut === "left_on_offcut"))} ${cutName("left_on_offcut")}`;
   const widths = new Set(trimmed.map((edge) => width(trims[edge])));
   if (trimmed.length === 4 && widths.size === 1) return `${mm([...widths][0]!)} mm all round, ${how}`;
   return `${trimmed.map((edge) => `${edge} ${mm(width(trims[edge]))}`).join(" · ")} mm · ${how}`;

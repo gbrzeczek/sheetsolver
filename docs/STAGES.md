@@ -562,7 +562,64 @@ Exit criteria:
   inside, and every field is still reachable with its short and full
   help.
 
-## Stage 9 — Trims and minimum offcut width
+## Stage 9 — Trims and minimum offcut width ✅ done 2026-10-27
+
+Result:
+- `FIELDS.md` first: *Trims* per panel, each edge's *Trim* and
+  *Trimmed strip* (**Cut off first**: sawn off before any other cut,
+  offcut widths measured from the new edge; **Left on the offcut**: no
+  cut of its own, it counts in the offcut's width), and *Minimum offcut
+  width* in the saw settings. The owner's decisions (`SCOPE.md`,
+  2026-10-27): that wording; the kind per edge with upstream's defaults
+  (left and bottom cut off first, right and top left on the offcut);
+  offcuts measured across the cut that frees them (upstream throws on
+  parts narrower than its minimum); with unlimited stages and no
+  minimum, the plan made on the trimmed panel, every trim cut off first
+  (upstream's maximal-spaces search ignores trims).
+- `model`: `Panel.trims` (`Trims`, `Trim`, `TrimCut`, per-edge default
+  cut), `Saw.minimum_offcut_width`, `422` for negative or too-wide trims
+  (`panels[i].trims.<edge>.width`); plan node kind `trim`
+  (`ARCHITECTURE.md`, *Trims*). Metrics count the panel inside its trims,
+  as upstream's do.
+- `checker`, written from the rules: trims cut off first are the panel's
+  first children, then the trimmed panel; no part in any trim; every
+  offcut and leftover at least the minimum across the cut that frees it.
+  9 tests in `tests/trims.rs`, one per rule; every golden plan passes and
+  its metrics equal upstream's.
+- Oracle: reads trims and the minimum; writes hard trims as the panel's
+  `trim` children (upstream leaves the root's child list empty, and
+  writes corners apart); solves unlimited stages without a minimum on the
+  trimmed panel (`TESTING.md`). 12 upstream instances now convert, and
+  54 generated `generated__trims_*` ones cover every objective, 2 and 3
+  stages, each cut type and first-cut direction, several panel sizes,
+  unlimited stages with and without a minimum, and one job with every
+  edge cut off first and then left on the offcut: 167 new golden files.
+- Solver: upstream's `update()` steps for the minimum waste (`z1`/`z2`)
+  and the soft and hard trim borders, trim starts, areas inside the
+  trims, the soft-trim cuts and hard-trim pieces of `to_solution`;
+  maximal spaces and the hypergraph search are not selected with a
+  minimum, and no exhaustive early stop then. `diff-oracle`: 729 golden
+  files, 725 identical, 0 different, 4 skipped (column generation, as
+  before); the 165 trim files in about 20 s. Each panel's size, trims and
+  trim starts are cached per first-cut direction, so the hot path reads
+  no more than before: on the benchmark set the best of 30 runs is within
+  -9 % to +10 % of the build before Stage 9, inside this machine's
+  ±20 % run-to-run noise.
+- API and UI: `openapi.json` carries the new fields (labels, short help,
+  bounds, option names). Under each panel row a *Trims* line, collapsed
+  with its summary ("none", "10 mm all round, cut off first"), opens to
+  the four edges; *Minimum offcut width* in *More settings* (in its
+  summary only when set). The plan draws trims cut off first as pieces
+  and trims left on the offcut as bands, the legend names them, the cut
+  order starts with a *Trims* group, the figures count the panel inside
+  its trims, and the print pages and the *Search* settings line give the
+  minimum. The budget holds: 2 more text lines on the setup screens
+  (`DESIGN.md` §10); screenshots refreshed.
+- e2e (`trims.spec.ts`, desktop and tablet): trims and a minimum entered
+  in the UI, solved, honoured (trims first in the plan and cut order,
+  offcuts at least the minimum); the same job with every trim left on
+  the offcut gives a different plan. The help test opens the trims and
+  checks *Trims*, *Trim* and *Trimmed strip*.
 
 Goal: cut off damaged factory edges, and never leave an offcut too
 narrow to handle.

@@ -1,20 +1,20 @@
 {
   "setup-new.1440": {
-    "text": 40,
+    "text": 42,
     "controls": 14,
-    "tableControls": 11,
+    "tableControls": 12,
     "prose": 4
   },
   "setup.1440": {
-    "text": 60,
+    "text": 62,
     "controls": 14,
-    "tableControls": 71,
+    "tableControls": 72,
     "prose": 4
   },
   "plan.1440": {
-    "text": 83,
+    "text": 85,
     "controls": 22,
-    "tableControls": 71,
+    "tableControls": 72,
     "prose": 2
   },
   "panel.1440": {
@@ -24,21 +24,21 @@
     "prose": 1
   },
   "searching.1440": {
-    "text": 75,
+    "text": 77,
     "controls": 18,
-    "tableControls": 71,
+    "tableControls": 72,
     "prose": 1
   },
   "setup-new.820": {
-    "text": 39,
+    "text": 41,
     "controls": 15,
-    "tableControls": 11,
+    "tableControls": 12,
     "prose": 1
   },
   "setup.820": {
-    "text": 57,
+    "text": 59,
     "controls": 15,
-    "tableControls": 71,
+    "tableControls": 72,
     "prose": 1
   },
   "plan.820": {
@@ -60,15 +60,15 @@
     "prose": 0
   },
   "setup-new.360": {
-    "text": 45,
+    "text": 47,
     "controls": 15,
-    "tableControls": 11,
+    "tableControls": 12,
     "prose": 2
   },
   "setup.360": {
-    "text": 65,
+    "text": 67,
     "controls": 15,
-    "tableControls": 71,
+    "tableControls": 72,
     "prose": 2
   },
   "plan.360": {

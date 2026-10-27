@@ -555,11 +555,14 @@ details.trims[open] > summary::before { content: "▾"; }
 details.trims .trims-title { color: var(--ink); font-weight: 500; }
 details.trims .trims-sum { font-variant-numeric: tabular-nums; min-width: 0; }
 .trims-body { padding: 4px 0 10px; }
-.trims-table { width: auto; }
+.trims-label { justify-content: flex-start; gap: 6px; }
+.trims-table { width: 100%; max-width: 420px; }
 .trims-table th.edge { text-align: left; font-weight: 400; padding-right: 10px; white-space: nowrap; }
-.trims-table .input-wrap { width: 92px; }
-.trims-table .cell-select { min-width: 0; }
+.trims-table td:nth-child(2) { width: 76px; }
+.trims-table .cell { width: 100%; }
+.trims-table .cell-select { width: 100%; min-width: 0; }
 @media (max-width: 640px) {
-  .trims-table .input-wrap { width: 72px; }
+  .trims-table td:nth-child(2) { width: 58px; }
   .trims-table th.edge { padding-right: 6px; }
+  .trims-table .cell-select { font-size: 13px; padding-left: 6px; padding-right: 22px; }
 }

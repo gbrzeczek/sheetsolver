@@ -175,8 +175,29 @@ key.
 
 Kinds: `piece` (the panel, or an intermediate piece that is cut
 further), `part`, `offcut` (waste), `leftover` (reusable remainder of the
-last panel: only as its last first-stage piece). Defects and trims get
-kinds when they move to In.
+last panel: only as its last first-stage piece), `trim` (a strip cut off
+an edge first, below). Defects get a kind when they move to In.
+
+Trims (Stage 9): a panel with trims *Cut off first* is cut into one
+`trim` per such edge, then the trimmed panel, a `piece`; all are children
+of the panel at stage 0, the trims first in the order left, right,
+bottom, top. The left and right trims run the panel's full width, the
+bottom and top ones run between them. A trim includes the saw cut that
+removes it: the trimmed panel starts exactly at the trim's edge. The
+trimmed panel is then cut as a panel would be, in the pattern's
+`first_cuts` direction, its children at stage 1. A trim *Left on the
+offcut* has no node: it is part of the offcut next to it (the left and
+bottom ones are an offcut cut by a first or second cut, at least the
+minimum offcut width wide). With unlimited stages and no minimum offcut
+width, every trim is cut off first (`FIELDS.md`). For example, a panel
+with a 10 mm left trim cut off first:
+
+```json
+{ "kind": "piece", "x": 0, "y": 0, "length": 2500, "width": 1250, "stage": 0, "children": [
+  { "kind": "trim", "x": 0, "y": 0, "length": 10, "width": 1250, "stage": 0 },
+  { "kind": "piece", "x": 10, "y": 0, "length": 2490, "width": 1250, "stage": 0, "children": [ … ] }
+]}
+```
 
 The tree rules (children side by side in the stage's cut direction, each
 spanning its parent, exactly one kerf apart, at most one kerf left at the
@@ -205,7 +226,12 @@ rule is enforced by the checker, or was verified on every golden plan in
   happens only with `non_exact` (e.g. a 100 × 660 part trimmed from a
   100 × 1050 piece). Not with `exact` or `homogenous`; with unlimited
   stages there is no limit to exceed.
-- **Offcuts thinner than the kerf are intended**: the remainder at the
+- **A minimum offcut width is measured across the cut that frees an
+  offcut**: every `offcut` and `leftover` is at least
+  `minimum_offcut_width` along the axis its siblings sit on; along the
+  cut it may be narrower, as narrow as the parts beside it.
+- **Offcuts thinner than the kerf are intended** (without a minimum
+  offcut width): the remainder at the
   end of a piece may be thinner than a kerf (e.g. a 0.4 mm strip along a
   2440 mm edge with a 3.2 mm kerf), and up to one kerf may also be left
   with no node at all. Either way it is in `waste_area`, which is the
@@ -216,8 +242,9 @@ rule is enforced by the checker, or was verified on every golden plan in
 
 Computed by the checker from an instance and a solution, not stored in
 the solution: `panels_used`, `parts_cut`, `panel_area`, `part_area`,
-`leftover_area`, `waste_area` (areas in mm²), `waste_fraction` (0–1, of
-the panel area without the leftover), `total_value`, and `used_length` /
+`leftover_area`, `waste_area` (areas in mm²; the panel and leftover areas
+only count what is inside the trims, as upstream's do), `waste_fraction`
+(0–1, of the panel area without the leftover), `total_value`, and `used_length` /
 `used_width` (how far the cuts reach on the last panel). Their
 definitions match upstream's, and the golden tests compare them.
 

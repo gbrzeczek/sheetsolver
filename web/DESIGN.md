@@ -951,16 +951,22 @@ only within the budget below.
 
 | Always visible | Collapsed, with a summary | Only when it matters |
 |---|---|---|
-| Title and the one-line size hint · *Parts to make* (Name, Length, Width, Quantity, Keep grain) · *Panels you have* (Name, Length, Width, Quantity) · Goal · Saw blade thickness (kerf), since it defaults to 0 and must be seen · *Find cutting plan* | *More settings*: Job name, Cutting stages, Last-stage trimming, First cuts, Time limit, and every setting Stages 9–16 add | *Value*, with "Best use of the panels I have" · *Cost*, with two or more panel sizes, or a cost typed (so nothing sent is out of sight) · the one-panel goals' note under the panels · *More settings* opens when a problem is in it · the problems count under the button |
+| Title and the one-line size hint · *Parts to make* (Name, Length, Width, Quantity, Keep grain) · *Panels you have* (Name, Length, Width, Quantity) · Goal · Saw blade thickness (kerf), since it defaults to 0 and must be seen · *Find cutting plan* | *More settings*: Job name, Cutting stages, Last-stage trimming, First cuts, Minimum offcut width (Stage 9; in the summary only when set: "offcuts at least 30 mm"), Time limit, and every setting Stages 10–16 add · *Trims* under each panel row (Stage 9): the four edges' *Trim* and *Trimmed strip*, summed up as "none", "10 mm all round, cut off first" or "left 10 · bottom 5 mm · cut off first" | *Value*, with "Best use of the panels I have" · *Cost*, with two or more panel sizes, or a cost typed (so nothing sent is out of sight) · the one-panel goals' note under the panels · *More settings* opens when a problem is in it · the problems count under the button |
 
 Help is in place 1 only as a (?) button: one tap gives the short help,
 *More* the full text (§5).
+
+The *Trims* line belongs to its panel's row, so it lives in the panels
+table, one line per panel size (a table row of its own, its controls
+counted with the table's). It opens when one of its fields has a problem.
+Each panel's editor has its own help ids; the first panel's are the plain
+ones (`help-Trim-width`).
 
 ### Cutting plan (all panels, and the workbench's right half)
 
 | Always visible | Collapsed, with a summary | Only when it matters |
 |---|---|---|
-| Eyebrow, headline ("All 21 parts fit") and the panels line · Print, Edit job · the panel list · every panel drawn · the legend | *Figures*: the figures row · *Search*: why it ended, *Search for 60 s*, when the plan was found, the cutting settings · *Parts checklist* | The out-of-date bar · "Still searching" with *Stop*, while the search runs · *Search* opens when the search failed after a plan · *Parts checklist* opens when parts are not cut |
+| Eyebrow, headline ("All 21 parts fit") and the panels line · Print, Edit job · the panel list · every panel drawn · the legend (with *Trim, no part there* when a panel has trims) | *Figures*: the figures row · *Search*: why it ended, *Search for 60 s*, when the plan was found, the cutting settings · *Parts checklist* | The out-of-date bar · "Still searching" with *Stop*, while the search runs · *Search* opens when the search failed after a plan · *Parts checklist* opens when parts are not cut |
 
 ### Cutting plan, searching
 
@@ -972,7 +978,7 @@ Help is in place 1 only as a (?) button: one tap gives the short help,
 
 | Always visible | Collapsed, with a summary | Only when it matters |
 |---|---|---|
-| Headline · panel list · the drawing with rulers and cut badges · legend · the current cut with ‹ › · the cut order | *Figures*, *Search* (as above) · *On this panel* ("11 parts") · *Offcuts* ("10 · the largest 2 440 × 200.4") | How to read a size, behind the (?) next to *Cut order* · the selected part, in place of the current cut |
+| Headline · panel list · the drawing with rulers and cut badges · legend · the current cut with ‹ › · the cut order, starting with the trims cut off first (group *Trims*, "10 mm across the length → left end trim 10 × 1 250") | *Figures*, *Search* (as above) · *On this panel* ("11 parts") · *Offcuts* ("10 · the largest 2 440 × 200.4") | How to read a size, behind the (?) next to *Cut order* · the selected part, in place of the current cut |
 
 ### Measuring
 
@@ -1052,6 +1058,13 @@ here with its reason.
 | `searching` | 360 | 7 | 1 | 30 |
 <!-- /budget -->
 
-Screenshots of every screen at every width, after Stage 8:
+Stage 9 (2026-10-27) added the *Trims* line under each panel row ("Trims
+none"): 2 more text lines on every screen with the job setup (`setup` at
+1440/820/360: 62/59/67, `plan` at 1440: 85), controls unchanged (its
+summary is counted with the table's). The minimum offcut width is in
+*More settings*, in its summary only when set. Every screen is still
+within the budget.
+
+Screenshots of every screen at every width, after Stage 9:
 [`mockups/screenshots/`](mockups/screenshots/) (`<screen>.<width>.png`,
 light theme, the whole page).

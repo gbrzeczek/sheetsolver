@@ -35,6 +35,17 @@ copyright notice in this repository's `LICENSE`/`NOTICE` alongside ours.
 | `src/algorithms/sequential_value_correction.hpp`, `optimize.cpp` `optimize_sequential_single_knapsack` | Several panels, one at a time | `guillotine` |
 | `src/rectangleguillotine/optimize.cpp` `optimize()` | Automatic algorithm selection | `guillotine` |
 
+## Ported in Stage 9 (trims, minimum offcut width)
+
+| Upstream | What | Where |
+|---|---|---|
+| `instance.hpp` `BinType::*_trim`, `TrimType`, `Instance::trim_start`/`x_start`/`y_start`, `BinType::area` (inside the trims) | Trims and where parts start | `model` (`Trims`), `guillotine` (`problem.rs`) |
+| `instance_flipper.cpp` | Trims of the flipped instance | `guillotine` (`BinTrims::flipped`) |
+| `tree_search.cpp` `bin_borders`, `x1_max`, `y2_max`, `x3_prev`/`y2_prev`, `child_tmp` (areas), `update` (the minimum waste with `z1`/`z2`, soft trim borders) | The search with trims and a minimum waste | `guillotine` (`scheme.rs`) |
+| `tree_search.cpp` `to_solution` (soft trim cuts), `solution_builder.cpp` `add_bin` (hard trims) | Plans with trims | `guillotine` (`plan.rs`) |
+| `optimize.cpp` `optimize` (no one-panel search with a minimum waste), `tree_search.cpp` (no exhaustive stop with one) | Selection | `guillotine` (`selection.rs`, `tree_search.rs`) |
+| `solution.cpp` `trims_feasible`, `minimum_waste_length_feasible` (see `SCOPE.md` for the one difference) | The rules | `checker` |
+
 Read but do not port unless scope changes: `reduction.cpp`,
 `post_process.cpp`, `tree_search_hypergraph.cpp`.
 

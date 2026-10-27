@@ -43,8 +43,8 @@
     <span class="trims-sum">{summary}</span>
   </summary>
   <div class="trims-body">
-    <div class="label-row">
-      <span class="field-label" id="trims-{index}-label">{field(helpKey).label}, panel {index + 1}</span>
+    <div class="label-row trims-label">
+      <span class="field-label" id="trims-{index}-label">{field(helpKey).label}<span class="visually-hidden">, panel {index + 1}</span></span>
       <button
         class="help-btn"
         type="button"
@@ -71,8 +71,7 @@
           <tr class:has-err={widthProblem}>
             <th scope="row" class="edge">{EDGE_NAMES[edge]}</th>
             <td>
-              <div class="input-wrap">
-                <input
+              <input
                   id="panel-{index}-trim-{edge}"
                   class="cell"
                   class:invalid={widthProblem}
@@ -84,8 +83,7 @@
                   aria-describedby={widthProblem ? `err-panel-${index}-trim-${edge}` : described("Trim.width")}
                   bind:value={trims[edge].width}
                   oninput={() => onedit(path(edge, "width"))}
-                /><span class="suffix">mm</span>
-              </div>
+                />
             </td>
             <td>
               <select

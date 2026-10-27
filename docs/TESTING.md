@@ -91,6 +91,25 @@ Upstream packingsolver at the pinned commit is the reference.
   - A last panel cut several times keeps its leftover on the very last
     copy only: the oracle and the port write it as two patterns. This is
     a mapping of upstream's meaning, not a deviation.
+  - **Trims (Stage 9).** Upstream's `SolutionBuilder::add_bin` adds the
+    hard trims and the trimmed panel to a copy of the root, so the
+    root's own child list stays empty; the oracle rebuilds it from the
+    parent links, and writes upstream's corner pieces as part of the left
+    and right trims (a mapping, `ARCHITECTURE.md`, *Trims*). Upstream's
+    maximal-spaces search ignores trims (it throws, or finds no plan):
+    with unlimited stages and no minimum offcut width, the oracle and
+    the port both solve on the panels without their trims, shift the
+    plan back and cut every trim off first (owner's decision,
+    `SCOPE.md`). The golden files say so in `oracle.trims`, and their
+    upstream `width`/`height` are then measured from the trimmed panel's
+    corner; the checker's golden test adds the left and bottom trims.
+  - **Minimum offcut width.** Upstream's own plan check also measures
+    the strips a part narrower than the minimum sits in, and throws on
+    them; its search does not avoid them. The checker measures each
+    offcut and leftover across the cut that frees it, which is what
+    upstream's search enforces (owner's decision, `SCOPE.md`). The
+    generated instances have no part narrower than their minimum, so
+    upstream never throws on them.
   - `std::sort` is unstable: upstream's order of tied candidates depends
     on its standard library. The port reproduces the libc++ the oracle is
     built with (`crates/guillotine/src/cpp_sort.rs`); an oracle built with

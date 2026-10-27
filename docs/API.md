@@ -133,9 +133,9 @@ whole plan, counting repeated patterns):
 |---|---|
 | `panels_used` | Panels cut. |
 | `parts_cut` | Parts cut. |
-| `panel_area` | Total area of the panels used, mm². |
+| `panel_area` | Total area of the panels used, inside their trims (no part can be in a trim), mm². |
 | `part_area` | Total area of the parts cut, mm². |
-| `leftover_area` | Area of the reusable leftover of the last panel, mm². |
+| `leftover_area` | Area of the reusable leftover of the last panel, inside its trims, mm². |
 | `waste_area` | Offcuts plus material removed by the saw, mm². |
 | `waste_fraction` | `waste_area` as a fraction (0–1) of the panel area without the leftover. |
 | `total_value` | Total value of the parts cut (part area in mm² unless values were given). |

@@ -9,10 +9,12 @@ test("every input has a help button with the short help first and More for the f
   const help = fieldsMd();
   await page.goto("/#/");
   // Show every field: the Value column needs the goal "Best use of the panels
-  // I have", the Cost column two panel sizes, the rest the collapsed settings.
+  // I have", the Cost column two panel sizes, the rest the collapsed settings
+  // and the first panel's trims.
   await page.locator("#objective").selectOption("knapsack");
   await page.getByRole("button", { name: "+ Add panel size" }).click();
   await page.locator("summary", { hasText: "More settings" }).click();
+  await page.locator("details.trims > summary").first().click();
 
   const text = (el: Element) => el.textContent!.replace(/\s+/g, " ").trim();
   const buttons = page.locator("button.help-btn");
@@ -22,6 +24,7 @@ test("every input has a help button with the short help first and More for the f
     const button = buttons.nth(i);
     const id = (await button.getAttribute("aria-controls"))!;
     if (!id.startsWith("help-")) continue; // not a field's help (the cut order's)
+    if (/-\d+$/.test(id)) continue; // the same field for another panel (its trims)
     const key = id.replace(/^help-/, "").replace("-", ".");
     const expected = help.get(key);
     expect(expected, `FIELDS.md has help for ${key}`).toBeDefined();
