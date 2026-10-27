@@ -463,6 +463,11 @@ current cut uses the accent.
   screens** (`pointer: coarse` or narrower than 1100 px). Table cells
   are 30 / 40 px. The (?) buttons are 18 px but have a 42 px invisible
   hit area.
+- **Phones (640 px or narrower)** are not a designed layout, but the
+  page never scrolls sideways: the parts and panels tables shrink to the
+  screen (headers wrap, columns share the width, Name gets 30 %), the
+  side gutters are 16 px, and a column's help popover spans the table
+  instead of its column.
 
 ### 4.4 Components
 
