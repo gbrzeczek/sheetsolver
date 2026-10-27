@@ -44,12 +44,15 @@ test.describe("at the desk", () => {
   });
 
   test("Find plan again stops the search it replaces", async ({ page }) => {
-    await enterJob(page, [{ name: "Side", length: "720", width: "560", quantity: "2" }], { length: "2440", width: "1220" }, "1");
-    await page.locator("#time-limit").fill("60");
+    // Enough different parts that the search is still going when it is
+    // replaced: a small job ends on its own first, and is then not stopped.
+    const parts = Array.from({ length: 12 }, (_, i) => ({ length: String(300 + 37 * i), width: String(150 + 23 * i), quantity: "3" }));
+    await enterJob(page, parts, { length: "2440", width: "1220" }, "60");
     await findPlan(page);
-    await expect(page.locator(".headline")).toHaveText("All 2 parts fit", { timeout: 20_000 });
+    await expect(page.locator(".headline")).toHaveText(/parts fit/, { timeout: 20_000 });
     const first = jobId(page);
-    await page.locator("#part-0-quantity").fill("3");
+    expect((await (await page.request.get(`/jobs/${first}`)).json()).state).toBe("running");
+    await page.locator("#part-0-quantity").fill("4");
     await page.getByRole("button", { name: "Find plan again" }).click();
     await expect.poll(() => jobId(page)).not.toBe(first);
     // Unseen, it would hold a solver and one of this visitor's jobs.
