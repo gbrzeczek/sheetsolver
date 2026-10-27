@@ -455,10 +455,198 @@ Exit criteria:
   ones (`web/DESIGN.md` §5) has a help button. UI wording matches
   `FIELDS.md`.
 
+## Stages 8–16 (planned 2026-10-27)
+
+The owner moved every Later item to In, plus grouping identical panels
+and the non-guillotine solver (`SCOPE.md`, decisions log, 2026-10-27).
+Stage 8 comes first so the new fields land in a calmer layout instead
+of adding to the clutter. Stages 9–13 each run the whole pipeline for
+one feature, in this order:
+
+1. `FIELDS.md`: label, help text (short and full, Stage 8), unit,
+   default, bounds, upstream mapping. Written first.
+2. `model`: the field, validation, JSON; `422` paths.
+3. `checker`: the new rule, written independently of the solver.
+4. `tools/oracle` and golden data: upstream instances that use the
+   feature, converted into `data/instances/`.
+5. The solver: port upstream's handling, same decisions.
+6. API and `openapi.json`; the UI (input, drawing, print).
+
+Exit criteria shared by Stages 9–13 (each stage adds its own):
+- Every plan in the tests passes the checker, and the checker rejects a
+  hand-made plan that breaks the new rule.
+- Differential tests: results identical to the oracle on every golden
+  instance that uses the feature, and still on all the old ones.
+- The field's (?) help in the UI matches `FIELDS.md`; an e2e test
+  enters the field, solves and sees it honoured in the plan.
+- `cargo fmt --check`, clippy, `cargo test --workspace`, `npm run
+  check`, `npm test` and `npm run e2e` pass.
+
+## Stage 8 — Less on screen at once
+
+Goal: each screen shows what most jobs need; the rest is one tap away.
+Today the setup and the plan show nearly everything flat.
+
+Deliverables:
+- `web/DESIGN.md` gets a principle and a budget: per screen, what is
+  always visible, what sits in a collapsed section whose summary line
+  shows its current values ("3 stages · trimming allowed · 10 s"), and
+  what appears only when it matters. Measured before and after: visible
+  controls and lines of prose per screen at 1440, 820 and 360 px.
+- Two levels of help. `FIELDS.md` gains a **Short help** column: one
+  sentence, at most ~15 words, shown first when (?) is tapped, with
+  *More* for the full text, which stays as it is. Both are exact copies
+  (`openapi.json` carries both; the build fails if either is missing).
+  The `FIELDS.md` rule "the help text is the exact copy shown" is
+  rewritten to match.
+- Job setup: always visible are the parts, the panels, the goal, the
+  kerf (it defaults to 0, so it must be seen) and *Find cutting plan*.
+  Columns appear when they mean something: *Cost* only with two or more
+  panel sizes, *Value* only with "Best use" (as now). Every other
+  setting, and each one Stages 9–16 add, goes in a collapsed section
+  with a summary.
+- Cutting plan: the headline and the drawing first; the figures, the
+  status details, the plans found and the parts checklist each in a
+  section that can be collapsed, open or closed by default as the
+  budget decides.
+- The phone layout (360 px) is checked again under the new rules.
+
+Exit criteria:
+- The budget in `DESIGN.md` holds on every screen, at every width;
+  screenshots in `web/mockups/` updated.
+- e2e: every collapsed section opens, its summary reflects the values
+  inside, and every field is still reachable with its short and full
+  help.
+
+## Stage 9 — Trims and minimum offcut width
+
+Goal: cut off damaged factory edges, and never leave an offcut too
+narrow to handle.
+
+Deliverables: per-panel trims (left, right, bottom, top; soft or hard)
+and the minimum offcut width (upstream `*_trim`, `TrimType`,
+`minimum_waste_length`), through the whole pipeline. The drawing shows
+trimmed edges; the cut order starts with the trim cuts. Wording of
+soft/hard for woodworkers is settled in `FIELDS.md` first (hard: the
+trim is a real cut, and offcut widths are measured from it).
+
+Exit criteria: shared ones, plus a hard trim and a soft trim that give
+different plans under a minimum offcut width.
+
+## Stage 10 — Defects
+
+Goal: mark knots, chips or stains on a panel so no part covers them.
+
+Deliverables: defects per panel (position and size) and *cut through
+defects* (upstream `defects`, `cut_through_defects`). The UI marks a
+defect by typing its position and size from the panel's corner, in a
+small editor per panel row, and draws defects hatched on the plan.
+(Marking by tapping on the drawing is a possible later addition.)
+
+Exit criteria: shared ones, plus a defect that changes the plan, and a
+plan that cuts through a defect only when allowed.
+
+## Stage 11 — Strip limits
+
+Goal: plans that fit the machine: a beam saw's maximum and minimum strip
+width, or a limit on the number of first and second cuts.
+
+Deliverables: minimum and maximum distance between consecutive first
+cuts and between second cuts, and the maximum number of each (upstream
+`minimum_distance_*_cuts`, `maximum_distance_*_cuts`,
+`maximum_number_*_cuts`). All advanced: collapsed in the UI, and only
+for 2 and 3 stages if upstream restricts them so.
+
+Exit criteria: shared ones.
+
+## Stage 12 — Two more goals
+
+Goal: "Keep the leftover in one piece" and "Choose the cheapest panel
+sizes".
+
+Deliverables: the objectives `bin_packing_with_leftovers` and
+`variable_sized_bin_packing` (upstream `BinPackingWithLeftovers`,
+`VariableSizedBinPacking`): model, the algorithms upstream selects for
+them (within scope), headline and figures for each.
+
+Exit criteria: shared ones, plus golden instances for both goals.
+
+## Stage 13 — Identical panels grouped
+
+Goal: a plan with the same layout on several panels says "×3" once,
+instead of drawing it three times.
+
+Deliverables: port `group_identical_bins` (`post_process.cpp`). The
+plan JSON groups panels with a count (a deliberate change to
+`ARCHITECTURE.md` and `API.md`, with the checker reading the new
+shape); the UI, the cut order and the print pages show each layout once
+with its count; the parts checklist still counts every part.
+
+Exit criteria: shared ones (the oracle's grouping matches), plus the
+golden plans whose panels repeat show grouped.
+
+## Stage 14 — Any layout: model, checker, oracle
+
+Goal: everything the non-guillotine solver needs before its search,
+following *Through cuts or any layout* in `SCOPE.md`.
+
+Deliverables:
+- The setting in `FIELDS.md` first: **Cuts**, options **Through cuts
+  only** (default; panel saw, table saw, track saw) and **Any layout**
+  (CNC router), with help that says the second gives plans a panel saw
+  cannot cut.
+- `model`: the setting; `422` for settings that do not apply to any
+  layout (stages, trimming, first cuts, minimum offcut width, strip
+  limits, cut through defects); the plan says which kind it is, and an
+  any-layout plan lists part positions per panel (`ARCHITECTURE.md`,
+  `API.md`).
+- The kerf by enlarging parts and panels, the trims by shrinking the
+  panel, defects adjusted (`SCOPE.md`'s table); the defect narrower
+  than the kerf settled and written down.
+- `checker`: the any-layout rules, written independently.
+- `tools/oracle` builds upstream's `rectangle` too, and golden data
+  from `data/rectangle/` plus our own instances with kerf, trims and
+  defects, converted the same way on both sides.
+- `docs/UPSTREAM.md`: the map of `src/rectangle/` files to port.
+
+Exit criteria: every golden any-layout plan from the oracle passes the
+checker; hand-made infeasible plans (overlap, gap under the kerf, on a
+defect, inside a trim) are each rejected.
+
+## Stage 15 — Any layout: search
+
+Goal: the port of upstream's non-guillotine search.
+
+Deliverables: the branching scheme (`rectangle/tree_search.cpp`) on the
+existing beam search, the maximal-spaces search, the sequential
+heuristics for several panels (sharing Stage 5's drivers), automatic
+selection among the in-scope algorithms (`SCOPE.md`, *Algorithms
+(non-guillotine)*), and `group_identical_bins` for these plans.
+Benchmarks for node expansion as in Stage 3.
+
+Exit criteria: identical results to the oracle (run with the same
+algorithm forced) on every golden instance; the gap to upstream's own
+automatic choice measured and recorded in the decisions log; every plan
+passes the checker.
+
+## Stage 16 — Any layout: API and UI
+
+Goal: the setting in the product.
+
+Deliverables: the API serves both kinds of plan; the UI's **Cuts**
+setting hides what does not apply and keeps its values for switching
+back; the drawing, figures, print pages and the parts checklist work
+without a cut order (positions from the panel edges, unused area
+shown). `web/DESIGN.md` updated first.
+
+Exit criteria: e2e on both settings, desktop, tablet and phone: enter
+→ solve → a plan the checker passed, printed; switching the setting
+back restores the hidden values.
+
 ## Later (only after scope decisions)
 
-- Remaining guillotine features marked Open in `SCOPE.md`.
-- General hypergraph tree search, if benchmarks show it helps (Open in
-  `SCOPE.md`).
-- Non-guillotine `rectangle` solver (repeat Stages 3–6 for it).
+- Remaining Open items in `SCOPE.md`: instance reduction, the other
+  post-processing steps, the general hypergraph tree search (if
+  benchmarks show it helps), edge banding, grain matching across parts,
+  labels.
 - Persistence, auth, exports.

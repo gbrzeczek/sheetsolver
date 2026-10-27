@@ -18,8 +18,9 @@ Rules:
   this page and with what the server accepts.
 - Help text says what the field means, in woodworking terms, what it does
   to the plan, and a typical value. No solver jargon.
-- Only fields marked **In** in `SCOPE.md` are listed under "Fields". Later
-  fields are listed at the end without help text yet.
+- Only fields that are implemented are listed under "Fields". Fields
+  that are In but not yet built are listed at the end, under *Planned
+  fields*, without help text yet; their stage writes it here first.
 - Help text describes upstream behaviour as confirmed against upstream's
   code and the oracle's solutions (Stage 1). The precise rules are in
   `crates/checker`.
@@ -110,7 +111,7 @@ field type's `oneOf`, with this name as its `title`.
 | `first_cuts` | `along_length` | Along the length |
 | `first_cuts` | `across_length` | Across the length |
 
-## Later fields (help text to be written when they move to In)
+## Planned fields (In since 2026-10-27; help text is written in their stage, `STAGES.md` 9–16)
 
 | Field | Upstream |
 |---|---|
@@ -121,3 +122,4 @@ field type's `oneOf`, with this name as its `title`.
 | Min/max strip width, max number of strips | `minimum_distance_*_cuts`, `maximum_distance_*_cuts`, `maximum_number_*_cuts` |
 | Keep the leftover in one piece | objective `bin_packing_with_leftovers` |
 | Choose the cheapest panel sizes | objective `variable_sized_bin_packing` |
+| Cuts: through cuts only / any layout | the solver: `rectangleguillotine` or `rectangle` |

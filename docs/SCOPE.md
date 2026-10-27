@@ -16,7 +16,7 @@ Upstream names are given so the port can be traced back.
 | Feature | Upstream | Status |
 |---|---|---|
 | 2D guillotine cutting | `rectangleguillotine` | **In** |
-| 2D non-guillotine packing | `rectangle` | Open (likely a later stage) |
+| 2D non-guillotine packing | `rectangle` | **In** (Stages 14–16), behind one setting; see *Through cuts or any layout* below |
 | 1D, 3D box, box stacks, irregular | `onedimensional`, `box`, `boxstacks`, `irregular` | Out |
 
 ## Algorithms (guillotine)
@@ -25,7 +25,8 @@ Upstream names are given so the port can be traced back.
 |---|---|---|
 | Iterative beam search over the guillotine branching scheme | `tree_search.cpp` + `treesearchsolver::iterative_beam_search_2` | **In** |
 | Instance reduction / preprocessing | `reduction.cpp` | Open |
-| Post-processing: minimize stages, group identical bins, sort subplates | `post_process.cpp` | Open |
+| Post-processing: group identical bins | `post_process.cpp` `group_identical_bins` | **In** (Stage 13) |
+| Post-processing: minimize stages (as a separate step), sort subplates | `post_process.cpp` | Open |
 | Sequential single knapsack and sequential value correction (multi-panel heuristics: fill one panel at a time with a single-panel search) | `optimize.cpp` `optimize_sequential_single_knapsack`, `algorithms/sequential_value_correction.hpp` | **In** (Stage 5) — upstream's route to unlimited stages on several panels |
 | Tree search, maximal spaces (single panel, unlimited stages) | `tree_search_maximal_spaces.cpp` | **In** (Stage 5) |
 | Column generation (strips and general) | `column_generation*.cpp` | Out |
@@ -43,8 +44,8 @@ Upstream names are given so the port can be traced back.
 | Bin packing (cut all parts from as few panels as possible) | `BinPacking` | **In** |
 | Knapsack (choose which parts to cut to maximize total value; value defaults to part area) | `Knapsack` | **In** |
 | Open dimension X / Y (one panel side unlimited, minimize the used length) | `OpenDimensionX`, `OpenDimensionY` | **In** |
-| Bin packing with leftovers | `BinPackingWithLeftovers` | Later |
-| Variable-sized bin packing | `VariableSizedBinPacking` | Later |
+| Bin packing with leftovers | `BinPackingWithLeftovers` | **In** (Stage 12) |
+| Variable-sized bin packing | `VariableSizedBinPacking` | **In** (Stage 12) |
 | Bin packing with cutting cost, feasibility, open dimension XY | | Out |
 
 ## Instance features (guillotine)
@@ -60,15 +61,57 @@ Upstream names are given so the port can be traced back.
 | Cut type (exact, non-exact, homogenous) | `CutType` | **In** |
 | Cut type roadef2018 | `CutType::Roadef2018` | Out |
 | First cuts direction: either (default), along the length, across the length | `first_stage_orientation` (`any`, `horizontal`, `vertical`) | **In** |
-| Trims (left/right/bottom/top, soft/hard) | `*_trim`, `TrimType` | Later — first after v1; damaged factory edges are common in wood |
-| Minimum waste length | `minimum_waste_length` | Later |
-| Defects | `defects` | Later |
-| Cut through defects | `cut_through_defects` | Later (with defects) |
-| Min/max distance between 1st/2nd stage cuts | `*_distance_*_cuts` | Later |
-| Max number of 1st/2nd stage cuts | `maximum_number_*_cuts` | Later |
+| Trims (left/right/bottom/top, soft/hard) | `*_trim`, `TrimType` | **In** (Stage 9); damaged factory edges are common in wood |
+| Minimum waste length | `minimum_waste_length` | **In** (Stage 9) |
+| Defects | `defects` | **In** (Stage 10) |
+| Cut through defects | `cut_through_defects` | **In** (Stage 10) |
+| Min/max distance between 1st/2nd stage cuts | `*_distance_*_cuts` | **In** (Stage 11) |
+| Max number of 1st/2nd stage cuts | `maximum_number_*_cuts` | **In** (Stage 11) |
 | Stacks / item ordering constraints | `stack_id` | Out |
 | Resources | `resources` | Out |
 | Cutting costs, waste cost | `cutting_costs`, `waste_cost` | Out |
+
+## Algorithms (non-guillotine)
+
+Upstream: `src/rectangle/`. The same rule as for guillotine: port the
+tree searches and the heuristics that drive them; leave out everything
+that needs an LP solver or only proves bounds.
+
+| Feature | Upstream | Status |
+|---|---|---|
+| Iterative beam search over the non-guillotine branching scheme | `rectangle/tree_search.cpp` | **In** (Stage 15) |
+| Tree search, maximal spaces | `rectangle/tree_search_maximal_spaces.cpp`, `block.cpp` | **In** (Stage 15) |
+| Sequential single knapsack, sequential value correction (several panels) | `rectangle/optimize.cpp` | **In** (Stage 15), sharing Stage 5's drivers |
+| Automatic algorithm selection for the in-scope algorithms | `rectangle/optimize.cpp` `optimize()` | **In** (Stage 15) |
+| Group identical bins | `rectangle/post_process.cpp` | **In** (Stage 15, with Stage 13's design) |
+| Instance reduction | `rectangle/reduction.cpp` | Open, as for guillotine |
+| Column generation, Benders decomposition (and its contiguity variant), bar relaxation, dichotomic search | `optimize.cpp`, `benders_decomposition*.cpp`, `bar_relaxation.cpp` | Out (LP solvers, or special cases) |
+| Bounds: trivial, one-dimensional, dual feasible functions, conservative scales | `optimize.cpp`, `dual_feasible_functions.cpp`, `conservative_scales.cpp` | Out, except what Stage 5 ported for guillotine, if it applies unchanged |
+| Unloading constraints and groups, weights and axle loads, eligibility, fixed items, resources, minimum copies | `rectangle/instance.hpp` | Out (truck loading, not woodworking) |
+
+## Through cuts or any layout
+
+One setting chooses the solver: **through cuts** (guillotine, the
+default: every cut runs from edge to edge, as on a panel saw, table saw
+or track saw) or **any layout** (non-guillotine: parts may interlock, so
+the plan needs a CNC router or plunge cuts). Everything else stays one
+job model. The two upstream solvers differ in what they accept and what
+they return; this table is the contract for Stages 14–16.
+
+| | Through cuts (`rectangleguillotine`) | Any layout (`rectangle`) | What sheetsolver does with any layout |
+|---|---|---|---|
+| Parts, panels, quantities, value, cost, grain | yes | yes | Same fields, same meaning |
+| Goals (all four, plus the two of Stage 12) | yes | yes | Same; help text notes any difference in what "leftover" means (upstream `LeftoverMode::Area`) |
+| Kerf | `cut_thickness` | **none** | Enlarge every part and the panel by the kerf, solve, report true sizes; the checker requires a kerf-wide gap between parts. Defects are adjusted to match; a defect narrower than the kerf is a case to settle in Stage 14 |
+| Stages, last-stage trimming, first cuts | yes | no (no stages, no cuts) | Hidden in the UI; the API rejects them with this layout (`422`), the UI keeps their values for switching back |
+| Trims | yes, soft or hard | no | Shrink the panel by the trims and shift the plan back; soft/hard only matters with the minimum offcut width, so it is hidden |
+| Minimum offcut width, strip limits | yes | no | Hidden; rejected by the API |
+| Defects | yes | yes | Same field |
+| Cut through defects | yes | no (there are no cuts) | Hidden; rejected by the API |
+| Plan returned | a cut tree: numbered cuts, stages, offcuts | part positions on each panel | The plan says which it is. Any layout: no cut order, cut list or stage figures; the drawing gives each part's position from the panel edges; unused area is shown, not offcut pieces |
+| Feasibility checker | guillotine cuts, kerf, trims, defects | — | Its own rules: inside the panel and trims, no overlap, kerf-wide gaps, defects avoided, copies |
+| Algorithm selection | Stage 5 | upstream sometimes adds Out algorithms (column generation, Benders, bar relaxation) | Pick only from the in-scope ones; the oracle runs with the same choice forced, as in Stage 5, and the gap is measured |
+| Identical panels grouped | Stage 13 | `group_identical_bins` | Same presentation for both |
 
 ## Product features
 
@@ -79,7 +122,7 @@ Upstream names are given so the port can be traced back.
 | Developer CLI (solve a JSON instance, diff against oracle) | **In** |
 | Web UI (instance editor, solution viewer) | **In**, after the API stage |
 | Precise help text for every UI field (from `FIELDS.md`) | **In** |
-| Edge banding allowance, grain matching across parts, labels | Open |
+| Edge banding allowance, grain matching across parts, labels | Open (deferred by the owner, 2026-10-27) |
 | Persistence of jobs/instances (database) | Open |
 | Authentication / multi-tenant | Open |
 | Printing a plan (print stylesheet: one panel per page with its cut order and parts) | **In** (2026-10-25) |
@@ -148,3 +191,15 @@ Record every scope decision here with a date, so agents can see why.
   a "New job" button; printing is In as a print stylesheet (one panel
   per page), file exports stay Open; shown sizes group thousands with a
   narrow space (1 040.5); turned parts are labelled as drawn.
+- 2026-10-27 — Owner: every Later item moves to In (trims, minimum
+  offcut width, defects, cutting through defects, strip limits, the
+  leftover and cheapest-panel-sizes goals), and so do grouping identical
+  panels and the non-guillotine solver. The solver is one setting
+  (through cuts / any layout); its differences from guillotine are
+  listed in *Through cuts or any layout* and handled behind that
+  setting. Edge banding, grain matching across parts and labels are
+  deferred (stay Open), as are the remaining Open items. Order and exit
+  criteria: `STAGES.md`, Stages 8–16.
+- 2026-10-27 — Owner: the UI shows too much at once. Stage 8 rethinks
+  what is visible before any new field lands; help text stays complete
+  in `FIELDS.md` but need not all be shown at once.
