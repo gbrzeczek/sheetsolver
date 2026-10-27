@@ -130,6 +130,8 @@ class Session {
   #show(job: JobStatus): void {
     if (this.jobId !== job.id) {
       this.#stopFollowing();
+      // The previous job's plan must not stand in for this job's, which may have none.
+      this.best = null;
       this.history = [];
     }
     this.jobId = job.id;

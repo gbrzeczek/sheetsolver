@@ -109,3 +109,16 @@ test("a part larger than every panel gives the no-plan state with its cause", as
   await expect(page.getByRole("heading", { name: "Not every part fits" })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/“Worktop”, 2\u202f600 × 600 mm/)).toBeVisible();
 });
+
+test("a job without a plan does not show the previous job's plan", async ({ page }) => {
+  await enterJob(page, [{ name: "Shelf", length: "500", width: "400" }], { length: "2440", width: "1220" }, "1");
+  await findPlan(page);
+  await expect(page.locator(".headline")).toHaveText("The part fits", { timeout: 20_000 });
+
+  // The next job, from the editor without a reload: the session still holds the first plan.
+  await page.goto("/#/");
+  await page.locator("#part-0-length").fill("3000");
+  await findPlan(page);
+  await expect(page.getByRole("heading", { name: "Not every part fits" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator(".headline")).toBeHidden();
+});
