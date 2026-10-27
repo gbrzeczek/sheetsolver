@@ -3,10 +3,11 @@
 //! give upstream's own selection's plan (`*.auto.json`), and every plan
 //! must pass the checker (see `docs/TESTING.md`).
 //!
-//! Queue size 2048 and the open-dimension maximal-spaces searches take a
-//! while in debug builds: the latter only run with `--release` (where
-//! `cargo run --release -p cli -- diff-oracle` runs everything too). Set
-//! `GOLDEN_FILTER` to a substring of the file names to run only some.
+//! Every golden file runs, in debug builds too: the workspace optimises
+//! the solver crates there (root `Cargo.toml`) and keeps overflow checks,
+//! which the open-dimension searches, adding lengths along one panel,
+//! need most. The whole set takes a few minutes; set `GOLDEN_FILTER` to a
+//! substring of the file names to run only some.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -52,15 +53,6 @@ fn check(what: &str) {
         let oracle = golden["oracle"].clone();
         let mut expected: Solution = serde_json::from_value(golden).unwrap();
         complete_open_dimension(&instance, &mut expected);
-
-        let slow = instance.objective.is_open_dimension()
-            && matches!(
-                oracle["algorithm"].as_str(),
-                Some("maximal_spaces" | "auto")
-            );
-        if slow && cfg!(debug_assertions) {
-            continue;
-        }
 
         let mut params = SolveParams::default();
         let algorithm = match oracle["algorithm"].as_str().unwrap() {
@@ -173,8 +165,8 @@ fn automatic_selection() {
 }
 
 /// Every open-dimension golden plan, completed as the port completes its
-/// own, passes the checker. This needs no solving, so it also covers the
-/// open-dimension searches that only run in release builds above.
+/// own, passes the checker. This needs no solving: it checks the golden
+/// plans themselves, apart from the searches above.
 #[test]
 fn completed_open_dimension_plans_pass_the_checker() {
     let mut checked = 0;
