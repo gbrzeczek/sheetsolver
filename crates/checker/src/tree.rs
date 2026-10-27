@@ -3,7 +3,7 @@
 //! kerf apart, parts have their part's size and stay out of the trims, and
 //! offcuts are at least the minimum offcut width.
 
-use model::{CutDirection, Instance, Length, Node, NodeKind, Panel, Pattern};
+use model::{CutDirection, Instance, Length, Node, NodeKind, Panel, Pattern, Stages};
 
 use crate::violation::{Problem, Violation};
 
@@ -46,7 +46,10 @@ pub(crate) fn check_pattern(
     // A panel with trims cut off first is cut into those trims and the
     // trimmed panel before anything else; the trimmed panel is then cut as
     // a panel would be.
-    let expected_trims = panel.map(trims_cut_off_first).unwrap_or_default();
+    let every_trim_cut_first = every_trim_cut_off_first(instance);
+    let expected_trims = panel
+        .map(|panel| trims_cut_off_first(panel, every_trim_cut_first))
+        .unwrap_or_default();
     if expected_trims.is_empty() {
         checker.check_children(root, pattern.first_cuts, "", &mut report);
         return;
@@ -62,7 +65,7 @@ pub(crate) fn check_pattern(
                 && *rect == rectangle(node)
                 && node.children.is_empty()
         });
-    let inner = panel.map(trimmed_panel);
+    let inner = panel.map(|panel| trimmed_panel(panel, every_trim_cut_first));
     let trimmed_matches = trimmed.is_some_and(|node| {
         node.kind == NodeKind::Piece && node.stage == 0 && Some(rectangle(node)) == inner
     });

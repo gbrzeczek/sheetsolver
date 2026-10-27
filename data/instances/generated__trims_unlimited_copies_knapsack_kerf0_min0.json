@@ -1,0 +1,44 @@
+{
+  "objective": "knapsack",
+  "saw": {
+    "kerf": 0,
+    "stages": "unlimited",
+    "cut_type": "non_exact",
+    "first_cuts": "either",
+    "minimum_offcut_width": 0
+  },
+  "panels": [
+    {
+      "id": "Offcut",
+      "length": 300,
+      "width": 200,
+      "quantity": 1,
+      "trims": {
+        "bottom": {
+          "width": 25,
+          "cut": "left_on_offcut"
+        },
+        "top": {
+          "width": 3,
+          "cut": "left_on_offcut"
+        }
+      }
+    }
+  ],
+  "parts": [
+    {
+      "id": "Part 1",
+      "length": 145,
+      "width": 60,
+      "quantity": 40,
+      "grain": true
+    },
+    {
+      "id": "Part 2",
+      "length": 75,
+      "width": 60,
+      "quantity": 40,
+      "grain": true
+    }
+  ]
+}

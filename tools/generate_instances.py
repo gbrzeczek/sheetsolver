@@ -25,6 +25,16 @@ panels (the sequential heuristics, with few or many parts per panel), and
 many copies of few parts on small panels (the hypergraph search, which
 upstream only picks for panels of at most 0.1 m²).
 
+A fourth set (`generated__trims_*`) trims the panels' edges, each edge
+cut off first or left on the offcut, with and without a minimum offcut
+width: every objective with 2 and 3 stages and each cut type, several
+panel sizes with their own trims, unlimited stages (solved on the trimmed
+panel without a minimum offcut width, by the tree search with one), and
+one job twice, every edge cut off first and every edge left on the
+offcut, which give different plans under a minimum offcut width (the
+Stage 9 exit criterion). Parts are never narrower than the minimum
+offcut width: upstream throws on such plans (docs/SCOPE.md).
+
 Output is deterministic (fixed seed), so regenerating never changes
 existing files unless this script changes.
 """
@@ -239,6 +249,105 @@ def unlimited_instances(rng):
             "parts": items}
 
 
+# The trims set.
+TRIMS_SEED = 20261028
+TRIM_CUTS = ["cut_off_first", "left_on_offcut"]
+MINIMUM_OFFCUT_WIDTHS = [0, 20, 0, 40]
+
+
+def random_trims(rng, all_edges=False):
+    """Trims on some or all edges of a panel, 3 to 25 mm, each edge cut off
+    first or left on the offcut (sometimes left to its default)."""
+    trims = {}
+    for edge in ("left", "right", "bottom", "top"):
+        if all_edges or rng.random() < 0.7:
+            trim = {"width": rng.choice([3, 5, 8, 10, 12.5, 15, 25])}
+            if rng.random() < 0.75:
+                trim["cut"] = rng.choice(TRIM_CUTS)
+            trims[edge] = trim
+    return trims or {"left": {"width": 10}}
+
+
+def trims_instances(rng):
+    """Yields (name, instance) for the trims set."""
+    count = 0
+    for objective in OBJECTIVES:
+        for stages in [2, 3]:
+            for cut_type in CUT_TYPES:
+                minimum = MINIMUM_OFFCUT_WIDTHS[count % len(MINIMUM_OFFCUT_WIDTHS)]
+                kerf = KERFS[(count // 2) % len(KERFS)]
+                first_cuts = FIRST_CUTS[count % len(FIRST_CUTS)]
+                data = instance(rng, objective, stages, cut_type, kerf, first_cuts)
+                for panel in data["panels"]:
+                    panel["trims"] = random_trims(rng)
+                data["saw"]["minimum_offcut_width"] = minimum
+                kerf_name = str(kerf).replace(".", "_")
+                yield (f"{objective}_{stages}_{cut_type}_kerf{kerf_name}_min{minimum}", data)
+                count += 1
+
+    for objective in MULTI_PANEL_OBJECTIVES:
+        for stages in [2, 3]:
+            for first_cuts in FIRST_CUTS:
+                minimum = MINIMUM_OFFCUT_WIDTHS[count % len(MINIMUM_OFFCUT_WIDTHS)]
+                kerf = KERFS[count % len(KERFS)]
+                cut_type = CUT_TYPES[count % len(CUT_TYPES)]
+                data = multi_panel_instance(rng, objective, stages, cut_type, kerf, first_cuts)
+                for panel in data["panels"]:
+                    panel["trims"] = random_trims(rng)
+                data["saw"]["minimum_offcut_width"] = minimum
+                yield (f"panels_{objective}_{stages}_{first_cuts}_min{minimum}", data)
+                count += 1
+
+    # Unlimited stages: one panel (maximal spaces, or the tree search with
+    # a minimum offcut width), several panels (the sequential heuristics),
+    # and many copies on a small panel (the hypergraph search).
+    for minimum in [0, 20]:
+        for kerf in KERFS:
+            kerf_name = str(kerf).replace(".", "_")
+            suffix = f"kerf{kerf_name}_min{minimum}"
+            saw = {"kerf": kerf, "stages": "unlimited", "cut_type": "non_exact",
+                   "first_cuts": "either", "minimum_offcut_width": minimum}
+            length, width = rng.choice(BOARDS)
+            items = fill_to(rng, unlimited_parts(rng, rng.randint(5, 9), [1, 1, 2, 3]),
+                            length * width, 0.7)
+            yield f"unlimited_single_bin_packing_{suffix}", {
+                "objective": "bin_packing", "saw": dict(saw),
+                "panels": [{"id": "Panel 1", "length": length, "width": width,
+                            "quantity": 1, "trims": random_trims(rng)}],
+                "parts": items}
+            items = unlimited_parts(rng, rng.randint(6, 10), [1, 2, 3, 4])
+            yield f"unlimited_single_knapsack_{suffix}", {
+                "objective": "knapsack", "saw": dict(saw),
+                "panels": [{"id": "Panel 1", "length": length, "width": width,
+                            "quantity": 1, "trims": random_trims(rng)}],
+                "parts": items}
+            items = unlimited_parts(rng, rng.randint(5, 8), [2, 3, 4])
+            yield f"unlimited_panels_bin_packing_{suffix}", {
+                "objective": "bin_packing", "saw": dict(saw),
+                "panels": [{"id": "Panel 1", "length": length, "width": width,
+                            "trims": random_trims(rng)}],
+                "parts": items}
+            small_length, small_width = rng.choice(SMALL_BOARDS)
+            items = unlimited_parts(rng, rng.randint(2, 3), [40, 60],
+                                    max_length=small_length // 2, max_width=small_width // 2)
+            yield f"unlimited_copies_knapsack_{suffix}", {
+                "objective": "knapsack", "saw": dict(saw),
+                "panels": [{"id": "Offcut", "length": small_length, "width": small_width,
+                            "quantity": 1, "trims": random_trims(rng)}],
+                "parts": items}
+
+    # The same job with every edge cut off first, then left on the offcut.
+    items = parts(rng, 10)
+    for cut in TRIM_CUTS:
+        yield f"every_edge_{cut}", {
+            "objective": "bin_packing",
+            "saw": {"kerf": 3.2, "stages": 3, "cut_type": "non_exact",
+                    "first_cuts": "across_length", "minimum_offcut_width": 30},
+            "panels": [{"id": "Panel 1", "length": 2500, "width": 1250, "trims": {
+                edge: {"width": 10, "cut": cut} for edge in ("left", "right", "bottom", "top")}}],
+            "parts": items}
+
+
 def main():
     if len(sys.argv) != 2:
         sys.exit(__doc__)
@@ -278,8 +387,13 @@ def main():
     for name, data in unlimited_instances(rng):
         (out / f"generated__unlimited_{name}.json").write_text(json.dumps(data, indent=2) + "\n")
         unlimited_count += 1
+    rng = random.Random(TRIMS_SEED)
+    trims_count = 0
+    for name, data in trims_instances(rng):
+        (out / f"generated__trims_{name}.json").write_text(json.dumps(data, indent=2) + "\n")
+        trims_count += 1
     print(f"generated {count} + {multi_count} with several panel sizes"
-          f" + {unlimited_count} with unlimited stages")
+          f" + {unlimited_count} with unlimited stages + {trims_count} with trims")
 
 
 if __name__ == "__main__":

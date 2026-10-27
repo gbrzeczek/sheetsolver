@@ -58,8 +58,6 @@ UNSUPPORTED_PARAMETER_DEFAULTS = {
     "min2cut": 0,
     "maximum_distance_2_cuts": -1,
     "max2cut": -1,
-    "minimum_waste_length": 0,
-    "min_waste": 0,
     "maximum_number_1_cuts": -1,
     "maximum_number_2_cuts": -1,
     "cut_through_defects": None,  # only meaningful with defects
@@ -101,7 +99,8 @@ def convert_parameters(params):
         raise Skip(f"first_stage_orientation {orientation}")
 
     known = {"objective", "number_of_stages", "cut_type",
-             "first_stage_orientation", "cut_thickness"}
+             "first_stage_orientation", "cut_thickness",
+             "minimum_waste_length", "min_waste"}
     for key, value in params.items():
         if key in known:
             continue
@@ -113,21 +112,53 @@ def convert_parameters(params):
                 continue
         raise Skip(f"parameter {key}={value}")
 
-    return IN_SCOPE_OBJECTIVES[objective_key], {
+    saw = {
         "kerf": int(number(params.get("cut_thickness", 0))),
         "stages": stages,
         "cut_type": CUT_TYPES[cut_type_key],
         # Always explicit: our default ("either") differs from upstream's.
         "first_cuts": FIRST_CUTS[orientation],
     }
+    minimum_waste = number(params.get("minimum_waste_length", params.get("min_waste", 0)))
+    if minimum_waste:
+        saw["minimum_offcut_width"] = minimum_waste
+    return IN_SCOPE_OBJECTIVES[objective_key], saw
 
 
-def convert_panel(index, width, height, copies, cost):
+# Upstream TrimType spellings (instance.cpp, operator>>) -> our trim cuts.
+TRIM_CUTS = {
+    "h": "cut_off_first", "hard": "cut_off_first", "0": "cut_off_first",
+    "s": "left_on_offcut", "soft": "left_on_offcut", "1": "left_on_offcut",
+}
+
+# Upstream's default trim type of each edge (instance_builder.cpp).
+DEFAULT_TRIM_CUTS = {"left": "cut_off_first", "bottom": "cut_off_first",
+                     "right": "left_on_offcut", "top": "left_on_offcut"}
+
+
+def convert_trims(get):
+    """Our "trims" from `get(edge, field)`, which returns upstream's
+    `<edge>_trim` ("width") or `<edge>_trim_type` ("type") or None. Every
+    edge with a trim gets an explicit cut, upstream's default if none."""
+    trims = {}
+    for edge in ("left", "right", "bottom", "top"):
+        width = number(get(edge, "width") or 0)
+        if not width:
+            continue
+        kind = get(edge, "type")
+        cut = DEFAULT_TRIM_CUTS[edge] if kind in (None, "") else TRIM_CUTS[str(kind).lower()]
+        trims[edge] = {"width": width, "cut": cut}
+    return trims
+
+
+def convert_panel(index, width, height, copies, cost, trims):
     panel = {"id": f"Panel {index + 1}", "length": width, "width": height}
     if copies != -1:
         panel["quantity"] = copies
     if cost is not None:
         panel["cost"] = cost
+    if trims:
+        panel["trims"] = trims
     return panel
 
 
@@ -167,15 +198,16 @@ def convert_csv_directory(directory):
 
     panels = []
     for i, row in enumerate(read_csv_rows(directory / "bins.csv")):
-        for trim in ("LEFT_TRIM", "RIGHT_TRIM", "BOTTOM_TRIM", "TOP_TRIM", "RIGHT_TRIP"):
-            if not zero(row, trim):
-                raise Skip("trims")
         if not zero(row, "COPIES_MIN"):
             raise Skip("panel minimum quantity")
+        # Upstream ignores columns it does not know, such as one file's
+        # "RIGHT_TRIP".
+        trims = convert_trims(lambda edge, field: row.get(
+            f"{edge.upper()}_TRIM" + ("_TYPE" if field == "type" else "")))
         panels.append(convert_panel(
             i, number(row["WIDTH"]), number(row["HEIGHT"]),
             number(row.get("COPIES") or 1),
-            number(row["COST"]) if row.get("COST") else None))
+            number(row["COST"]) if row.get("COST") else None, trims))
 
     parts = []
     for i, row in enumerate(read_csv_rows(directory / "items.csv")):
@@ -212,12 +244,12 @@ def convert_json_file(path):
             raise Skip("defects")
         if b.get("resources"):
             raise Skip("resources")
-        if any(b.get(t, 0) for t in ("left_trim", "right_trim", "bottom_trim", "top_trim")):
-            raise Skip("trims")
         if b.get("copies_min", 0):
             raise Skip("panel minimum quantity")
+        trims = convert_trims(lambda edge, field: b.get(
+            f"{edge}_trim" + ("_type" if field == "type" else "")))
         panels.append(convert_panel(i, b["width"], b["height"],
-                                    b.get("copies", 1), b.get("cost")))
+                                    b.get("copies", 1), b.get("cost"), trims))
 
     parts = []
     for i, t in enumerate(j["item_types"]):

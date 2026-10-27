@@ -1,0 +1,37 @@
+{
+  "objective": "bin_packing",
+  "saw": {
+    "kerf": 0,
+    "stages": 3,
+    "cut_type": "non_exact",
+    "first_cuts": "across_length"
+  },
+  "panels": [
+    {
+      "id": "Panel 1",
+      "length": 1000,
+      "width": 700,
+      "quantity": 4,
+      "trims": {
+        "left": {
+          "width": 10,
+          "cut": "cut_off_first"
+        }
+      }
+    }
+  ],
+  "parts": [
+    {
+      "id": "Part 1",
+      "length": 292,
+      "width": 61,
+      "quantity": 3
+    },
+    {
+      "id": "Part 2",
+      "length": 150,
+      "width": 300,
+      "quantity": 2
+    }
+  ]
+}

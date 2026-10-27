@@ -151,6 +151,79 @@ double area_mm2(Length width, Length height)
     return (double)width * height / (tenths_per_mm * tenths_per_mm);
 }
 
+/** A panel's trims, in tenths of a millimetre. */
+struct PanelTrims
+{
+    Length left = 0;
+    Length right = 0;
+    Length bottom = 0;
+    Length top = 0;
+    TrimType left_type = TrimType::Hard;
+    TrimType right_type = TrimType::Soft;
+    TrimType bottom_type = TrimType::Hard;
+    TrimType top_type = TrimType::Soft;
+
+    bool any() const { return left > 0 || right > 0 || bottom > 0 || top > 0; }
+};
+
+/**
+ * A panel's "trims": each edge's width and cut, "cut_off_first" (upstream
+ * 'Hard') or "left_on_offcut" ('Soft'). An edge left out has no trim; a
+ * cut left out takes upstream's default for the edge: hard on the left and
+ * bottom, soft on the right and top (docs/FIELDS.md).
+ */
+PanelTrims read_trims(const json& panel)
+{
+    PanelTrims trims;
+    if (!panel.contains("trims"))
+        return trims;
+    const json& j = panel.at("trims");
+    auto edge = [&j](const char* name, Length& trim, TrimType& type)
+    {
+        if (!j.contains(name) || j.at(name).is_null())
+            return;
+        const json& t = j.at(name);
+        if (t.contains("width"))
+            trim = read_length(t.at("width"));
+        if (t.contains("cut") && !t.at("cut").is_null()) {
+            std::string cut = t.at("cut");
+            if (cut == "cut_off_first")
+                type = TrimType::Hard;
+            else if (cut == "left_on_offcut")
+                type = TrimType::Soft;
+            else
+                fail("unsupported trim cut \"" + cut + "\"");
+        }
+    };
+    edge("left", trims.left, trims.left_type);
+    edge("right", trims.right, trims.right_type);
+    edge("bottom", trims.bottom, trims.bottom_type);
+    edge("top", trims.top, trims.top_type);
+    return trims;
+}
+
+/**
+ * Whether the instance is solved on its panels without their trims, every
+ * trim then cut off first: with unlimited stages and no minimum offcut
+ * width, upstream's maximal-spaces search ignores trims (owner's
+ * decision, docs/SCOPE.md, 2026-10-27; docs/TESTING.md).
+ */
+bool trims_moved = false;
+
+bool moves_trims(const json& j)
+{
+    const json& saw = j.at("saw");
+    bool unlimited = saw.at("stages").is_string();
+    bool minimum = saw.contains("minimum_offcut_width")
+        && read_length(saw.at("minimum_offcut_width")) > 0;
+    if (!unlimited || minimum)
+        return false;
+    for (const json& panel: j.at("panels"))
+        if (read_trims(panel).any())
+            return true;
+    return false;
+}
+
 /** Build the upstream instance and keep the user ids for the output. */
 Instance read_instance(
         const json& j,
@@ -173,15 +246,29 @@ Instance read_instance(
     // Our default is "either"; upstream's is vertical.
     builder.set_first_stage_orientation(
             read_first_cuts(saw.value("first_cuts", std::string("either"))));
+    if (saw.contains("minimum_offcut_width"))
+        builder.set_minimum_waste_length(read_length(saw.at("minimum_offcut_width")));
 
     for (const json& panel: j.at("panels")) {
         Length length = read_length(panel.at("length"));
         Length width = read_length(panel.at("width"));
+        if (trims_moved) {
+            // Solved on the panel without its trims (see 'trims_moved').
+            PanelTrims trims = read_trims(panel);
+            length -= trims.left + trims.right;
+            width -= trims.bottom + trims.top;
+        }
         BinTypeId id = builder.add_bin_type(length, width);
         // Our "no quantity" means unlimited; upstream's default is 1.
         builder.set_bin_type_copies(id, panel.value("quantity", (BinPos)-1));
         builder.set_bin_type_cost(id, panel.contains("cost")?
-                panel.at("cost").get<Profit>(): area_mm2(length, width));
+                panel.at("cost").get<Profit>():
+                area_mm2(read_length(panel.at("length")), read_length(panel.at("width"))));
+        PanelTrims trims = read_trims(panel);
+        if (!trims_moved && trims.any())
+            builder.add_trims(id,
+                    trims.left, trims.left_type, trims.right, trims.right_type,
+                    trims.bottom, trims.bottom_type, trims.top, trims.top_type);
         panel_ids.push_back(panel.at("id"));
     }
 
@@ -205,11 +292,11 @@ Instance read_instance(
  * With 'leftover_as_offcut', upstream's residual (-3) is written as an
  * offcut: for the copies of a repeated last panel but its very last one.
  */
-std::string node_kind(const SolutionNode& node, bool leftover_as_offcut)
+std::string node_kind(const SolutionNode& node, bool has_children, bool leftover_as_offcut)
 {
     // Upstream stores the bin type in the root's item type, so the root
     // must be recognised by its depth before looking at the item type.
-    if (node.d == 0 || !node.children.empty())
+    if (node.d == 0 || has_children)
         return "piece";
     if (node.d == -1)
         return "trim";
@@ -224,16 +311,40 @@ std::string node_kind(const SolutionNode& node, bool leftover_as_offcut)
     fail("unknown node type " + std::to_string(node.item_type_id));
 }
 
+/**
+ * The children of each node, from the parent links. Upstream's
+ * 'SolutionBuilder::add_bin' adds the hard trims and the trimmed panel to
+ * a copy of the root, so the root's own list stays empty; every other list
+ * matches the links.
+ */
+std::vector<std::vector<SolutionNodeId>> children_of(const SolutionBin& bin)
+{
+    std::vector<std::vector<SolutionNodeId>> children(bin.nodes.size());
+    for (SolutionNodeId id = 0; id < (SolutionNodeId)bin.nodes.size(); ++id)
+        if (bin.nodes[id].f >= 0)
+            children[bin.nodes[id].f].push_back(id);
+    return children;
+}
+
+/** Where a node is written: shifted by (dx, dy), and at stage d + dd. */
+struct Shift
+{
+    Length dx = 0;
+    Length dy = 0;
+};
+
 json write_node(
         const Instance& instance,
         const SolutionBin& bin,
+        const std::vector<std::vector<SolutionNodeId>>& children,
         SolutionNodeId node_id,
         const std::vector<std::string>& part_ids,
-        bool leftover_as_offcut)
+        bool leftover_as_offcut,
+        Shift shift)
 {
     const SolutionNode& node = bin.nodes[node_id];
     json j;
-    std::string kind = node_kind(node, leftover_as_offcut);
+    std::string kind = node_kind(node, !children[node_id].empty(), leftover_as_offcut);
     j["kind"] = kind;
     if (kind == "part") {
         const ItemType& item_type = instance.item_type(node.item_type_id);
@@ -241,20 +352,93 @@ json write_node(
         j["rotated"] = (item_type.rect.w != item_type.rect.h
                 && node.r - node.l != item_type.rect.w);
     }
-    j["x"] = write_length(node.l);
-    j["y"] = write_length(node.b);
+    j["x"] = write_length(node.l + shift.dx);
+    j["y"] = write_length(node.b + shift.dy);
     j["length"] = write_length(node.r - node.l);
     j["width"] = write_length(node.t - node.b);
     j["stage"] = node.d;
     j["children"] = json::array();
-    for (SolutionNodeId child_id: node.children)
-        j["children"].push_back(write_node(instance, bin, child_id, part_ids, leftover_as_offcut));
+    for (SolutionNodeId child_id: children[node_id])
+        j["children"].push_back(write_node(instance, bin, children, child_id, part_ids, leftover_as_offcut, shift));
     return j;
+}
+
+json rectangle_node(const std::string& kind, Length l, Length b, Length r, Length t)
+{
+    return json{
+        {"kind", kind},
+        {"x", write_length(l)},
+        {"y", write_length(b)},
+        {"length", write_length(r - l)},
+        {"width", write_length(t - b)},
+        {"stage", 0},
+        {"children", json::array()},
+    };
+}
+
+/**
+ * A panel's cutting tree. With trims cut off first, the panel is cut into
+ * one trim per such edge, then the trimmed panel, all at stage 0: the left
+ * and right trims run the panel's full width, the bottom and top ones run
+ * between them. Upstream also cuts them so, but writes the corners as
+ * separate pieces; they are part of the left and right trims here.
+ */
+json write_root(
+        const Instance& instance,
+        const SolutionBin& bin,
+        const json& panel,
+        const std::vector<std::string>& part_ids,
+        bool leftover_as_offcut)
+{
+    auto children = children_of(bin);
+    SolutionNodeId root_id = -1;
+    for (SolutionNodeId id = 0; id < (SolutionNodeId)bin.nodes.size(); ++id)
+        if (bin.nodes[id].f == -1)
+            root_id = id;
+    if (root_id == -1)
+        fail("bin without a root node");
+
+    PanelTrims trims = read_trims(panel);
+    Length w = read_length(panel.at("length"));
+    Length h = read_length(panel.at("width"));
+    auto cut_first = [](Length trim, TrimType type) { return (trims_moved || type == TrimType::Hard)? trim: 0; };
+    Length l = cut_first(trims.left, trims.left_type);
+    Length r = cut_first(trims.right, trims.right_type);
+    Length b = cut_first(trims.bottom, trims.bottom_type);
+    Length t = cut_first(trims.top, trims.top_type);
+    if (l == 0 && r == 0 && b == 0 && t == 0)
+        return write_node(instance, bin, children, root_id, part_ids, leftover_as_offcut, {});
+
+    json trimmed;
+    if (trims_moved) {
+        // Upstream cut the panel without its trims: shift its plan back.
+        trimmed = write_node(instance, bin, children, root_id, part_ids, leftover_as_offcut, {l, b});
+    } else {
+        SolutionNodeId inner_id = -1;
+        for (SolutionNodeId child_id: children[root_id])
+            if (bin.nodes[child_id].d == 0)
+                inner_id = child_id;
+        if (inner_id == -1)
+            fail("a panel with hard trims but no trimmed panel");
+        trimmed = write_node(instance, bin, children, inner_id, part_ids, leftover_as_offcut, {});
+    }
+    json root = rectangle_node("piece", 0, 0, w, h);
+    if (l > 0)
+        root["children"].push_back(rectangle_node("trim", 0, 0, l, h));
+    if (r > 0)
+        root["children"].push_back(rectangle_node("trim", w - r, 0, w, h));
+    if (b > 0)
+        root["children"].push_back(rectangle_node("trim", l, 0, w - r, b));
+    if (t > 0)
+        root["children"].push_back(rectangle_node("trim", l, h - t, w - r, h));
+    root["children"].push_back(trimmed);
+    return root;
 }
 
 json write_solution(
         const Solution& solution,
         const json& oracle,
+        const json& panels,
         const std::vector<std::string>& panel_ids,
         const std::vector<std::string>& part_ids)
 {
@@ -288,17 +472,6 @@ json write_solution(
             bin_pos < solution.number_of_different_bins();
             ++bin_pos) {
         const SolutionBin& bin = solution.bin(bin_pos);
-        SolutionNodeId root_id = -1;
-        for (SolutionNodeId node_id = 0;
-                node_id < (SolutionNodeId)bin.nodes.size();
-                ++node_id) {
-            if (bin.nodes[node_id].f == -1) {
-                root_id = node_id;
-                break;
-            }
-        }
-        if (root_id == -1)
-            fail("bin without a root node");
         // Upstream's leftover only belongs to the very last panel: a last
         // panel cut several times becomes two patterns, the copies but the
         // last with the leftover as an offcut, then the last one.
@@ -317,7 +490,7 @@ json write_solution(
                 {"first_cuts",
                     bin.first_cut_orientation == CutOrientation::Vertical?
                     "across_length": "along_length"},
-                {"root", write_node(instance, bin, root_id, part_ids, leftover_as_offcut)},
+                {"root", write_root(instance, bin, panels[bin.bin_type_id], part_ids, leftover_as_offcut)},
             };
         };
         if (split)
@@ -522,6 +695,7 @@ int main(int argc, char* argv[])
 
         std::vector<std::string> panel_ids;
         std::vector<std::string> part_ids;
+        trims_moved = moves_trims(instance_json);
         Instance instance = read_instance(instance_json, panel_ids, part_ids);
 
         Solution solution(instance);
@@ -554,7 +728,9 @@ int main(int argc, char* argv[])
         std::ofstream output_file(output_path);
         if (!output_file.good())
             fail("unable to open \"" + output_path + "\"");
-        output_file << write_solution(solution, oracle, panel_ids, part_ids).dump(2)
+        if (trims_moved)
+            oracle["trims"] = "solved on the panels without their trims, every trim cut off first";
+        output_file << write_solution(solution, oracle, instance_json.at("panels"), panel_ids, part_ids).dump(2)
             << std::endl;
         return 0;
     } catch (const std::exception& e) {

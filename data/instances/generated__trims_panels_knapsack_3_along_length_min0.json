@@ -1,0 +1,138 @@
+{
+  "objective": "knapsack",
+  "saw": {
+    "kerf": 0,
+    "stages": 3,
+    "cut_type": "exact",
+    "first_cuts": "along_length",
+    "minimum_offcut_width": 0
+  },
+  "panels": [
+    {
+      "id": "Panel 1",
+      "length": 3050,
+      "width": 1830,
+      "quantity": 1,
+      "trims": {
+        "left": {
+          "width": 12.5,
+          "cut": "cut_off_first"
+        },
+        "top": {
+          "width": 10
+        }
+      }
+    },
+    {
+      "id": "Panel 2",
+      "length": 2440,
+      "width": 1220,
+      "quantity": 1,
+      "trims": {
+        "left": {
+          "width": 8,
+          "cut": "cut_off_first"
+        },
+        "right": {
+          "width": 8,
+          "cut": "cut_off_first"
+        },
+        "top": {
+          "width": 25
+        }
+      }
+    }
+  ],
+  "parts": [
+    {
+      "id": "Part 1",
+      "length": 850,
+      "width": 640,
+      "quantity": 2
+    },
+    {
+      "id": "Part 2",
+      "length": 850,
+      "width": 330,
+      "quantity": 12
+    },
+    {
+      "id": "Part 3",
+      "length": 850,
+      "width": 570.5,
+      "quantity": 2
+    },
+    {
+      "id": "Part 4",
+      "length": 610.5,
+      "width": 400,
+      "quantity": 2,
+      "grain": true
+    },
+    {
+      "id": "Part 5",
+      "length": 440.5,
+      "width": 320.5,
+      "quantity": 8
+    },
+    {
+      "id": "Part 6",
+      "length": 710,
+      "width": 220,
+      "quantity": 2,
+      "grain": true
+    },
+    {
+      "id": "Part 7",
+      "length": 690,
+      "width": 200,
+      "quantity": 2,
+      "grain": true
+    },
+    {
+      "id": "Part 8",
+      "length": 950.5,
+      "width": 260,
+      "quantity": 2,
+      "grain": true
+    },
+    {
+      "id": "Part 9",
+      "length": 810,
+      "width": 560.5,
+      "quantity": 12
+    },
+    {
+      "id": "Part 10",
+      "length": 310,
+      "width": 180,
+      "quantity": 2,
+      "grain": true
+    },
+    {
+      "id": "Part 11",
+      "length": 870,
+      "width": 540.5,
+      "quantity": 8,
+      "grain": true
+    },
+    {
+      "id": "Part 12",
+      "length": 760.5,
+      "width": 230.5,
+      "quantity": 2
+    },
+    {
+      "id": "Part 13",
+      "length": 400,
+      "width": 290,
+      "quantity": 8
+    },
+    {
+      "id": "Part 14",
+      "length": 560.5,
+      "width": 480,
+      "quantity": 12
+    }
+  ]
+}

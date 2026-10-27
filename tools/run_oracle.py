@@ -11,9 +11,10 @@ tree_search) to data/golden/<commit>/, for every instance in
 data/instances/ the algorithm applies to:
 
 - tree_search: every instance, as <instance>.q<N>.json (N default 2048);
-- maximal_spaces: unlimited stages, one panel, as
+- maximal_spaces: unlimited stages, one panel, no minimum offcut width, as
   <instance>.maximal_spaces.q<N>.json (N default 16, upstream's);
-- hypergraph: unlimited stages, one panel, knapsack, as
+- hypergraph: unlimited stages, one panel, knapsack, no minimum offcut
+  width, as
   <instance>.hypergraph.json;
 - sequential_single_knapsack, sequential_value_correction: unlimited
   stages, several panels, as <instance>.<algorithm>.json;
@@ -63,10 +64,13 @@ def applies(algorithm, data):
     if data["saw"]["stages"] != "unlimited":
         return False
     single = number_of_panels(data) <= 1
+    # Upstream's single-panel searches for unlimited stages ignore the
+    # minimum offcut width, so it never selects them with one.
+    minimum = data["saw"].get("minimum_offcut_width", 0) > 0
     if algorithm == "maximal_spaces":
-        return single
+        return single and not minimum
     if algorithm == "hypergraph":
-        return single and data["objective"] == "knapsack"
+        return single and data["objective"] == "knapsack" and not minimum
     if algorithm in ("sequential_single_knapsack", "sequential_value_correction"):
         return not single
     return algorithm == "auto"

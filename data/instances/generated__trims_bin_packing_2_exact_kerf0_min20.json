@@ -1,0 +1,120 @@
+{
+  "objective": "bin_packing",
+  "saw": {
+    "kerf": 0,
+    "stages": 2,
+    "cut_type": "exact",
+    "first_cuts": "along_length",
+    "minimum_offcut_width": 20
+  },
+  "panels": [
+    {
+      "id": "Panel 1",
+      "length": 2500,
+      "width": 1250,
+      "trims": {
+        "left": {
+          "width": 15
+        },
+        "bottom": {
+          "width": 5,
+          "cut": "left_on_offcut"
+        },
+        "top": {
+          "width": 12.5,
+          "cut": "left_on_offcut"
+        }
+      }
+    }
+  ],
+  "parts": [
+    {
+      "id": "Part 1",
+      "length": 600,
+      "width": 270,
+      "quantity": 1,
+      "grain": true
+    },
+    {
+      "id": "Part 2",
+      "length": 1070.5,
+      "width": 580,
+      "quantity": 6
+    },
+    {
+      "id": "Part 3",
+      "length": 1090.5,
+      "width": 420,
+      "quantity": 4
+    },
+    {
+      "id": "Part 4",
+      "length": 430,
+      "width": 170,
+      "quantity": 2
+    },
+    {
+      "id": "Part 5",
+      "length": 660.5,
+      "width": 150,
+      "quantity": 4,
+      "grain": true
+    },
+    {
+      "id": "Part 6",
+      "length": 220,
+      "width": 160,
+      "quantity": 1
+    },
+    {
+      "id": "Part 7",
+      "length": 1010.5,
+      "width": 210,
+      "quantity": 6
+    },
+    {
+      "id": "Part 8",
+      "length": 500.5,
+      "width": 250.5,
+      "quantity": 4,
+      "grain": true
+    },
+    {
+      "id": "Part 9",
+      "length": 1190.5,
+      "width": 230,
+      "quantity": 1
+    },
+    {
+      "id": "Part 10",
+      "length": 550,
+      "width": 400,
+      "quantity": 6
+    },
+    {
+      "id": "Part 11",
+      "length": 270,
+      "width": 120,
+      "quantity": 1,
+      "grain": true
+    },
+    {
+      "id": "Part 12",
+      "length": 1060,
+      "width": 650,
+      "quantity": 6
+    },
+    {
+      "id": "Part 13",
+      "length": 1180,
+      "width": 140,
+      "quantity": 2
+    },
+    {
+      "id": "Part 14",
+      "length": 1040,
+      "width": 450.5,
+      "quantity": 2
+    }
+  ]
+}

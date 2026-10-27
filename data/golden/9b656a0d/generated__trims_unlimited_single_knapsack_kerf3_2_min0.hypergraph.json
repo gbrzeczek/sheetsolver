@@ -1,0 +1,24 @@
+{
+  "oracle": {
+    "algorithm": "hypergraph",
+    "internal_length_unit": "0.1 mm",
+    "maximum_array_size": 1500000,
+    "optimization_mode": "not_anytime_sequential",
+    "trims": "solved on the panels without their trims, every trim cut off first",
+    "upstream_commit": "9b656a0dcafd1e9019bf39a5910d4307af65579a"
+  },
+  "patterns": [],
+  "upstream_metrics": {
+    "area": 0,
+    "feasible": true,
+    "full_area": 0,
+    "height": 0,
+    "item_area": 0,
+    "number_of_bins": 0,
+    "number_of_items": 0,
+    "profit": 0.0,
+    "waste": 0,
+    "waste_percentage": 0.0,
+    "width": 0
+  }
+}

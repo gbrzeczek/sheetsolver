@@ -1,0 +1,121 @@
+{
+  "objective": "knapsack",
+  "saw": {
+    "kerf": 0,
+    "stages": 3,
+    "cut_type": "non_exact",
+    "first_cuts": "either",
+    "minimum_offcut_width": 20
+  },
+  "panels": [
+    {
+      "id": "Panel 1",
+      "length": 2500,
+      "width": 1250,
+      "quantity": 1,
+      "trims": {
+        "left": {
+          "width": 8,
+          "cut": "left_on_offcut"
+        },
+        "right": {
+          "width": 5
+        },
+        "bottom": {
+          "width": 12.5,
+          "cut": "left_on_offcut"
+        },
+        "top": {
+          "width": 15,
+          "cut": "cut_off_first"
+        }
+      }
+    }
+  ],
+  "parts": [
+    {
+      "id": "Part 1",
+      "length": 910,
+      "width": 600,
+      "quantity": 4,
+      "grain": true
+    },
+    {
+      "id": "Part 2",
+      "length": 950,
+      "width": 180,
+      "quantity": 8
+    },
+    {
+      "id": "Part 3",
+      "length": 1060,
+      "width": 220,
+      "quantity": 4,
+      "grain": true
+    },
+    {
+      "id": "Part 4",
+      "length": 1100,
+      "width": 510,
+      "quantity": 2
+    },
+    {
+      "id": "Part 5",
+      "length": 1090,
+      "width": 260,
+      "quantity": 12
+    },
+    {
+      "id": "Part 6",
+      "length": 720,
+      "width": 510,
+      "quantity": 12,
+      "grain": true
+    },
+    {
+      "id": "Part 7",
+      "length": 670.5,
+      "width": 540,
+      "quantity": 12
+    },
+    {
+      "id": "Part 8",
+      "length": 480,
+      "width": 300,
+      "quantity": 4
+    },
+    {
+      "id": "Part 9",
+      "length": 710,
+      "width": 90,
+      "quantity": 8
+    },
+    {
+      "id": "Part 10",
+      "length": 210,
+      "width": 200.5,
+      "quantity": 12,
+      "grain": true
+    },
+    {
+      "id": "Part 11",
+      "length": 1020.5,
+      "width": 300.5,
+      "quantity": 4,
+      "grain": true
+    },
+    {
+      "id": "Part 12",
+      "length": 1070,
+      "width": 400.5,
+      "quantity": 2,
+      "grain": true
+    },
+    {
+      "id": "Part 13",
+      "length": 750,
+      "width": 670,
+      "quantity": 8
+    }
+  ]
+}
