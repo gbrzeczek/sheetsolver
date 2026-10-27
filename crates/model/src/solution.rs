@@ -112,6 +112,10 @@ pub enum NodeKind {
     /// The reusable remainder of the last panel, beyond its last
     /// first-stage cut.
     Leftover,
+    /// A strip cut off an edge of the panel before any other cut (a trim
+    /// *Cut off first*). Trims are children of the panel, at stage 0,
+    /// before the trimmed panel, which is a piece at stage 0 too.
+    Trim,
 }
 
 impl Node {

@@ -11,7 +11,8 @@ mod openapi;
 mod solution;
 
 pub use instance::{
-    CutType, FieldError, FirstCuts, Instance, Objective, Panel, Part, Saw, Stages, ValidationError,
+    CutType, FieldError, FirstCuts, Instance, Objective, Panel, Part, Saw, Stages, Trim, TrimCut,
+    Trims, ValidationError,
 };
 pub use length::{Area, Length};
 pub use solution::{CutDirection, Metrics, Node, NodeKind, Pattern, Solution};

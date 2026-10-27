@@ -107,6 +107,17 @@ pub struct Saw {
     /// either way.
     #[serde(default)]
     pub first_cuts: FirstCuts,
+    /// The narrowest offcut the plan may leave, in millimetres: thin
+    /// offcuts can be thrown back by the blade or slip out of a panel
+    /// saw's clamps. Every offcut, and the leftover, is at least this
+    /// wide, measured across the cut that frees it; along that cut it may
+    /// be as narrow as the parts beside it. Parts narrower than this are
+    /// still cut. Along a trimmed edge, its *Trimmed strip* says whether
+    /// the trim counts in the offcut's width. 0 allows any width, down to
+    /// strips of saw dust; 20–50 mm is typical. A larger value can mean
+    /// more waste.
+    #[serde(default, skip_serializing_if = "Length::is_zero")]
+    pub minimum_offcut_width: Length,
 }
 
 /// The kerf when none is given: none, so nothing is cut away until the
@@ -233,6 +244,156 @@ pub struct Panel {
     /// total cost is preferred. Leave empty to use the panel's area.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cost: Option<f64>,
+    /// Strips to cut off the panel's edges, named as the panel is drawn on
+    /// the plan: the left and right ends, and the bottom and top long
+    /// edges. Each edge has its *Trim* width and its *Trimmed strip*: how
+    /// the strip is cut away. Leave them empty for clean factory edges.
+    #[serde(default, skip_serializing_if = "Trims::is_none")]
+    pub trims: Trims,
+}
+
+/// The strips cut off a panel's four edges. An edge left out has no trim.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[serde(from = "RawTrims")]
+pub struct Trims {
+    /// The left end, at the panel's origin (x = 0).
+    #[serde(default, skip_serializing_if = "Trim::is_none")]
+    pub left: Trim,
+    /// The right end, opposite the left one.
+    #[serde(default, skip_serializing_if = "Trim::is_none")]
+    pub right: Trim,
+    /// The bottom long edge (y = 0).
+    #[serde(default, skip_serializing_if = "Trim::is_none")]
+    pub bottom: Trim,
+    /// The top long edge, opposite the bottom one.
+    #[serde(default, skip_serializing_if = "Trim::is_none")]
+    pub top: Trim,
+}
+
+/// The strip cut off one edge of a panel.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct Trim {
+    /// How much to cut off this edge of the panel, in millimetres, to
+    /// remove a chipped or damaged factory edge. No part is placed in it,
+    /// and the saw cut that removes it is taken from it, so parts start
+    /// exactly this far from the edge. Typical values: 5–15 mm on
+    /// chipboard, MDF and melamine-faced board; more on a dented edge.
+    /// Leave empty or 0 for a clean edge.
+    #[serde(default)]
+    pub width: Length,
+    /// How the trimmed strip is cut away; it only matters with a *Minimum
+    /// offcut width*. **Cut off first**: the strip is sawn off before any
+    /// other cut, so the panel has a clean new edge and every offcut width
+    /// is measured from it. **Left on the offcut**: the strip gets no cut
+    /// of its own; it stays on the offcut along that edge and counts in
+    /// its width, so fewer offcuts are too narrow. On the left end and the
+    /// bottom edge, where cutting starts, such a strip is still cut away
+    /// first, as an offcut at least *Minimum offcut width* wide, which can
+    /// waste more. By default the left end and the bottom edge are cut off
+    /// first and the right end and the top edge left on the offcut, which
+    /// suits most jobs. With unlimited stages and no minimum offcut width,
+    /// every strip is cut off first.
+    #[serde(default)]
+    pub cut: TrimCut,
+}
+
+impl Trim {
+    /// No trim on this edge.
+    pub fn is_none(&self) -> bool {
+        self.width == Length::ZERO
+    }
+
+    /// Whether the strip is sawn off first (upstream `TrimType::Hard`) and
+    /// actually there.
+    pub fn is_cut_off_first(&self) -> bool {
+        self.width > Length::ZERO && self.cut == TrimCut::CutOffFirst
+    }
+
+    /// Whether the strip stays on the offcut beside it (upstream
+    /// `TrimType::Soft`) and is actually there.
+    pub fn is_left_on_offcut(&self) -> bool {
+        self.width > Length::ZERO && self.cut == TrimCut::LeftOnOffcut
+    }
+}
+
+/// How a trimmed strip is cut away. See [`Trim::cut`].
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub enum TrimCut {
+    /// Sawn off before any other cut (upstream `TrimType::Hard`).
+    #[default]
+    CutOffFirst,
+    /// No cut of its own: it stays on the offcut beside it (upstream
+    /// `TrimType::Soft`).
+    LeftOnOffcut,
+}
+
+impl Trims {
+    /// No trim on any edge.
+    pub fn is_none(&self) -> bool {
+        self.edges().iter().all(|(_, trim)| trim.is_none())
+    }
+
+    /// The four edges with their JSON names, in the order left, right,
+    /// bottom, top.
+    pub fn edges(&self) -> [(&'static str, Trim); 4] {
+        [
+            ("left", self.left),
+            ("right", self.right),
+            ("bottom", self.bottom),
+            ("top", self.top),
+        ]
+    }
+}
+
+/// [`Trims`] as read, before each edge gets its default *Trimmed strip*.
+#[derive(Deserialize)]
+struct RawTrims {
+    #[serde(default)]
+    left: Option<RawTrim>,
+    #[serde(default)]
+    right: Option<RawTrim>,
+    #[serde(default)]
+    bottom: Option<RawTrim>,
+    #[serde(default)]
+    top: Option<RawTrim>,
+}
+
+#[derive(Deserialize)]
+struct RawTrim {
+    #[serde(default)]
+    width: Length,
+    #[serde(default)]
+    cut: Option<TrimCut>,
+}
+
+impl From<RawTrims> for Trims {
+    /// upstream: instance_builder.cpp, `InstanceBuilder::read`: the left
+    /// and bottom trims default to `Hard`, the right and top ones to
+    /// `Soft` (owner's decision to keep them, `SCOPE.md`, 2026-10-27).
+    fn from(raw: RawTrims) -> Self {
+        let edge = |raw: Option<RawTrim>, default: TrimCut| {
+            raw.map_or(
+                Trim {
+                    width: Length::ZERO,
+                    cut: default,
+                },
+                |raw| Trim {
+                    width: raw.width,
+                    cut: raw.cut.unwrap_or(default),
+                },
+            )
+        };
+        Trims {
+            left: edge(raw.left, TrimCut::CutOffFirst),
+            right: edge(raw.right, TrimCut::LeftOnOffcut),
+            bottom: edge(raw.bottom, TrimCut::CutOffFirst),
+            top: edge(raw.top, TrimCut::LeftOnOffcut),
+        }
+    }
 }
 
 impl Panel {
@@ -359,6 +520,30 @@ pub enum ValidationError {
     /// The number of stages is not 2, 3 or unlimited.
     #[error("cutting stages must be 2, 3 or unlimited, not {0}")]
     UnsupportedStages(u32),
+    /// The minimum offcut width is negative.
+    #[error("minimum offcut width must be at least 0 mm")]
+    NegativeMinimumOffcutWidth,
+    /// The minimum offcut width is longer than [`Length::MAX`].
+    #[error("minimum offcut width must be at most 100000 mm")]
+    MinimumOffcutWidthTooLarge,
+    /// A trim is negative or longer than [`Length::MAX`].
+    #[error("{edge} trim of panel \"{id}\" must be between 0 and 100000 mm")]
+    TrimOutOfRange {
+        /// The panel's name.
+        id: String,
+        /// "left", "right", "bottom" or "top".
+        edge: &'static str,
+    },
+    /// Two opposite trims leave nothing of the panel.
+    #[error("the {edges} trims of panel \"{id}\" together must be less than its {side}")]
+    TrimsTooWide {
+        /// The panel's name.
+        id: String,
+        /// "left and right" or "bottom and top".
+        edges: &'static str,
+        /// "length" or "width".
+        side: &'static str,
+    },
     /// An open-dimension objective needs exactly one panel.
     #[error("\"Shortest length/width from one panel\" needs exactly one panel, with quantity 1")]
     OpenDimensionNeedsOnePanel,
@@ -402,6 +587,18 @@ impl Instance {
             }
         }
 
+        if self.saw.minimum_offcut_width < Length::ZERO {
+            report(
+                "saw.minimum_offcut_width".into(),
+                ValidationError::NegativeMinimumOffcutWidth,
+            );
+        } else if self.saw.minimum_offcut_width > Length::MAX {
+            report(
+                "saw.minimum_offcut_width".into(),
+                ValidationError::MinimumOffcutWidthTooLarge,
+            );
+        }
+
         if self.panels.is_empty() {
             report("panels".into(), ValidationError::NoPanels);
         }
@@ -414,6 +611,9 @@ impl Instance {
             .iter()
             .map(|p| (p.id.as_str(), p.length, p.width, p.quantity, p.cost));
         validate_items("panel", panels, &mut report);
+        for (index, panel) in self.panels.iter().enumerate() {
+            validate_trims(index, panel, &mut report);
+        }
         let parts = self
             .parts
             .iter()
@@ -441,6 +641,58 @@ impl Instance {
     /// The panel with this name.
     pub fn panel(&self, id: &str) -> Option<&Panel> {
         self.panels.iter().find(|panel| panel.id == id)
+    }
+}
+
+/// Checks a panel's trims: each between 0 and [`Length::MAX`], and
+/// opposite ones leaving some of the panel (upstream:
+/// instance_builder.cpp, `InstanceBuilder::add_trims`).
+fn validate_trims(index: usize, panel: &Panel, report: &mut impl FnMut(String, ValidationError)) {
+    let path = |edge: &str| format!("panels[{index}].trims.{edge}.width");
+    let mut in_range = true;
+    for (edge, trim) in panel.trims.edges() {
+        if trim.width < Length::ZERO || trim.width > Length::MAX {
+            in_range = false;
+            report(
+                path(edge),
+                ValidationError::TrimOutOfRange {
+                    id: panel.id.clone(),
+                    edge,
+                },
+            );
+        }
+    }
+    if !in_range {
+        return;
+    }
+    let trims = &panel.trims;
+    let pairs = [
+        (
+            "right",
+            "left and right",
+            "length",
+            trims.left.width + trims.right.width,
+            panel.length,
+        ),
+        (
+            "top",
+            "bottom and top",
+            "width",
+            trims.bottom.width + trims.top.width,
+            panel.width,
+        ),
+    ];
+    for (edge, edges, side, total, size) in pairs {
+        if size > Length::ZERO && total >= size {
+            report(
+                path(edge),
+                ValidationError::TrimsTooWide {
+                    id: panel.id.clone(),
+                    edges,
+                    side,
+                },
+            );
+        }
     }
 }
 
@@ -560,6 +812,66 @@ mod tests {
         assert_eq!(instance.saw.first_cuts, FirstCuts::Either);
         assert_eq!(instance.parts[0].quantity, 1);
         assert!(!instance.parts[0].grain);
+    }
+
+    #[test]
+    fn trims_default_to_none_and_their_cut_depends_on_the_edge() {
+        let mut instance = example();
+        assert!(instance.panels[0].trims.is_none());
+        assert_eq!(instance.saw.minimum_offcut_width, Length::ZERO);
+        instance.panels[0] = serde_json::from_str(
+            r#"{ "id": "P", "length": 2500, "width": 1250, "trims": {
+                "left": { "width": 10 }, "right": { "width": 10 },
+                "bottom": { "width": 5, "cut": "left_on_offcut" }, "top": { "width": 5 } } }"#,
+        )
+        .unwrap();
+        let trims = instance.panels[0].trims;
+        // upstream's defaults: the left and bottom edges hard, the others soft.
+        assert_eq!(trims.left.cut, TrimCut::CutOffFirst);
+        assert_eq!(trims.right.cut, TrimCut::LeftOnOffcut);
+        assert_eq!(trims.bottom.cut, TrimCut::LeftOnOffcut);
+        assert_eq!(trims.top.cut, TrimCut::LeftOnOffcut);
+        assert!(trims.left.is_cut_off_first() && trims.right.is_left_on_offcut());
+        assert_eq!(instance.validate(), Ok(()));
+        // Written back, an edge keeps its cut, and edges without a trim
+        // are left out.
+        let mut json = serde_json::to_value(&instance.panels[0]).unwrap();
+        assert_eq!(json["trims"]["right"]["cut"], "left_on_offcut");
+        json["trims"]["left"]["width"] = serde_json::json!(0);
+        let panel: Panel = serde_json::from_value(json).unwrap();
+        let written = serde_json::to_value(&panel).unwrap();
+        assert!(written["trims"].get("left").is_none());
+    }
+
+    #[test]
+    fn trims_and_the_minimum_offcut_width_are_bounded() {
+        let mut instance = example();
+        instance.saw.minimum_offcut_width = Length::from_tenths(-1);
+        instance.panels[0].trims.left.width = Length::from_mm(1250);
+        instance.panels[0].trims.right.width = Length::from_mm(1250);
+        instance.panels[0].trims.top.width = Length::from_tenths(-1);
+        let fields: Vec<String> = instance
+            .validate_fields()
+            .unwrap_err()
+            .into_iter()
+            .map(|error| error.field)
+            .collect();
+        assert_eq!(
+            fields,
+            ["saw.minimum_offcut_width", "panels[0].trims.top.width"]
+        );
+        instance.saw.minimum_offcut_width = Length::from_mm(20);
+        instance.panels[0].trims.top.width = Length::ZERO;
+        assert_eq!(
+            instance.validate(),
+            Err(vec![ValidationError::TrimsTooWide {
+                id: "Birch ply 18 mm".into(),
+                edges: "left and right",
+                side: "length"
+            }])
+        );
+        instance.panels[0].trims.right.width = Length::from_tenths(12_499);
+        assert_eq!(instance.validate(), Ok(()));
     }
 
     #[test]

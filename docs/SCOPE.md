@@ -203,3 +203,23 @@ Record every scope decision here with a date, so agents can see why.
 - 2026-10-27 — Owner: the UI shows too much at once. Stage 8 rethinks
   what is visible before any new field lands; help text stays complete
   in `FIELDS.md` but need not all be shown at once.
+- 2026-10-27 — Stage 9, owner's answers on trims and the minimum offcut
+  width (`FIELDS.md`):
+  - Wording: hard trims are **Cut off first**, soft trims **Left on the
+    offcut** (field *Trimmed strip*, per edge, with *Trim* for its width).
+  - The kind is set per edge, with upstream's defaults: the left end and
+    the bottom edge cut off first, the right end and the top edge left
+    on the offcut.
+  - Parts narrower than the minimum offcut width: upstream's own plan
+    check (`Solution::minimum_waste_length_feasible`) also measures the
+    strips such a part sits in, so upstream throws on them. sheetsolver
+    keeps upstream's search and measures each offcut (and the leftover)
+    across the cut that frees it, which is what that search enforces;
+    golden files exist only where upstream does not throw.
+  - Trims with unlimited stages: upstream's maximal-spaces search ignores
+    trims (it throws, or finds no plan). With unlimited stages and no
+    minimum offcut width, sheetsolver solves on the panel shrunk by its
+    trims, shifts the plan back and cuts every trim off first; the
+    oracle does the same, so the comparison stays exact (`TESTING.md`).
+    With a minimum offcut width, upstream selects the tree search, which
+    handles trims itself.

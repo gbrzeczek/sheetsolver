@@ -573,6 +573,12 @@
             ],
             "x-short-help": "How many panels of this size you have; empty means as many as needed."
           },
+          "trims": {
+            "$ref": "#/components/schemas/Trims",
+            "description": "Strips to cut off the panel's edges, named as the panel is drawn on the plan: the left and right ends, and the bottom and top long edges. Each edge has its *Trim* width and its *Trimmed strip*: how the strip is cut away. Leave them empty for clean factory edges.",
+            "title": "Trims",
+            "x-short-help": "Strips to cut off damaged panel edges before any part is placed."
+          },
           "width": {
             "$ref": "#/components/schemas/Length",
             "description": "The panel's short side, as delivered, in millimetres. For \"Shortest width from one panel\", this is the maximum width available.",
@@ -736,6 +742,15 @@
             "title": "Saw blade thickness (kerf)",
             "x-short-help": "How much material each saw cut removes, in millimetres: usually 2.2–4.4 mm."
           },
+          "minimum_offcut_width": {
+            "$ref": "#/components/schemas/Length",
+            "default": 0,
+            "description": "The narrowest offcut the plan may leave, in millimetres: thin offcuts can be thrown back by the blade or slip out of a panel saw's clamps. Every offcut, and the leftover, is at least this wide, measured across the cut that frees it; along that cut it may be as narrow as the parts beside it. Parts narrower than this are still cut. Along a trimmed edge, its *Trimmed strip* says whether the trim counts in the offcut's width. 0 allows any width, down to strips of saw dust; 20–50 mm is typical. A larger value can mean more waste.",
+            "maximum": 100000,
+            "minimum": 0,
+            "title": "Minimum offcut width",
+            "x-short-help": "The narrowest offcut the plan may leave, so none is too thin to handle."
+          },
           "stages": {
             "$ref": "#/components/schemas/Stages",
             "default": 3,
@@ -824,6 +839,69 @@
           "elapsed",
           "plans_found"
         ],
+        "type": "object"
+      },
+      "Trim": {
+        "description": "The strip cut off one edge of a panel.",
+        "properties": {
+          "cut": {
+            "$ref": "#/components/schemas/TrimCut",
+            "description": "How the trimmed strip is cut away; it only matters with a *Minimum offcut width*. **Cut off first**: the strip is sawn off before any other cut, so the panel has a clean new edge and every offcut width is measured from it. **Left on the offcut**: the strip gets no cut of its own; it stays on the offcut along that edge and counts in its width, so fewer offcuts are too narrow. On the left end and the bottom edge, where cutting starts, such a strip is still cut away first, as an offcut at least *Minimum offcut width* wide, which can waste more. By default the left end and the bottom edge are cut off first and the right end and the top edge left on the offcut, which suits most jobs. With unlimited stages and no minimum offcut width, every strip is cut off first.",
+            "title": "Trimmed strip",
+            "x-short-help": "Whether the strip is sawn off first or stays on the offcut beside it."
+          },
+          "width": {
+            "$ref": "#/components/schemas/Length",
+            "default": 0,
+            "description": "How much to cut off this edge of the panel, in millimetres, to remove a chipped or damaged factory edge. No part is placed in it, and the saw cut that removes it is taken from it, so parts start exactly this far from the edge. Typical values: 5–15 mm on chipboard, MDF and melamine-faced board; more on a dented edge. Leave empty or 0 for a clean edge.",
+            "maximum": 100000,
+            "minimum": 0,
+            "title": "Trim",
+            "x-short-help": "How much to cut off this edge to remove damage, in millimetres."
+          }
+        },
+        "type": "object"
+      },
+      "TrimCut": {
+        "description": "How a trimmed strip is cut away. See [`Trim::cut`].",
+        "enum": [
+          "cut_off_first",
+          "left_on_offcut"
+        ],
+        "oneOf": [
+          {
+            "const": "cut_off_first",
+            "title": "Cut off first",
+            "type": "string"
+          },
+          {
+            "const": "left_on_offcut",
+            "title": "Left on the offcut",
+            "type": "string"
+          }
+        ],
+        "type": "string"
+      },
+      "Trims": {
+        "description": "The strips cut off a panel's four edges. An edge left out has no trim.",
+        "properties": {
+          "bottom": {
+            "$ref": "#/components/schemas/Trim",
+            "description": "The bottom long edge (y = 0)."
+          },
+          "left": {
+            "$ref": "#/components/schemas/Trim",
+            "description": "The left end, at the panel's origin (x = 0)."
+          },
+          "right": {
+            "$ref": "#/components/schemas/Trim",
+            "description": "The right end, opposite the left one."
+          },
+          "top": {
+            "$ref": "#/components/schemas/Trim",
+            "description": "The top long edge, opposite the bottom one."
+          }
+        },
         "type": "object"
       }
     }

@@ -12,7 +12,7 @@
 use model::{Instance, Length, Stages};
 use serde_json::{Map, Value};
 
-use crate::fields::{CUT_TYPE, Choice, FIRST_CUTS, OBJECTIVE};
+use crate::fields::{CUT_TYPE, Choice, FIRST_CUTS, OBJECTIVE, TRIM_CUT};
 use crate::types::{
     DEFAULT_TIME_LIMIT, FieldProblem, MAX_NAME_CHARS, MAX_TIME_LIMIT, MIN_TIME_LIMIT,
 };
@@ -191,20 +191,36 @@ static INSTANCE: [Field; 4] = [
 ];
 
 /// `model::Saw`.
-static SAW: [Field; 4] = [
+static SAW: [Field; 5] = [
     field("kerf", Kind::Length, Optional),
     field("stages", Kind::Stages, Optional),
     field("cut_type", Kind::Choice(&CUT_TYPE), Optional),
     field("first_cuts", Kind::Choice(&FIRST_CUTS), Optional),
+    field("minimum_offcut_width", Kind::Length, Optional),
 ];
 
 /// `model::Panel`.
-static PANEL: [Field; 5] = [
+static PANEL: [Field; 6] = [
     field("id", Kind::Text, Required),
     field("length", Kind::Length, Required),
     field("width", Kind::Length, Required),
     field("quantity", Kind::Count, Nullable),
     field("cost", Kind::Number, Nullable),
+    field("trims", Kind::Object(&TRIMS), Optional),
+];
+
+/// `model::Trims`.
+static TRIMS: [Field; 4] = [
+    field("left", Kind::Object(&TRIM), Nullable),
+    field("right", Kind::Object(&TRIM), Nullable),
+    field("bottom", Kind::Object(&TRIM), Nullable),
+    field("top", Kind::Object(&TRIM), Nullable),
+];
+
+/// `model::Trim`.
+static TRIM: [Field; 2] = [
+    field("width", Kind::Length, Optional),
+    field("cut", Kind::Choice(&TRIM_CUT), Nullable),
 ];
 
 /// `model::Part`.
@@ -350,6 +366,9 @@ mod tests {
             .as_object_mut()
             .unwrap()
             .remove("length");
+        body["instance"]["saw"]["minimum_offcut_width"] = json!("wide");
+        body["instance"]["panels"][0]["trims"] =
+            json!({ "left": { "width": 10, "cut": "sawn" }, "top": { "width": -0.05 } });
         body["time_limit"] = json!(0);
         let problems = parse_job(&body).unwrap_err();
         assert_eq!(
@@ -358,7 +377,10 @@ mod tests {
                 "time_limit",
                 "instance.saw.kerf",
                 "instance.saw.cut_type",
+                "instance.saw.minimum_offcut_width",
                 "instance.panels[0].length",
+                "instance.panels[0].trims.left.cut",
+                "instance.panels[0].trims.top.width",
                 "instance.parts[0].width",
                 "instance.parts[0].quantity",
             ]
@@ -374,10 +396,16 @@ mod tests {
         let mut body = example();
         body["instance"]["parts"] = json!([]);
         body["instance"]["panels"][0]["quantity"] = json!(0);
+        body["instance"]["panels"][0]["trims"] =
+            json!({ "bottom": { "width": 1000 }, "top": { "width": 1000 } });
         let problems = parse_job(&body).unwrap_err();
         assert_eq!(
             fields(&problems),
-            ["instance.parts", "instance.panels[0].quantity"]
+            [
+                "instance.parts",
+                "instance.panels[0].quantity",
+                "instance.panels[0].trims.top.width"
+            ]
         );
         assert_eq!(problems[0].message, "add at least one part");
     }
@@ -407,6 +435,7 @@ mod tests {
                     "Stages" => serde_json::from_value::<model::Stages>(value).is_ok(),
                     "CutType" => serde_json::from_value::<model::CutType>(value).is_ok(),
                     "FirstCuts" => serde_json::from_value::<model::FirstCuts>(value).is_ok(),
+                    "TrimCut" => serde_json::from_value::<model::TrimCut>(value).is_ok(),
                     other => panic!("unknown choice {other}"),
                 };
                 assert!(ok, "{} {option:?}", choice.schema);

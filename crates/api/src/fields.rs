@@ -142,6 +142,28 @@ pub static INPUT_FIELDS: &[InputField] = &[
     )
     .minimum(0.0),
     input(
+        "Panel",
+        "trims",
+        "Trims",
+        "Strips to cut off damaged panel edges before any part is placed.",
+    ),
+    input(
+        "Trim",
+        "width",
+        "Trim",
+        "How much to cut off this edge to remove damage, in millimetres.",
+    )
+    // Its upper bound is the panel: opposite trims leave some of it.
+    .default("0")
+    .minimum(0.0),
+    // No default: it depends on the edge (`FIELDS.md`), so `Trims` says it.
+    input(
+        "Trim",
+        "cut",
+        "Trimmed strip",
+        "Whether the strip is sawn off first or stays on the offcut beside it.",
+    ),
+    input(
         "Part",
         "id",
         "Name",
@@ -208,6 +230,15 @@ pub static INPUT_FIELDS: &[InputField] = &[
         "Whether a part may be trimmed free from a small offcut after the last stage.",
     )
     .default("\"non_exact\""),
+    input(
+        "Saw",
+        "minimum_offcut_width",
+        "Minimum offcut width",
+        "The narrowest offcut the plan may leave, so none is too thin to handle.",
+    )
+    .default("0")
+    .minimum(0.0)
+    .maximum(LONGEST),
     input(
         "Saw",
         "first_cuts",
@@ -279,8 +310,17 @@ pub static FIRST_CUTS: Choice = Choice {
     ],
 };
 
+/// `model::TrimCut`.
+pub static TRIM_CUT: Choice = Choice {
+    schema: "TrimCut",
+    options: &[
+        (Text("cut_off_first"), "Cut off first"),
+        (Text("left_on_offcut"), "Left on the offcut"),
+    ],
+};
+
 /// Every field with options.
-pub static CHOICES: [&Choice; 4] = [&OBJECTIVE, &STAGES, &CUT_TYPE, &FIRST_CUTS];
+pub static CHOICES: [&Choice; 5] = [&OBJECTIVE, &STAGES, &CUT_TYPE, &FIRST_CUTS, &TRIM_CUT];
 
 impl Choice {
     /// Whether `value` is the string of one of the options.

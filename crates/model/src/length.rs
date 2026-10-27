@@ -25,6 +25,11 @@ impl Length {
     /// Zero length.
     pub const ZERO: Length = Length(0);
 
+    /// Whether the length is 0 (for `skip_serializing_if`).
+    pub fn is_zero(&self) -> bool {
+        self.0 == 0
+    }
+
     /// The longest length accepted: 100 m, far beyond any sheet. Areas are
     /// `i64` products of two lengths, summed over many panels; without a
     /// bound, a huge size overflows them into nonsense plans.

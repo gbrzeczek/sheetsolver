@@ -1,8 +1,9 @@
-//! Rules about the shape of one pattern's cutting tree: every cut is a
-//! straight guillotine cut, pieces sit exactly one kerf apart, and parts
-//! have their part's size.
+//! Rules about the shape of one pattern's cutting tree: the trims cut off
+//! first, every cut is a straight guillotine cut, pieces sit exactly one
+//! kerf apart, parts have their part's size and stay out of the trims, and
+//! offcuts are at least the minimum offcut width.
 
-use model::{CutDirection, Instance, Length, Node, NodeKind, Pattern};
+use model::{CutDirection, Instance, Length, Node, NodeKind, Panel, Pattern};
 
 use crate::violation::{Problem, Violation};
 
@@ -33,17 +34,135 @@ pub(crate) fn check_pattern(
         report("", Problem::RootIsNotThePanel);
     }
 
+    let panel = instance.panel(&pattern.panel_id);
     let checker = TreeChecker {
         instance,
+        panel,
         kerf: instance.saw.kerf,
+        minimum_offcut_width: instance.saw.minimum_offcut_width,
         leftover_allowed: is_last_pattern && pattern.repeat == 1,
     };
-    checker.check_children(root, pattern.first_cuts, "", &mut report);
+
+    // A panel with trims cut off first is cut into those trims and the
+    // trimmed panel before anything else; the trimmed panel is then cut as
+    // a panel would be.
+    let expected_trims = panel.map(trims_cut_off_first).unwrap_or_default();
+    if expected_trims.is_empty() {
+        checker.check_children(root, pattern.first_cuts, "", &mut report);
+        return;
+    }
+    let (trims, rest) = root
+        .children
+        .split_at(root.children.len().saturating_sub(1));
+    let trimmed = rest.first();
+    let trims_match = trims.len() == expected_trims.len()
+        && trims.iter().zip(&expected_trims).all(|(node, (_, rect))| {
+            node.kind == NodeKind::Trim
+                && node.stage == 0
+                && *rect == rectangle(node)
+                && node.children.is_empty()
+        });
+    let inner = panel.map(trimmed_panel);
+    let trimmed_matches = trimmed.is_some_and(|node| {
+        node.kind == NodeKind::Piece && node.stage == 0 && Some(rectangle(node)) == inner
+    });
+    if !(trims_match && trimmed_matches) {
+        let expected = expected_trims
+            .iter()
+            .map(|(edge, rect)| {
+                let width = if matches!(*edge, "left" | "right") {
+                    rect.2
+                } else {
+                    rect.3
+                };
+                format!("{edge} {width}")
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        report("", Problem::WrongTrims { expected });
+        return;
+    }
+    let trimmed = trimmed.expect("checked above");
+    let path = child_path("", root.children.len() - 1);
+    if trimmed.children.is_empty() {
+        report(&path, Problem::PieceWithoutChildren);
+    }
+    checker.check_children(trimmed, pattern.first_cuts, &path, &mut report);
+}
+
+/// A rectangle as (x, y, length, width).
+type Rect = (Length, Length, Length, Length);
+
+fn rectangle(node: &Node) -> Rect {
+    (node.x, node.y, node.length, node.width)
+}
+
+/// The strips cut off first, in the order left, right, bottom, top, and
+/// where each is. The left and right ones run the panel's full width; the
+/// bottom and top ones run between them.
+fn trims_cut_off_first(panel: &Panel) -> Vec<(&'static str, Rect)> {
+    let trims = &panel.trims;
+    let (length, width) = (panel.length, panel.width);
+    let cut = |trim: model::Trim| {
+        if trim.is_cut_off_first() {
+            trim.width
+        } else {
+            Length::ZERO
+        }
+    };
+    let (left, right, bottom, top) = (
+        cut(trims.left),
+        cut(trims.right),
+        cut(trims.bottom),
+        cut(trims.top),
+    );
+    let between = length - left - right;
+    let mut strips = Vec::new();
+    if left > Length::ZERO {
+        strips.push(("left", (Length::ZERO, Length::ZERO, left, width)));
+    }
+    if right > Length::ZERO {
+        strips.push(("right", (length - right, Length::ZERO, right, width)));
+    }
+    if bottom > Length::ZERO {
+        strips.push(("bottom", (left, Length::ZERO, between, bottom)));
+    }
+    if top > Length::ZERO {
+        strips.push(("top", (left, width - top, between, top)));
+    }
+    strips
+}
+
+/// The panel without its trims cut off first.
+fn trimmed_panel(panel: &Panel) -> Rect {
+    let trims = &panel.trims;
+    let cut = |trim: model::Trim| {
+        if trim.is_cut_off_first() {
+            trim.width
+        } else {
+            Length::ZERO
+        }
+    };
+    let (left, right, bottom, top) = (
+        cut(trims.left),
+        cut(trims.right),
+        cut(trims.bottom),
+        cut(trims.top),
+    );
+    (
+        left,
+        bottom,
+        panel.length - left - right,
+        panel.width - bottom - top,
+    )
 }
 
 struct TreeChecker<'a> {
     instance: &'a Instance,
+    /// The pattern's panel, if the instance has it.
+    panel: Option<&'a Panel>,
     kerf: Length,
+    minimum_offcut_width: Length,
     /// Whether this pattern may end with a leftover.
     leftover_allowed: bool,
 }
@@ -93,7 +212,7 @@ impl TreeChecker<'_> {
             }
             expected_start = child.end(direction) + self.kerf;
 
-            self.check_node(node, index, child, cross, &child_path, report);
+            self.check_node(node, index, child, direction, &child_path, report);
         }
 
         if let Some(last) = node.children.last() {
@@ -120,13 +239,14 @@ impl TreeChecker<'_> {
         }
     }
 
-    /// Checks one child by its kind, and recurses into pieces.
+    /// Checks one child by its kind, and recurses into pieces. `direction`
+    /// is that of the cuts that freed it from `parent`.
     fn check_node(
         &self,
         parent: &Node,
         index: usize,
         node: &Node,
-        next_direction: CutDirection,
+        direction: CutDirection,
         path: &str,
         report: &mut impl FnMut(&str, Problem),
     ) {
@@ -138,19 +258,45 @@ impl TreeChecker<'_> {
                 if node.children.is_empty() {
                     report(path, Problem::PieceWithoutChildren);
                 }
-                self.check_children(node, next_direction, path, report);
+                self.check_children(node, direction.turned(), path, report);
             }
             NodeKind::Part { part_id, rotated } => {
                 self.check_part(node, part_id, *rotated, path, report)
             }
-            NodeKind::Offcut => {}
+            NodeKind::Offcut => self.check_offcut_width(node, "offcut", direction, path, report),
             NodeKind::Leftover => {
                 let is_last_first_stage_piece =
                     parent.stage == 0 && index + 1 == parent.children.len();
                 if !(self.leftover_allowed && is_last_first_stage_piece) {
                     report(path, Problem::MisplacedLeftover);
                 }
+                self.check_offcut_width(node, "leftover", direction, path, report);
             }
+            NodeKind::Trim => report(path, Problem::MisplacedTrim),
+        }
+    }
+
+    /// An offcut or leftover is at least the minimum offcut width across
+    /// the cut that freed it (`docs/SCOPE.md`, decisions log, 2026-10-27):
+    /// its size along the axis its siblings sit on.
+    fn check_offcut_width(
+        &self,
+        node: &Node,
+        kind: &'static str,
+        direction: CutDirection,
+        path: &str,
+        report: &mut impl FnMut(&str, Problem),
+    ) {
+        let width = node.size(direction);
+        if width < self.minimum_offcut_width {
+            report(
+                path,
+                Problem::OffcutTooNarrow {
+                    kind,
+                    width,
+                    minimum: self.minimum_offcut_width,
+                },
+            );
         }
     }
 
@@ -184,6 +330,31 @@ impl TreeChecker<'_> {
         }
         if rotated && part.grain {
             report(path, Problem::GrainTurned(part_id.to_string()));
+        }
+        // Every trim, cut off first or left on the offcut, is kept free
+        // of parts.
+        if let Some(panel) = self.panel {
+            let trims = &panel.trims;
+            let reaches = [
+                ("left", node.x < trims.left.width),
+                (
+                    "right",
+                    node.x + node.length > panel.length - trims.right.width,
+                ),
+                ("bottom", node.y < trims.bottom.width),
+                ("top", node.y + node.width > panel.width - trims.top.width),
+            ];
+            for (edge, inside) in reaches {
+                if inside {
+                    report(
+                        path,
+                        Problem::PartInTrim {
+                            part_id: part_id.to_string(),
+                            edge,
+                        },
+                    );
+                }
+            }
         }
     }
 }

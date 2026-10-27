@@ -101,6 +101,7 @@ fn field_rows() -> Vec<FieldRow> {
                     ("Job", "time_limit" | "name") => "JobRequest",
                     ("Job", _) => "Instance",
                     ("Panels (stock sheets)", _) => "Panel",
+                    ("Panel trims", _) => "Trim",
                     ("Parts", _) => "Part",
                     ("Saw and cutting", _) => "Saw",
                     _ => panic!("unknown section {section}"),
@@ -139,7 +140,7 @@ fn input_fields_carry_the_help_text_and_label_of_fields_md() {
     let document = document();
     let schemas = &document["components"]["schemas"];
     let rows = field_rows();
-    assert_eq!(rows.len(), 18);
+    assert_eq!(rows.len(), 22);
     for row in &rows {
         let property = &schemas[row.schema]["properties"][&row.field];
         let name = format!("{}.{}", row.schema, row.field);
@@ -189,6 +190,7 @@ fn every_option_is_named_as_in_fields_md() {
         ("stages", "Stages"),
         ("cut_type", "CutType"),
         ("first_cuts", "FirstCuts"),
+        ("cut", "TrimCut"),
     ] {
         for option in schemas[schema]["oneOf"].as_array().unwrap() {
             let value = match &option["const"] {

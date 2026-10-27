@@ -75,10 +75,22 @@ Rules:
 | `width` | Width | The panel's short side in millimetres. | The panel's short side, as delivered, in millimetres. For "Shortest width from one panel", this is the maximum width available. | mm (0.1 mm steps), 0.1–100 000 | — | `height` |
 | `quantity` | Quantity | How many panels of this size you have; empty means as many as needed. | How many panels of this size you have. Leave empty for "as many as needed". | count ≥ 1, or empty = unlimited | empty | `copies` (−1 = unlimited) |
 | `cost` | Cost | Compares panel sizes when several are listed: a lower total cost is preferred. | Used only to compare panel sizes when several are listed: a lower total cost is preferred. Leave empty to use the panel's area. | number ≥ 0 | area | `cost` |
+| `trims` | Trims | Strips to cut off damaged panel edges before any part is placed. | Strips to cut off the panel's edges, named as the panel is drawn on the plan: the left and right ends, and the bottom and top long edges. Each edge has its *Trim* width and its *Trimmed strip*: how the strip is cut away. Leave them empty for clean factory edges. | per edge: *Trim* and *Trimmed strip* | no trims | `left_trim`, `right_trim`, `bottom_trim`, `top_trim` and their `TrimType`s |
 
 Only one panel type is allowed with the "Shortest length/width" goals,
 and its quantity must be 1 or empty (upstream: open-dimension objectives
 use a single bin).
+
+### Panel trims
+
+Each edge of a panel (`trims.left`, `trims.right`, `trims.bottom`,
+`trims.top`) has these two fields. The left end is at the panel's
+origin (x = 0), the bottom edge along its length at y = 0.
+
+| Field | UI label | Short help | Help text | Unit / values | Default | Upstream |
+|---|---|---|---|---|---|---|
+| `width` | Trim | How much to cut off this edge to remove damage, in millimetres. | How much to cut off this edge of the panel, in millimetres, to remove a chipped or damaged factory edge. No part is placed in it, and the saw cut that removes it is taken from it, so parts start exactly this far from the edge. Typical values: 5–15 mm on chipboard, MDF and melamine-faced board; more on a dented edge. Leave empty or 0 for a clean edge. | mm (0.1 mm steps), 0–100 000; the two ends together, and the two long edges together, less than the panel | 0 | `*_trim` |
+| `cut` | Trimmed strip | Whether the strip is sawn off first or stays on the offcut beside it. | How the trimmed strip is cut away; it only matters with a *Minimum offcut width*. **Cut off first**: the strip is sawn off before any other cut, so the panel has a clean new edge and every offcut width is measured from it. **Left on the offcut**: the strip gets no cut of its own; it stays on the offcut along that edge and counts in its width, so fewer offcuts are too narrow. On the left end and the bottom edge, where cutting starts, such a strip is still cut away first, as an offcut at least *Minimum offcut width* wide, which can waste more. By default the left end and the bottom edge are cut off first and the right end and the top edge left on the offcut, which suits most jobs. With unlimited stages and no minimum offcut width, every strip is cut off first. | `cut_off_first`, `left_on_offcut` | `cut_off_first` on the left end and bottom edge, `left_on_offcut` on the right end and top edge | `TrimType` (`Hard`, `Soft`) |
 
 ### Parts
 
@@ -98,6 +110,7 @@ use a single bin).
 | `kerf` | Saw blade thickness (kerf) | How much material each saw cut removes, in millimetres: usually 2.2–4.4 mm. | The width of material each cut removes, in millimetres — the thickness of your saw blade's teeth, not the blade body. Every cut between two parts uses this much material, so parts are spaced by it. Typical values: 3.2–4.4 mm for panel and table saws, 2.2–2.8 mm for track saws. Leave it at 0 only if your dimensions already include it. | mm (0.1 mm steps), 0–100 000 | 0 | `cut_thickness` |
 | `stages` | Cutting stages | How often pieces are turned and cut again: more stages, less waste, more handling. | How many times a piece is turned and cut again. **Stage 1**: full-length cuts across the whole panel, splitting it into strips. **Stage 2**: each strip is cut across into pieces. **Stage 3**: each piece is cut once more, across stage-2 cuts. More stages let parts nest more tightly, so less waste, but mean more handling at the saw. 2 suits simple strip cutting; 3 suits most panel-saw work; "Unlimited" gives the least waste with the most handling: cuts may then go either way at every stage, and the last-stage trimming setting does not apply. | `2`, `3`, `unlimited` | `3` | `number_of_stages` |
 | `cut_type` | Last-stage trimming | Whether a part may be trimmed free from a small offcut after the last stage. | Whether a part may be cut free from a small offcut after the last stage. **Allowed** (recommended): a strip may hold parts of different sizes; a final trimming cut separates each part from its offcut. **Not allowed**: at the last stage every part must fill its strip exactly, with no offcut — fewer cuts, more waste. **One part per strip**: every part in a last-stage strip is the same part — the simplest plans to cut, the most waste. | `non_exact`, `exact`, `homogenous` | `non_exact` | `cut_type` |
+| `minimum_offcut_width` | Minimum offcut width | The narrowest offcut the plan may leave, so none is too thin to handle. | The narrowest offcut the plan may leave, in millimetres: thin offcuts can be thrown back by the blade or slip out of a panel saw's clamps. Every offcut, and the leftover, is at least this wide, measured across the cut that frees it; along that cut it may be as narrow as the parts beside it. Parts narrower than this are still cut. Along a trimmed edge, its *Trimmed strip* says whether the trim counts in the offcut's width. 0 allows any width, down to strips of saw dust; 20–50 mm is typical. A larger value can mean more waste. | mm (0.1 mm steps), 0–100 000 | 0 | `minimum_waste_length` |
 | `first_cuts` | First cuts | Which way the first full-panel cuts run: either way, along or across the length. | Which way the first, full-panel cuts run. **Either** (recommended): the solver tries both and keeps the better plan. With one panel size, every panel in the plan is cut the same way; with several sizes, each panel may be cut differently. The search time is shared between the two directions. **Along the length**: rip the panel into long strips first, then cut the strips across — for saws or workflows that always rip first. **Across the length**: cut the panel across into shorter strips first. Parts with grain keep their direction whichever you choose. With unlimited stages, cuts may always go either way. | `either`, `along_length`, `across_length` | `either` | `first_stage_orientation` (`any`, `horizontal`, `vertical`) |
 
 ## Option names
@@ -121,13 +134,13 @@ field type's `oneOf`, with this name as its `title`.
 | `first_cuts` | `either` | Either |
 | `first_cuts` | `along_length` | Along the length |
 | `first_cuts` | `across_length` | Across the length |
+| `cut` | `cut_off_first` | Cut off first |
+| `cut` | `left_on_offcut` | Left on the offcut |
 
 ## Planned fields (In since 2026-10-27; help text is written in their stage, `STAGES.md` 9–16)
 
 | Field | Upstream |
 |---|---|
-| Edge trims (per side, soft/hard) | `left_trim`, `right_trim`, `bottom_trim`, `top_trim`, `TrimType` |
-| Minimum offcut width | `minimum_waste_length` |
 | Defects (position, size) | `defects` |
 | Cut through defects | `cut_through_defects` |
 | Min/max strip width, max number of strips | `minimum_distance_*_cuts`, `maximum_distance_*_cuts`, `maximum_number_*_cuts` |

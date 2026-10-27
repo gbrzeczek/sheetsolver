@@ -443,7 +443,8 @@ fn tiny_job() -> Value {
         "instance": {
             "objective": "bin_packing",
             "saw": { "kerf": 3.2, "stages": 3, "cut_type": "non_exact", "first_cuts": "either" },
-            "panels": [{ "id": "Ply", "length": 100, "width": 100, "quantity": 1, "cost": 1 }],
+            "panels": [{ "id": "Ply", "length": 100, "width": 100, "quantity": 1, "cost": 1,
+                         "trims": { "left": { "width": 0, "cut": "cut_off_first" } } }],
             "parts": [{ "id": "A", "length": 10, "width": 10, "quantity": 1, "grain": false, "value": 1 }]
         },
         "time_limit": 1
@@ -490,6 +491,7 @@ async fn schema_defaults_and_bounds_are_what_the_server_applies() {
         ("Saw", json!(["instance", "saw"])),
         ("Panel", json!(["instance", "panels", 0])),
         ("Part", json!(["instance", "parts", 0])),
+        ("Trim", json!(["instance", "panels", 0, "trims", "left"])),
     ] {
         for (name, property) in schemas[schema]["properties"].as_object().unwrap() {
             let mut path = prefix.as_array().unwrap().clone();
@@ -515,9 +517,10 @@ async fn schema_defaults_and_bounds_are_what_the_server_applies() {
                     let instance_path = &path[1..];
                     at(&mut job["instance"], instance_path).clone()
                 };
-                // `grain: false` is left out of the JSON.
-                let applied = if applied.is_null() && *default == json!(false) {
-                    json!(false)
+                // `grain: false`, a minimum offcut width of 0 and an edge
+                // without a trim are left out of the JSON.
+                let applied = if applied.is_null() && [json!(false), json!(0)].contains(default) {
+                    default.clone()
                 } else {
                     applied
                 };
@@ -583,8 +586,8 @@ async fn schema_defaults_and_bounds_are_what_the_server_applies() {
             }
         }
     }
-    // 8 defaults, 10 minimums, 6 maximums.
-    assert_eq!(checked, 24);
+    // 10 defaults, 12 minimums, 7 maximums.
+    assert_eq!(checked, 29);
 }
 
 #[tokio::test(flavor = "multi_thread")]

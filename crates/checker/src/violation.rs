@@ -36,6 +36,38 @@ pub enum Problem {
     /// stage 0.
     #[error("the root must be the whole panel: a piece at stage 0 at (0, 0) of the panel's size")]
     RootIsNotThePanel,
+    /// The trims cut off first are missing, misplaced or of the wrong
+    /// size: the panel must be cut into one trim per edge whose strip is
+    /// cut off first, then the trimmed panel.
+    #[error("the panel must first be cut into its trims ({expected}), then the trimmed panel")]
+    WrongTrims {
+        /// The trims expected, e.g. "left 10, bottom 5".
+        expected: String,
+    },
+    /// A trim where the panel has none, or below the panel.
+    #[error("a trim may only be a child of the panel")]
+    MisplacedTrim,
+    /// A part reaches into a trim.
+    #[error("part \"{part_id}\" reaches into the {edge} trim")]
+    PartInTrim {
+        /// The part's name.
+        part_id: String,
+        /// "left", "right", "bottom" or "top".
+        edge: &'static str,
+    },
+    /// An offcut or leftover is narrower than the minimum offcut width,
+    /// measured across the cut that frees it.
+    #[error(
+        "{kind} is {width} wide across the cut that frees it, less than the minimum offcut width {minimum}"
+    )]
+    OffcutTooNarrow {
+        /// "offcut" or "leftover".
+        kind: &'static str,
+        /// Its size across that cut.
+        width: Length,
+        /// The instance's minimum offcut width.
+        minimum: Length,
+    },
     /// A child's stage is not its parent's stage plus one.
     #[error("stage {found}, expected {expected}")]
     WrongStage {

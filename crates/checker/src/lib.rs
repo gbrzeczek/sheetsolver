@@ -154,6 +154,17 @@ fn parts_cut(solution: &Solution) -> HashMap<&str, u32> {
     cut
 }
 
+/// The part of a panel inside all its trims, as (left, bottom, right, top).
+fn inside_trims(panel: &model::Panel) -> (Length, Length, Length, Length) {
+    let trims = &panel.trims;
+    (
+        trims.left.width,
+        trims.bottom.width,
+        panel.length - trims.right.width,
+        panel.width - trims.top.width,
+    )
+}
+
 /// Computes the plan's metrics. Definitions match upstream's
 /// (`Solution::append_bin`), so the two can be compared.
 fn metrics(instance: &Instance, solution: &Solution) -> Metrics {
@@ -167,7 +178,21 @@ fn metrics(instance: &Instance, solution: &Solution) -> Metrics {
     for pattern in &solution.patterns {
         let repeat = pattern.repeat;
         panels_used += repeat;
-        panel_area = panel_area + pattern.root.area().times(repeat);
+        // upstream: a panel's area does not include its trims, whether
+        // cut off first or left on the offcut, since no part can be there.
+        let inside = instance
+            .panel(&pattern.panel_id)
+            .map(inside_trims)
+            .unwrap_or((
+                pattern.root.x,
+                pattern.root.y,
+                pattern.root.x + pattern.root.length,
+                pattern.root.y + pattern.root.width,
+            ));
+        panel_area = panel_area
+            + (inside.2 - inside.0)
+                .times(inside.3 - inside.1)
+                .times(repeat);
         for node in pattern.root.descendants() {
             match &node.kind {
                 NodeKind::Part { part_id, .. } => {
@@ -177,8 +202,18 @@ fn metrics(instance: &Instance, solution: &Solution) -> Metrics {
                         total_value += part.effective_value() * repeat as f64;
                     }
                 }
-                NodeKind::Leftover => leftover_area = leftover_area + node.area().times(repeat),
-                NodeKind::Piece | NodeKind::Offcut => {}
+                NodeKind::Leftover => {
+                    // Only the part of the leftover inside the trims.
+                    let left = node.x.max(inside.0);
+                    let bottom = node.y.max(inside.1);
+                    let right = (node.x + node.length).min(inside.2);
+                    let top = (node.y + node.width).min(inside.3);
+                    if left < right && bottom < top {
+                        leftover_area =
+                            leftover_area + (right - left).times(top - bottom).times(repeat);
+                    }
+                }
+                NodeKind::Piece | NodeKind::Offcut | NodeKind::Trim => {}
             }
         }
     }
