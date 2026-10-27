@@ -60,6 +60,12 @@
   const currentCut = $derived(order?.cuts[current - 1] ?? null);
 
   let selected = $state<PlanNode | null>(null);
+  // A selection belongs to the panel it was made on: another panel, or a
+  // better plan replacing this one, starts without one.
+  $effect.pre(() => {
+    void pattern;
+    selected = null;
+  });
 
   function goCut(n: number) {
     selected = null;

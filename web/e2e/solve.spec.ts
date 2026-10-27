@@ -122,3 +122,18 @@ test("a job without a plan does not show the previous job's plan", async ({ page
   await expect(page.getByRole("heading", { name: "Not every part fits" })).toBeVisible({ timeout: 20_000 });
   await expect(page.locator(".headline")).toBeHidden();
 });
+
+test("a part selected on one panel is not shown as selected on the next", async ({ page }) => {
+  // Two Doors fill panel 1; the Shelves go on panel 2.
+  await enterJob(page, [{ name: "Door", length: "1200", width: "1000", quantity: "2" }, { name: "Shelf", length: "900", width: "300", quantity: "2" }], { length: "2440", width: "1220" }, "1");
+  await findPlan(page);
+  await expect(page.locator(".headline")).toHaveText("All 4 parts fit", { timeout: 20_000 });
+  await page.getByRole("link", { name: "Cut order →" }).first().click();
+  // The current cut's overlay covers the drawing; select a Door directly.
+  await page.locator(".wb-main g.piece-hit:has(rect.p-part)").first().dispatchEvent("click");
+  await expect(page.getByText("Selected part")).toBeVisible();
+  await page.locator(".sheet-choice").nth(2).click();
+  await expect(page).toHaveURL(/\/panels\/2/);
+  await expect(page.getByText("Selected part")).toBeHidden();
+  await expect(page.getByText(/^Cut 1 of \d+$/)).toBeVisible();
+});
