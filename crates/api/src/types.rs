@@ -158,6 +158,8 @@ pub enum ErrorCode {
     InvalidInstance,
     /// Too many jobs are already waiting.
     Busy,
+    /// The client has as many jobs queued or running as it may.
+    TooManyJobs,
 }
 
 /// The body of every error response.

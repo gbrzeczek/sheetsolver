@@ -7,6 +7,7 @@
 //! leave the queue in the order they were submitted.
 
 use std::collections::HashMap;
+use std::net::IpAddr;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -27,6 +28,8 @@ pub struct Limits {
     pub max_running_jobs: usize,
     /// Jobs that may wait for a solver.
     pub max_queued_jobs: usize,
+    /// Jobs one client may have queued or running; `None`: no limit.
+    pub max_jobs_per_client: Option<usize>,
     /// How long a job stays readable after it ends.
     pub keep_jobs_for: Duration,
     /// The solver's beam width (`SolveParams::queue_size`).
@@ -91,6 +94,8 @@ pub struct Job {
     pub time_limit: u32,
     /// The order of submission: queued jobs start in this order.
     sequence: u64,
+    /// Who submitted it, if known (`crate::client::Client`).
+    client: Option<IpAddr>,
     /// The instance to solve.
     instance: Instance,
     /// Set to stop the search: by `DELETE`, or when a plan fails the
@@ -128,6 +133,17 @@ impl Job {
         self.data.borrow().state
     }
 
+    /// Whether the job holds or waits for a solver and has not been asked
+    /// to stop. A running job asked to stop ends within milliseconds, so
+    /// a client may stop a job and submit the next at once.
+    fn is_active(&self) -> bool {
+        match self.state() {
+            JobState::Queued => true,
+            JobState::Running => !self.stop.load(Ordering::Relaxed),
+            JobState::Done | JobState::Cancelled | JobState::Failed => false,
+        }
+    }
+
     /// Whether the job has ended more than `keep` ago.
     fn expired(&self, keep: Duration) -> bool {
         self.data
@@ -154,6 +170,12 @@ pub enum SubmitError {
         /// reaches its time limit, at the latest. A solver then takes the
         /// first queued job, which frees a place in the queue.
         retry_after: Duration,
+    },
+    /// The client has this many active jobs already.
+    #[error("the client has {max} jobs queued or running")]
+    TooManyJobs {
+        /// The limit per client.
+        max: usize,
     },
 }
 
@@ -218,10 +240,22 @@ impl JobStore {
 
     /// Adds a job and starts it as soon as a solver is free. Must be
     /// called inside a Tokio runtime.
-    pub fn submit(&self, spec: JobSpec) -> Result<Arc<Job>, SubmitError> {
+    pub fn submit(&self, spec: JobSpec, client: Option<IpAddr>) -> Result<Arc<Job>, SubmitError> {
         let mut jobs = self.jobs.lock().expect("job store poisoned");
         let keep = self.limits.keep_jobs_for;
         jobs.retain(|_, job| !job.expired(keep));
+
+        // Checked first: one client filling the queue must not be told,
+        // like everyone else, that the server is busy.
+        if let (Some(max), Some(client)) = (self.limits.max_jobs_per_client, client) {
+            let active = jobs
+                .values()
+                .filter(|job| job.client == Some(client) && job.is_active())
+                .count();
+            if active >= max {
+                return Err(SubmitError::TooManyJobs { max });
+            }
+        }
 
         // A job waits only if every solver is busy; it may wait if fewer
         // than `max_queued_jobs` others do.
@@ -256,6 +290,7 @@ impl JobStore {
             name: spec.name,
             time_limit: spec.time_limit,
             sequence: self.next_sequence.fetch_add(1, Ordering::Relaxed),
+            client,
             instance: spec.instance,
             stop: Arc::new(AtomicBool::new(false)),
             data,

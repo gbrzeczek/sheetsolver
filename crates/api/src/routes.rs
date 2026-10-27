@@ -16,6 +16,7 @@ use futures_util::stream;
 use tokio::sync::watch;
 use uuid::Uuid;
 
+use crate::client::Client;
 use crate::error::ApiError;
 use crate::jobs::{Job, JobData, JobStore, SubmitError};
 use crate::request::parse_job;
@@ -40,12 +41,14 @@ const KEEP_ALIVE: Duration = Duration::from_secs(15);
         (status = 400, description = "The body is not JSON (`invalid_json`).", body = ErrorBody),
         (status = 413, description = "The body is larger than 2 MB (`too_large`).", body = ErrorBody),
         (status = 422, description = "The body is not a valid job (`invalid_instance`); `problems` lists every problem found.", body = ErrorBody),
+        (status = 429, description = "This client already has as many jobs queued or running as it may (`too_many_jobs`); stop one or wait for one to end.", body = ErrorBody),
         (status = 503, description = "Too many jobs are waiting (`busy`).", body = ErrorBody,
             headers(("Retry-After" = u64, description = "Seconds after which to try again: when the first running job reaches its time limit, at the latest."))),
     ),
 )]
 pub async fn submit(
     State(store): State<Arc<JobStore>>,
+    Client(client): Client,
     body: Result<Bytes, BytesRejection>,
 ) -> Result<Response, ApiError> {
     let body = body.map_err(|rejection| match rejection.status() {
@@ -55,12 +58,13 @@ pub async fn submit(
     let value: serde_json::Value =
         serde_json::from_slice(&body).map_err(|error| ApiError::InvalidJson(error.to_string()))?;
     let spec = parse_job(&value).map_err(ApiError::InvalidInstance)?;
-    let job = store.submit(spec).map_err(|error| match error {
+    let job = store.submit(spec, client).map_err(|error| match error {
         SubmitError::Busy { retry_after } => ApiError::Busy {
             // Whole seconds, rounded up, and never 0: a solver may free
             // up any moment, but asking again at once is pointless.
             retry_after: retry_after.as_secs_f64().ceil().max(1.0) as u64,
         },
+        SubmitError::TooManyJobs { max } => ApiError::TooManyJobs { max },
     })?;
     let location = format!("/jobs/{}", job.id);
     Ok((

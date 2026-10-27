@@ -80,6 +80,9 @@ const SHORTEST: f64 = 0.1;
 /// The longest length accepted, in millimetres (`model::Length::MAX`).
 const LONGEST: f64 = 100_000.0;
 
+/// The largest quantity accepted (`model::MAX_QUANTITY`).
+const MOST: f64 = model::MAX_QUANTITY as f64;
+
 /// Every input field, in the order of `FIELDS.md`.
 pub static INPUT_FIELDS: &[InputField] = &[
     input(
@@ -133,7 +136,8 @@ pub static INPUT_FIELDS: &[InputField] = &[
         "Quantity",
         "How many panels of this size you have; empty means as many as needed.",
     )
-    .minimum(1.0),
+    .minimum(1.0)
+    .maximum(MOST),
     input(
         "Panel",
         "cost",
@@ -192,7 +196,8 @@ pub static INPUT_FIELDS: &[InputField] = &[
         "How many identical parts you need.",
     )
     .default("1")
-    .minimum(1.0),
+    .minimum(1.0)
+    .maximum(MOST),
     input(
         "Part",
         "grain",

@@ -206,6 +206,17 @@ export function parseCount(text: string, minimum: number, maximum?: number): Par
   return { ok: true, value };
 }
 
+const MOST_PARTS = API_FIELDS["Part.quantity"].maximum ?? Infinity;
+const MOST_PANELS = API_FIELDS["Panel.quantity"].maximum ?? Infinity;
+
+/** A quantity: a whole number from 1 to the API's maximum for the field. */
+function parseQuantity(text: string, most: number): Parsed<number> {
+  const count = parseCount(text, 1);
+  if (!count.ok) return { ok: false, message: count.message === "must be at least 1" ? "quantity must be at least 1" : count.message };
+  if (count.value > most) return { ok: false, message: `quantity must be at most ${most}` };
+  return count;
+}
+
 export function parseNumber(text: string): Parsed<number> {
   const t = text.trim().replace(",", ".");
   const value = Number(t);
@@ -242,9 +253,9 @@ export function toRequest(draft: Draft): { request: JobRequest; problems: Proble
     if (width.ok) part.width = width.value;
     else at(`${path}.width`, width.message);
     if (row.quantity.trim()) {
-      const quantity = parseCount(row.quantity, 1);
+      const quantity = parseQuantity(row.quantity, MOST_PARTS);
       if (quantity.ok) part.quantity = quantity.value;
-      else at(`${path}.quantity`, quantity.message === "must be at least 1" ? "quantity must be at least 1" : quantity.message);
+      else at(`${path}.quantity`, quantity.message);
     }
     if (row.value.trim()) {
       const value = parseNumber(row.value);
@@ -264,9 +275,9 @@ export function toRequest(draft: Draft): { request: JobRequest; problems: Proble
     if (width.ok) panel.width = width.value;
     else at(`${path}.width`, width.message);
     if (row.quantity.trim()) {
-      const quantity = parseCount(row.quantity, 1);
+      const quantity = parseQuantity(row.quantity, MOST_PANELS);
       if (quantity.ok) panel.quantity = quantity.value;
-      else at(`${path}.quantity`, quantity.message === "must be at least 1" ? "quantity must be at least 1" : quantity.message);
+      else at(`${path}.quantity`, quantity.message);
     }
     if (row.cost.trim()) {
       const cost = parseNumber(row.cost);

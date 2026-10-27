@@ -2,7 +2,9 @@ import { defineConfig, devices } from "@playwright/test";
 
 // End-to-end tests against the real API serving the built UI (`npm run e2e`
 // builds it first). The large queue size keeps searches running until their
-// time limit, so the live view and Stop can be tested.
+// time limit, so the live view and Stop can be tested. Every test comes from
+// the same address, and searches of earlier tests may still run, so the limit
+// of jobs per client is off.
 const port = 8092;
 
 export default defineConfig({
@@ -20,7 +22,7 @@ export default defineConfig({
     { name: "tablet", use: { ...devices["Desktop Chrome"], viewport: { width: 820, height: 1180 }, hasTouch: true } },
   ],
   webServer: {
-    command: `cargo run --release -q -p api -- --listen 127.0.0.1:${port} --web-dir web/dist --queue-size 1000000`,
+    command: `cargo run --release -q -p api -- --listen 127.0.0.1:${port} --web-dir web/dist --queue-size 1000000 --max-jobs-per-client 0`,
     cwd: "..",
     url: `http://127.0.0.1:${port}/openapi.json`,
     timeout: 600_000,

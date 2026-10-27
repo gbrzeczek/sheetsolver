@@ -24,6 +24,16 @@ services:
       # SHEETSOLVER_MAX_RUNNING_JOBS: "4"   # default: the CPU cores
       # SHEETSOLVER_MAX_QUEUED_JOBS: "32"
       # SHEETSOLVER_KEEP_JOBS_FOR: "3600"
+      # SHEETSOLVER_MAX_JOBS_PER_CLIENT: "2"
+      # Behind Cloudflare every request comes from the proxy; this header
+      # holds the visitor's address, for the limit of jobs per visitor.
+      # Anyone can send it, so the server must be reachable only through
+      # Cloudflare (docs/DEPLOY.md, "Cloudflare").
+      SHEETSOLVER_CLIENT_IP_HEADER: "CF-Connecting-IP"
+    # A job takes at most about 200 MB (docs/FIELDS.md, "Size of a job"),
+    # one per CPU core at a time: a runaway job then stops this container,
+    # which restarts, not the server. Raise it on a server with many cores.
+    mem_limit: 2g
     # The solvers use one CPU each; cap the container if the server does
     # other work.
     # cpus: 4

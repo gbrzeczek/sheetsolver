@@ -43,6 +43,22 @@ test.describe("at the desk", () => {
     await expect(page.locator("#part-0-quantity")).toHaveValue("3");
   });
 
+  test("Find plan again stops the search it replaces", async ({ page }) => {
+    await enterJob(page, [{ name: "Side", length: "720", width: "560", quantity: "2" }], { length: "2440", width: "1220" }, "1");
+    await page.locator("#time-limit").fill("60");
+    await findPlan(page);
+    await expect(page.locator(".headline")).toHaveText("All 2 parts fit", { timeout: 20_000 });
+    const first = jobId(page);
+    await page.locator("#part-0-quantity").fill("3");
+    await page.getByRole("button", { name: "Find plan again" }).click();
+    await expect.poll(() => jobId(page)).not.toBe(first);
+    // Unseen, it would hold a solver and one of this visitor's jobs.
+    await expect
+      .poll(async () => (await (await page.request.get(`/jobs/${first}`)).json()).state)
+      .toBe("cancelled");
+    await page.getByRole("button", { name: "Stop and keep this plan" }).click();
+  });
+
   test("Edit this plan's job takes the plan's job into the editor, with Undo", async ({ page }) => {
     await solvedJob(page);
     await page.locator("#part-0-width").fill("600");

@@ -318,6 +318,88 @@ async fn a_queued_job_is_cancelled_at_once_and_jobs_beyond_the_queue_are_refused
     assert_eq!(job["state"], "cancelled");
 }
 
+/// Submits [`SLOW`] for 600 s as the client at `address`, sent in the
+/// `X-Client-IP` header.
+async fn submit_as(app: &Router, address: &str) -> (StatusCode, Value) {
+    let body = json!({ "instance": instance(SLOW), "time_limit": 600 }).to_string();
+    let request = Request::builder()
+        .method(Method::POST)
+        .uri("/jobs")
+        .header(header::CONTENT_TYPE, "application/json")
+        .header("x-client-ip", address)
+        .body(Body::from(body))
+        .unwrap();
+    let response = app.clone().oneshot(request).await.unwrap();
+    let status = response.status();
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    (status, serde_json::from_slice(&bytes).unwrap())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_client_may_have_two_jobs_queued_or_running() {
+    let app = api::router(&api::Config {
+        max_jobs_per_client: Some(2),
+        client_ip_header: Some("x-client-ip".parse().unwrap()),
+        ..slow_config()
+    });
+    let mut created = Vec::new();
+    let mut accept = |(status, job): (StatusCode, Value)| {
+        assert_eq!(status, StatusCode::CREATED, "{job}");
+        created.push(job["id"].as_str().unwrap().to_string());
+        job
+    };
+    let running = accept(submit_as(&app, "203.0.113.7").await);
+    let running = running["id"].as_str().unwrap().to_string();
+    wait_until_running(&app, &running).await;
+    let queued = accept(submit_as(&app, "203.0.113.7").await);
+    assert_eq!(queued["state"], "queued");
+
+    let (status, error) = submit_as(&app, "203.0.113.7").await;
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(error["error"], "too_many_jobs");
+    // The same /64 network is the same client.
+    accept(submit_as(&app, "2001:db8::1").await);
+    accept(submit_as(&app, "2001:db8::2").await);
+    let (status, _) = submit_as(&app, "2001:db8::3").await;
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
+    // Another client is not limited by them.
+    accept(submit_as(&app, "198.51.100.1").await);
+
+    // A stopped job no longer counts, even before the solver has stopped.
+    send(&app, Method::DELETE, &format!("/jobs/{running}"), None).await;
+    accept(submit_as(&app, "203.0.113.7").await);
+
+    cancel_all(&app, &created).await;
+}
+
+/// Cancels the jobs and waits for them to end: the test's runtime waits
+/// for running solvers before it shuts down.
+async fn cancel_all(app: &Router, ids: &[String]) {
+    for id in ids {
+        send(app, Method::DELETE, &format!("/jobs/{id}"), None).await;
+    }
+    for id in ids {
+        wait_until_final(app, id, Duration::from_secs(10)).await;
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_client_ip_header_is_ignored_unless_configured() {
+    let app = api::router(&api::Config {
+        max_jobs_per_client: Some(1),
+        ..slow_config()
+    });
+    // Without connection info (as here) and no header configured, the
+    // client is unknown and not limited.
+    let mut created = Vec::new();
+    for _ in 0..3 {
+        let (status, job) = submit_as(&app, "203.0.113.7").await;
+        assert_eq!(status, StatusCode::CREATED);
+        created.push(job["id"].as_str().unwrap().to_string());
+    }
+    cancel_all(&app, &created).await;
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn an_invalid_instance_is_answered_422_with_every_problem() {
     let app = api::router(&config());
@@ -586,8 +668,8 @@ async fn schema_defaults_and_bounds_are_what_the_server_applies() {
             }
         }
     }
-    // 10 defaults, 12 minimums, 7 maximums.
-    assert_eq!(checked, 29);
+    // 10 defaults, 12 minimums, 9 maximums.
+    assert_eq!(checked, 31);
 }
 
 #[tokio::test(flavor = "multi_thread")]

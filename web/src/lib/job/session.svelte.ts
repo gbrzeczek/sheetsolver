@@ -93,9 +93,14 @@ class Session {
     if (this.submitting) return false;
     this.submitting = true;
     this.submitTrouble = null;
+    const previous = this.job;
     const result = await submitJob(request);
     this.submitting = false;
     if (result.ok) {
+      // The job shown until now would search on unseen, holding a solver and
+      // one of the jobs the server allows each visitor: stop it. Only now, so
+      // a refused job never costs the search shown.
+      if (previous && !isFinal(previous.state)) void cancelJob(previous.id);
       this.problems = [];
       this.problemsMessage = null;
       this.#show(result.job);

@@ -67,6 +67,74 @@ The image is private on GHCR at first; the job's token can pull it, so
 it may stay private. To pull it by hand on the server, use
 `docker login ghcr.io` with a token that can read packages.
 
+## Cloudflare
+
+The domain is served through Cloudflare (free plan). The server limits
+each visitor to 2 jobs at a time, and reads who the visitor is from the
+`CF-Connecting-IP` header Cloudflare sets (`SHEETSOLVER_CLIENT_IP_HEADER`
+in `deploy/docker-compose.yml`; `docs/API.md`, *Limits*). Two settings
+make that hold:
+
+### Reachable only through Cloudflare
+
+Anyone who finds the server's address could otherwise skip Cloudflare,
+and send any `CF-Connecting-IP` to escape the limit. Either:
+
+- **A Cloudflare Tunnel** (recommended, free): `cloudflared` on the
+  server connects out to Cloudflare, so no port needs to be open to the
+  internet. In the Cloudflare dashboard, Zero Trust → Networks →
+  Tunnels → create a tunnel of type *Cloudflared*, and copy its token.
+  Run it next to the app, on the `web` network:
+
+  ```yaml
+  # in the reverse proxy's compose file, or a compose file of its own
+  services:
+    cloudflared:
+      image: cloudflare/cloudflared:latest
+      command: tunnel --no-autoupdate run
+      environment:
+        TUNNEL_TOKEN: "<the tunnel's token>"
+      restart: unless-stopped
+      networks: [web]
+  networks:
+    web:
+      external: true
+  ```
+
+  In the tunnel's *Public hostnames*, route the domain to the reverse
+  proxy (or straight to `http://sheetsolver:8080`; Cloudflare then
+  handles TLS). Then remove the domain's old `A`/`AAAA` records pointing
+  at the server (the tunnel adds its own `CNAME`), and close ports 80
+  and 443 in the server's firewall.
+- **Or a firewall** that lets in ports 80 and 443 only from Cloudflare's
+  addresses (<https://www.cloudflare.com/ips/>), kept up to date. Mind
+  that Docker's published ports skip `ufw`'s rules; filter in the
+  `DOCKER-USER` chain or at the host provider's firewall.
+
+Check: `curl -sk https://<server's public IP>/openapi.json -H 'Host:
+<domain>'` must fail.
+
+### A rate-limiting rule
+
+The free plan allows one rule, over 10 seconds. It turns away floods
+before they reach the server; the server's own limit is what keeps one
+visitor from taking every solver. Security → WAF → *Rate limiting
+rules* → create:
+
+- When incoming requests match: *URI Path* equals `/jobs` **and**
+  *Request Method* equals `POST`.
+- With the same characteristics: *IP*.
+- When rate exceeds: 10 requests per 10 seconds.
+- Then: *Block*, for 10 seconds.
+
+A woodworker sends one job at a time, so this never touches them.
+
+Leave the rest at Cloudflare's defaults: its DDoS protection is always
+on. *Bot Fight Mode* is not needed and can block scripts that use the
+API. Event streams (`GET /jobs/{id}/events`) pass through: Cloudflare
+closes a connection idle for 100 s, and the server sends a keep-alive
+every 15 s.
+
 ## By hand
 
 The same as the job, on the server:

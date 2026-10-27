@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::Context;
-use axum::http::HeaderValue;
+use axum::http::{HeaderName, HeaderValue};
 use clap::Parser;
 
 /// Serves the sheetsolver web API, and the web UI with `--web-dir`.
@@ -31,6 +31,18 @@ struct Options {
     /// `503 busy`.
     #[arg(long, env = "SHEETSOLVER_MAX_QUEUED_JOBS", default_value_t = 32)]
     max_queued_jobs: usize,
+    /// Jobs one client (one IPv4 address, or one IPv6 /64 network) may
+    /// have queued or running at once; beyond that `POST /jobs` answers
+    /// `429 too_many_jobs`. 0: no limit.
+    #[arg(long, env = "SHEETSOLVER_MAX_JOBS_PER_CLIENT", default_value_t = 2)]
+    max_jobs_per_client: usize,
+    /// The request header that holds the client's address, set by the
+    /// proxy in front of the server, e.g. CF-Connecting-IP behind
+    /// Cloudflare. Default: the address of the connection, which behind a
+    /// proxy is the proxy's. Only safe when the server cannot be reached
+    /// except through that proxy: anyone can send the header.
+    #[arg(long, env = "SHEETSOLVER_CLIENT_IP_HEADER")]
+    client_ip_header: Option<String>,
     /// Seconds a job stays readable after it ends.
     #[arg(long, env = "SHEETSOLVER_KEEP_JOBS_FOR", default_value_t = 3600)]
     keep_jobs_for: u64,
@@ -63,6 +75,8 @@ fn main() -> anyhow::Result<()> {
     }
     let mut config = api::Config {
         max_queued_jobs: options.max_queued_jobs,
+        max_jobs_per_client: (options.max_jobs_per_client > 0)
+            .then_some(options.max_jobs_per_client),
         keep_jobs_for: Duration::from_secs(options.keep_jobs_for),
         queue_size: options.queue_size,
         ..api::Config::default()
@@ -76,6 +90,12 @@ fn main() -> anyhow::Result<()> {
     if let Some(running) = options.max_running_jobs {
         anyhow::ensure!(running >= 1, "--max-running-jobs must be at least 1");
         config.max_running_jobs = running;
+    }
+    if let Some(name) = &options.client_ip_header {
+        config.client_ip_header = Some(
+            HeaderName::try_from(name.as_str())
+                .with_context(|| format!("--client-ip-header {name:?} is not a header name"))?,
+        );
     }
     for origin in &options.cors_origins {
         config.cors_origins.push(
@@ -95,17 +115,25 @@ fn main() -> anyhow::Result<()> {
             .await
             .with_context(|| format!("listening on {}", options.listen))?;
         eprintln!(
-            "sheetsolver api on http://{} ({} solvers, queue size {}{})",
+            "sheetsolver api on http://{} ({} solvers, queue size {}, {}{})",
             listener.local_addr()?,
             config.max_running_jobs,
             config.queue_size,
+            match (config.max_jobs_per_client, &config.client_ip_header) {
+                (None, _) => "no limit per client".to_string(),
+                (Some(max), None) => format!("{max} jobs per client address"),
+                (Some(max), Some(header)) => format!("{max} jobs per client, by {header}"),
+            },
             config
                 .web_dir
                 .as_ref()
                 .map(|dir| format!(", web UI from {}", dir.display()))
                 .unwrap_or_default()
         );
-        axum::serve(listener, api::router(&config))
+        // The connection's address identifies the client unless
+        // `--client-ip-header` names a header to read it from.
+        let app = api::router(&config).into_make_service_with_connect_info::<SocketAddr>();
+        axum::serve(listener, app)
             .with_graceful_shutdown(shutdown_signal())
             .await
             .context("serving")
