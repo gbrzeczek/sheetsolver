@@ -127,6 +127,12 @@ export function parseLength(text: string, what: string, minimum: number): Parsed
   if (!DECIMAL.test(t)) return { ok: false, message: "must be a length in millimetres, such as 720 or 3.2" };
   const normal = t.replace(",", ".");
   const decimals = normal.split(".")[1] ?? "";
+  // "1,200" or "2.500" is a thousands separator as often as a decimal mark;
+  // reading it as 1.2 mm would silently make a tiny part.
+  if (decimals.length === 3) {
+    const whole = normal.split(".")[0];
+    return { ok: false, message: `write ${t} without a separator: ${whole}${decimals} for ${whole}${decimals} mm, or ${Number(normal)} for ${Number(normal)} mm` };
+  }
   if (decimals.length > 1 && !/^\d0+$/.test(decimals)) {
     return { ok: false, message: `length ${normal} mm has more than one decimal; lengths are in steps of 0.1 mm` };
   }

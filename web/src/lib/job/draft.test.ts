@@ -98,6 +98,14 @@ describe("lengths", () => {
     expect(parseLength("2\u202f440", "length", 0.1)).toEqual({ ok: true, value: 2440 });
     expect(parseLength("1 04", "length", 0.1).ok).toBe(false);
   });
+
+  it("reject three digits after a comma or point, which may be a thousands separator", () => {
+    expect(parseLength("1,200", "length", 0.1)).toEqual({ ok: false, message: "write 1,200 without a separator: 1200 for 1200 mm, or 1.2 for 1.2 mm" });
+    expect(parseLength("2.500", "width", 0.1).ok).toBe(false);
+    expect(parseLength("2,440", "length", 0.1).ok).toBe(false);
+    expect(parseLength("1200,5", "length", 0.1)).toEqual({ ok: true, value: 1200.5 });
+    expect(parseLength("18.5000", "width", 0.1)).toEqual({ ok: true, value: 18.5 });
+  });
 });
 
 describe("problem places", () => {

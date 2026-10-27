@@ -308,7 +308,10 @@ possible, kerf 3.2, 3 stages, trimming Allowed, first cuts Either,
 - Tab moves across a row. Enter in the last cell of the last row adds a
   row.
 - Numeric cells use `inputmode="decimal"`. A comma is accepted as the
-  decimal mark and stored as a point.
+  decimal mark and stored as a point. Exactly three digits after a comma
+  or point ("1,200", "2.500") are rejected with a message: they are as
+  likely a thousands separator, and reading them as 1.2 mm would
+  silently make a tiny part.
 - Removing a row offers *Undo* in a toast instead of asking for
   confirmation.
 
