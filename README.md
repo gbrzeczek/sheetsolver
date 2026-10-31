@@ -8,6 +8,16 @@ Under the hood: a Rust reimplementation of the 2D guillotine solver from
 [fontanf/packingsolver](https://github.com/fontanf/packingsolver),
 as a library, a web API and a web UI.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/plan-dark.png">
+  <img alt="Sheetsolver: the parts of a kitchen job on the left, the cutting plan for three birch ply panels on the right" src="docs/images/plan-light.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/panel-dark.png">
+  <img alt="One panel of the plan, with its numbered cuts drawn on the panel and listed in cutting order beside it" src="docs/images/panel-light.png">
+</picture>
+
 Status: the solver and a developer CLI work for 2, 3 and unlimited
 cutting stages (Stages 0–5 of [docs/STAGES.md](docs/STAGES.md)). On every
 test instance it gives exactly upstream's cutting plan for the same
